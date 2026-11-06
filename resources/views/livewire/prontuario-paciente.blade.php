@@ -1,0 +1,251 @@
+<div class="space-y-6">
+    <!-- Cabeçalho do PEP e Seletor de Paciente -->
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+        <div>
+            <h2 class="text-lg font-bold text-slate-900">Prontuário Eletrônico Multiprofissional (PEP)</h2>
+            <p class="text-xs text-slate-500">Linha do tempo integrada, assinatura eletrônica SHA-256 e trava legal de 24h</p>
+        </div>
+
+        <div class="w-full sm:w-80">
+            <select wire:model.live="pacienteId" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold">
+                <option value="">Selecione um paciente...</option>
+                @foreach($pacientes as $pac)
+                    <option value="{{ $pac->id }}">{{ $pac->nome }} (CNS: {{ $pac->cns }})</option>
+                @endforeach
+            </select>
+        </div>
+    </div>
+
+    @if (session()->has('sucesso_pep'))
+        <div class="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
+            {{ session('sucesso_pep') }}
+        </div>
+    @endif
+
+    @if($pacienteSelecionado)
+        <!-- Ficha Resumo do Usuário -->
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-4 bg-slate-900 text-white p-4 rounded-xl text-xs">
+            <div>
+                <span class="text-slate-400 block">Usuário do CER</span>
+                <span class="font-bold text-sm">{{ $pacienteSelecionado->nome }}</span>
+            </div>
+            <div>
+                <span class="text-slate-400 block">CNS (15 dígitos)</span>
+                <span class="font-mono font-semibold text-teal-400">{{ $pacienteSelecionado->cns }}</span>
+            </div>
+            <div>
+                <span class="text-slate-400 block">Nascimento / CID-10</span>
+                <span class="font-semibold">{{ $pacienteSelecionado->data_nascimento?->format('d/m/Y') }} • CID {{ $pacienteSelecionado->cid_principal }}</span>
+            </div>
+            <div>
+                <span class="text-slate-400 block">Modalidades de Reabilitação</span>
+                <div class="mt-1 flex flex-wrap gap-1">
+                    @foreach($pacienteSelecionado->modalidades_reabilitacao ?? [] as $mod)
+                        <span class="rounded bg-slate-800 px-2 py-0.5 text-[10px] font-mono text-teal-300 border border-slate-700">{{ $mod }}</span>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            <!-- Coluna Esquerda: Formulário de Evolução Rápida -->
+            <div class="lg:col-span-5 bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4 text-xs h-fit">
+                <h3 class="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">
+                    Nova Evolução Clínica + Produção BPA-i
+                </h3>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700">Agendamento Vinculado</label>
+                        <select wire:model="agendamento_id" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2">
+                            <option value="">Selecione o atendimento...</option>
+                            @foreach($agendamentosPaciente as $ag)
+                                <option value="{{ $ag->id }}">
+                                    {{ $ag->data_atendimento->format('d/m/Y') }} ({{ substr((string) $ag->hora_inicio, 0, 5) }}) — {{ $ag->sala?->nome }} [{{ $ag->tipo_atendimento }}]
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('agendamento_id') <span class="text-red-600 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700">Procedimento SIGTAP Executado (10 dígitos)</label>
+                        <select wire:model="procedimento_id" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2">
+                            <option value="">Selecione o procedimento SIGTAP...</option>
+                            @foreach($procedimentos as $proc)
+                                <option value="{{ $proc->id }}">{{ $proc->codigo }} — {{ $proc->descricao }}</option>
+                            @endforeach
+                        </select>
+                        @error('procedimento_id') <span class="text-red-600 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700">Queixa / Estado Funcional Atual</label>
+                        <textarea wire:model="queixa_estado_atual" rows="3" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5"></textarea>
+                        @error('queixa_estado_atual') <span class="text-red-600 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700">Conduta Terapêutica Realizada</label>
+                        <textarea wire:model="conduta_terapeutica" rows="3" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5"></textarea>
+                        @error('conduta_terapeutica') <span class="text-red-600 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-slate-700">Intercorrências (Opcional)</label>
+                        <textarea wire:model="intercorrencias" rows="2" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5"></textarea>
+                    </div>
+
+                    <button type="button"
+                            wire:click="solicitarPinAssinatura"
+                            class="w-full rounded-lg bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-xs hover:bg-teal-500">
+                        Assinar Eletronicamente com PIN
+                    </button>
+                </div>
+            </div>
+
+            <!-- Coluna Direita: Linha do Tempo Multiprofissional -->
+            <div class="lg:col-span-7 space-y-4">
+                <h3 class="text-sm font-bold text-slate-900">Linha do Tempo Clínica Multiprofissional</h3>
+
+                @forelse($evolucoes as $ev)
+                    @php
+                        $bloqueada = $ev->estaBloqueada();
+                    @endphp
+                    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-3 text-xs">
+                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                            <div>
+                                <span class="font-bold text-slate-900">{{ $ev->profissional?->nome }}</span>
+                                <span class="text-slate-500">• {{ $ev->profissional?->especialidade }} (CBO {{ $ev->profissional?->cbo_padrao }})</span>
+                                <span class="block text-[11px] text-slate-400">
+                                    Assinado em {{ $ev->assinado_em?->format('d/m/Y H:i') }} • Hash SHA-256: <code class="font-mono">{{ substr($ev->assinatura_hash, 0, 16) }}...</code>
+                                </span>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                @if($bloqueada)
+                                    <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700 border border-slate-300">
+                                        🔒 Imutável (+24h)
+                                    </span>
+                                @else
+                                    <span class="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
+                                        Editável (&lt;24h)
+                                    </span>
+                                @endif
+
+                                @can('createAdendo', $ev)
+                                    <button type="button"
+                                            wire:click="abrirModalAdendo({{ $ev->id }})"
+                                            class="rounded-md bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-slate-700">
+                                        + Adendo Retificador
+                                    </button>
+                                @endcan
+                            </div>
+                        </div>
+
+                        <div class="space-y-2 text-slate-700">
+                            <p><strong class="text-slate-900">Queixa / Estado Atual:</strong> {{ $ev->queixa_estado_atual }}</p>
+                            <p><strong class="text-slate-900">Conduta Terapêutica:</strong> {{ $ev->conduta_terapeutica }}</p>
+                            @if($ev->intercorrencias)
+                                <p><strong class="text-slate-900">Intercorrências:</strong> {{ $ev->intercorrencias }}</p>
+                            @endif
+                        </div>
+
+                        @if($ev->producaoBpai)
+                            <div class="rounded-lg bg-slate-50 px-3 py-2 border border-slate-200 flex items-center justify-between text-[11px]">
+                                <span>
+                                    <strong>SIGTAP:</strong> {{ $ev->producaoBpai->procedimento?->codigo }} — {{ $ev->producaoBpai->procedimento?->descricao }}
+                                </span>
+                                <span class="font-mono font-semibold text-teal-700">
+                                    Comp. {{ $ev->producaoBpai->competencia }} ({{ $ev->producaoBpai->status_exportacao }})
+                                </span>
+                            </div>
+                        @endif
+
+                        <!-- Adendos Retificadores Vinculados -->
+                        @if($ev->adendos->isNotEmpty())
+                            <div class="mt-3 space-y-2 border-l-2 border-amber-400 pl-3">
+                                @foreach($ev->adendos as $adendo)
+                                    <div class="rounded-lg bg-amber-50/70 p-2.5 border border-amber-200 text-[11px]">
+                                        <span class="font-bold text-amber-900 block">
+                                            Termo de Adendo — {{ $adendo->assinado_em?->format('d/m/Y H:i') }} ({{ $adendo->profissional?->nome }})
+                                        </span>
+                                        <p class="mt-1"><strong>Justificativa:</strong> {{ $adendo->justificativa }}</p>
+                                        <p class="mt-0.5"><strong>Nota Retificadora:</strong> {{ $adendo->texto_adendo }}</p>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                @empty
+                    <div class="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-xs text-slate-400">
+                        Nenhuma evolução clínica registrada para este paciente até o momento.
+                    </div>
+                @endforelse
+            </div>
+        </div>
+    @endif
+
+    <!-- Modal de Confirmação de PIN para Assinatura Eletrônica -->
+    @if($modalPinAberto)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+            <div class="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl border border-slate-200 text-xs space-y-4">
+                <h3 class="text-sm font-bold text-slate-900">Assinatura Eletrônica do Prontuário</h3>
+                <p class="text-slate-500">Confirme seu PIN individual para gerar o hash SHA-256 e lançar a produção no BPA-i.</p>
+
+                <div>
+                    <label class="block font-semibold text-slate-700">PIN de Assinatura</label>
+                    <input type="password" wire:model="pin_assinatura" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-center font-mono text-base tracking-widest">
+                    @error('pin_assinatura') <span class="text-red-600 mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" wire:click="$set('modalPinAberto', false)" class="rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-700">
+                        Cancelar
+                    </button>
+                    <button type="button" wire:click="confirmarAssinaturaEvolucao" class="rounded-lg bg-teal-600 px-4 py-2 font-semibold text-white hover:bg-teal-500">
+                        Confirmar e Assinar
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <!-- Modal de Inserção de Termo de Adendo (Evoluções Bloqueadas >24h) -->
+    @if($modalAdendoAberto)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+            <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl border border-slate-200 text-xs space-y-4">
+                <h3 class="text-sm font-bold text-slate-900">Inserir Termo de Adendo Retificador</h3>
+                <p class="text-slate-500">A evolução original permanece imutável. O adendo será anexado com carimbo de tempo e assinatura.</p>
+
+                <div>
+                    <label class="block font-semibold text-slate-700">Justificativa da Retificação</label>
+                    <input type="text" wire:model="justificativa_adendo" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2">
+                    @error('justificativa_adendo') <span class="text-red-600 mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700">Texto do Adendo</label>
+                    <textarea wire:model="texto_adendo" rows="3" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5"></textarea>
+                    @error('texto_adendo') <span class="text-red-600 mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700">PIN do Profissional</label>
+                    <input type="password" wire:model="pin_adendo" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono">
+                    @error('pin_adendo') <span class="text-red-600 mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" wire:click="$set('modalAdendoAberto', false)" class="rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-700">
+                        Cancelar
+                    </button>
+                    <button type="button" wire:click="salvarAdendo" class="rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white hover:bg-slate-800">
+                        Assinar Adendo
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+</div>
+
