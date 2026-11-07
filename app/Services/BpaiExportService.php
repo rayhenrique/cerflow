@@ -329,7 +329,7 @@ class BpaiExportService
         ?string $cnes = null
     ): StreamedResponse {
         $cnes ??= ConfiguracaoEstabelecimento::atual()->cnes;
-        abort_unless(preg_match('/^\\d{7}$/', $cnes) === 1, 422, 'Configure um CNES válido de 7 dígitos em Configurações > Identificação do Estabelecimento antes de exportar o BPA-i.');
+        abort_unless(preg_match('/^\d{7}$/', $cnes) === 1, 422, 'Configure um CNES válido de 7 dígitos em Configurações > Identificação do Estabelecimento antes de exportar o BPA-i.');
 
         $auditoria = $this->auditarCompetencia($competencia, true);
         $validados = $auditoria['validados'];
