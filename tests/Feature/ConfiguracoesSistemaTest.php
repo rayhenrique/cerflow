@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Livewire\ConfiguracoesSistema;
+use App\Models\ConfiguracaoEstabelecimento;
 use App\Models\Paciente;
 use App\Models\ProcedimentoSigtap;
 use App\Models\Sala;
@@ -12,6 +13,8 @@ use App\Models\User;
 use App\Rules\CnsValido;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -180,4 +183,57 @@ class ConfiguracoesSistemaTest extends TestCase
 
         $this->assertDatabaseMissing('procedimentos_sigtap', ['id' => $proc->id]);
     }
+
+    public function test_identificacao_do_estabelecimento_e_restrita_a_coordenacao(): void
+    {
+        $coordenador = User::factory()->create(['ativo' => true]);
+        $coordenador->assignRole('coordenacao');
+        $terapeuta = User::factory()->create(['ativo' => true]);
+        $terapeuta->assignRole('terapeuta');
+
+        $this->actingAs($coordenador)->get('/configuracoes/estabelecimento')
+            ->assertOk()
+            ->assertSee('Identificação do Estabelecimento');
+
+        $this->actingAs($terapeuta)->get('/configuracoes/estabelecimento')->assertForbidden();
+    }
+
+    public function test_coordenação_pode_salvar_dados_institucionais_e_logo(): void
+    {
+        Storage::fake('public');
+        $coordenador = User::factory()->create(['ativo' => true]);
+        $coordenador->assignRole('coordenacao');
+
+        Livewire::actingAs($coordenador)
+            ->test(ConfiguracoesSistema::class, ['secao' => 'estabelecimento'])
+            ->set('estabelecimento_ibge', '270430')
+            ->set('estabelecimento_cnes', '1234567')
+            ->set('logoEstabelecimento', UploadedFile::fake()->image('logo.png', 300, 120))
+            ->call('salvarIdentificacaoEstabelecimento')
+            ->assertHasNoErrors()
+            ->assertDispatched('toast');
+
+        $configuracao = ConfiguracaoEstabelecimento::atual();
+        $this->assertSame('270430', $configuracao->codigo_ibge_padrao);
+        $this->assertSame('1234567', $configuracao->cnes);
+        $this->assertNotNull($configuracao->logo_path);
+        Storage::disk('public')->assertExists($configuracao->logo_path);
+        $this->assertDatabaseHas('logs_auditoria', [
+            'acao' => 'ATUALIZACAO_ESTABELECIMENTO',
+            'tabela_afetada' => 'configuracoes_estabelecimento',
+        ]);
+    }
+
+    public function test_novo_paciente_recebe_ibge_padrao_configurado(): void
+    {
+        $coordenador = User::factory()->create(['ativo' => true]);
+        $coordenador->assignRole('coordenacao');
+        ConfiguracaoEstabelecimento::atual()->update(['codigo_ibge_padrao' => '270915']);
+
+        Livewire::actingAs($coordenador)
+            ->test(ConfiguracoesSistema::class, ['secao' => 'pacientes'])
+            ->call('abrirModalNovoPaciente')
+            ->assertSet('pac_municipio_ibge', '270915');
+    }
+
 }
