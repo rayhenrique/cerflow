@@ -28,12 +28,14 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 
 #[Layout('components.layouts.app')]
 #[Title('Configurações e Cadastros Base — CER Digital')]
 class ConfiguracoesSistema extends Component
 {
     use WithFileUploads;
+    use WithPagination;
 
     public ?TemporaryUploadedFile $logoEstabelecimento = null;
 
@@ -47,6 +49,8 @@ class ConfiguracoesSistema extends Component
 
     // --- Filtros de Busca ---
     public string $buscaPaciente = '';
+
+    public int $porPaginaPaciente = 25;
 
     public string $buscaSala = '';
 
@@ -270,12 +274,25 @@ class ConfiguracoesSistema extends Component
         }
     }
 
+    public function updatedBuscaPaciente(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPorPaginaPaciente(): void
+    {
+        $this->resetPage();
+    }
+
     public function selecionarAba(string $aba): void
     {
         $permitidas = $this->abasPermitidas();
         if (in_array($aba, $permitidas, true)) {
             $this->resetValidation();
             $this->abaAtiva = $aba;
+            if ($aba === 'pacientes') {
+                $this->resetPage();
+            }
         }
     }
 
@@ -859,6 +876,10 @@ class ConfiguracoesSistema extends Component
                 'ativo' => true,
             ]
         );
+
+        if (! $editando) {
+            $this->resetPage();
+        }
 
         $this->modalPacienteAberto = false;
         $this->reset([
@@ -1470,14 +1491,30 @@ class ConfiguracoesSistema extends Component
 
         $pacientes = collect();
         if ($podePacientes) {
+            $termo = trim($this->buscaPaciente);
+            $termoDigitos = preg_replace('/\D/', '', $termo) ?? '';
+
+            $itensPorPagina = in_array($this->porPaginaPaciente, [15, 25, 50, 100], true)
+                ? $this->porPaginaPaciente
+                : 25;
+
             $pacientes = Paciente::query()
-                ->when($this->buscaPaciente !== '', function ($q): void {
-                    $termo = '%'.trim($this->buscaPaciente).'%';
-                    $q->where(fn ($sub) => $sub->where('nome', 'like', $termo)->orWhere('cns', 'like', $termo)->orWhere('cpf', 'like', $termo)->orWhere('cid_principal', 'like', $termo));
+                ->when($termo !== '', function ($q) use ($termo, $termoDigitos): void {
+                    $q->where(function ($sub) use ($termo, $termoDigitos): void {
+                        $sub->where('nome', 'like', '%'.$termo.'%')
+                            ->orWhere('cid_principal', 'like', '%'.$termo.'%');
+
+                        if ($termoDigitos !== '') {
+                            $sub->orWhere('cpf', 'like', '%'.$termoDigitos.'%')
+                                ->orWhere('cns', 'like', '%'.$termoDigitos.'%');
+                        } else {
+                            $sub->orWhere('cns', 'like', '%'.$termo.'%')
+                                ->orWhere('cpf', 'like', '%'.$termo.'%');
+                        }
+                    });
                 })
                 ->latest('id')
-                ->limit(50)
-                ->get();
+                ->paginate($itensPorPagina);
         }
 
         $procedimentosSigtap = collect();

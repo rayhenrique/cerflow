@@ -606,18 +606,44 @@
     {{-- ===================================================================== --}}
     @if ($abaAtiva === 'pacientes' && in_array('pacientes', $abasPermitidas, true))
         <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div class="px-6 py-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
                     <h2 class="text-sm font-bold text-slate-800">Listagem de Pacientes Cadastrados</h2>
-                    <p class="text-xs text-slate-500">Exibindo até 50 registros filtrados em tempo real</p>
+                    @if (method_exists($pacientes, 'total'))
+                        <p class="text-xs text-slate-500">
+                            Exibindo {{ $pacientes->firstItem() ?? 0 }} a {{ $pacientes->lastItem() ?? 0 }} de {{ number_format($pacientes->total(), 0, ',', '.') }} pacientes
+                            @if ($buscaPaciente !== '')
+                                <span class="font-medium text-teal-700">(filtrados por "{{ $buscaPaciente }}")</span>
+                            @endif
+                        </p>
+                    @else
+                        <p class="text-xs text-slate-500">Exibindo registros em tempo real</p>
+                    @endif
                 </div>
-                <div class="relative w-full sm:w-80">
-                    <input type="text" wire:model.live.debounce.250ms="buscaPaciente"
-                        placeholder="Buscar por nome, CNS, CPF ou CID..."
-                        class="w-full rounded-lg border border-slate-300 pl-9 pr-3 py-2 text-xs focus:border-teal-600 focus:outline-none">
-                    <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.5 10.5a7.5 7.5 0 0013.15 6.15z"/>
-                    </svg>
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto">
+                    <div class="flex items-center gap-1.5 text-xs text-slate-500 shrink-0">
+                        <span>Por página:</span>
+                        <select wire:model.live="porPaginaPaciente" class="rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs bg-white text-slate-700 focus:border-teal-600 focus:outline-none">
+                            <option value="15">15</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                    <div class="relative w-full sm:w-80">
+                        <input type="text" wire:model.live.debounce.300ms="buscaPaciente"
+                            placeholder="Buscar por nome, CNS, CPF ou CID..."
+                            class="w-full rounded-lg border border-slate-300 pl-9 pr-8 py-2 text-xs focus:border-teal-600 focus:outline-none">
+                        <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.5 10.5a7.5 7.5 0 0013.15 6.15z"/>
+                        </svg>
+                        <div wire:loading wire:target="buscaPaciente" class="absolute right-2.5 top-2.5 text-teal-600">
+                            <svg class="h-3.5 w-3.5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -727,6 +753,12 @@
                     </tbody>
                 </table>
             </div>
+
+            @if (method_exists($pacientes, 'links'))
+                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+                    {{ $pacientes->links() }}
+                </div>
+            @endif
         </div>
     @endif
 

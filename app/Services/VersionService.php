@@ -44,6 +44,18 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.15.1',
+                'data' => '07/11/2026',
+                'titulo' => 'Paginação na Listagem de Pacientes do CER Digital',
+                'tipo' => 'Performance e Usabilidade',
+                'destaques' => [
+                    'Paginação server-side reativa na tela de Configurações e Cadastros Base (/configuracoes/pacientes).',
+                    'Seletor configurável de quantidade de itens por página (15, 25, 50 ou 100 registros).',
+                    'Contador dinâmico de registros totais e filtrados com feedback de busca em tempo real.',
+                    'Navegação entre páginas integrada ao Livewire com reinicialização automática ao aplicar filtros de pesquisa.',
+                ],
+            ],
+            [
                 'versao' => '1.15.0',
                 'data' => '07/11/2026',
                 'titulo' => 'Busca Sob Demanda de Pacientes no Novo Agendamento',
