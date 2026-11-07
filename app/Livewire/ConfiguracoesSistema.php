@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
+use App\Models\ConfiguracaoEstabelecimento;
 use App\Models\LogAuditoria;
 use App\Models\Paciente;
 use App\Models\ProcedimentoSigtap;
@@ -19,11 +20,22 @@ use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 #[Layout('components.layouts.app')]
 #[Title('Configurações e Cadastros Base — CER Digital')]
 class ConfiguracoesSistema extends Component
 {
+    use WithFileUploads;
+
+    public ?TemporaryUploadedFile $logoEstabelecimento = null;
+
+    public bool $removerLogoEstabelecimento = false;
+
+    public string $estabelecimento_ibge = '270430';
+
+    public string $estabelecimento_cnes = '2000001';
     public string $abaAtiva = 'pacientes';
 
     // --- Filtros de Busca ---
@@ -152,6 +164,12 @@ class ConfiguracoesSistema extends Component
         $this->perfil_nome = $user->name;
         $this->perfil_email = $user->email;
 
+        if ($user->hasRole('coordenacao')) {
+            $configuracao = ConfiguracaoEstabelecimento::atual();
+            $this->estabelecimento_ibge = $configuracao->codigo_ibge_padrao;
+            $this->estabelecimento_cnes = $configuracao->cnes;
+        }
+
         $permitidas = $this->abasPermitidas();
 
         if ($secao !== null) {
@@ -192,7 +210,7 @@ class ConfiguracoesSistema extends Component
         }
 
         if ($user->hasRole('coordenacao')) {
-            return ['pacientes', 'salas', 'profissionais', 'sigtap', 'auditoria', 'perfil'];
+            return ['pacientes', 'salas', 'profissionais', 'sigtap', 'auditoria', 'estabelecimento', 'perfil'];
         }
 
         $abas = ['perfil'];
@@ -204,6 +222,69 @@ class ConfiguracoesSistema extends Component
         }
 
         return array_values(array_unique($abas));
+    }
+
+    // =========================================================================
+    // IDENTIFICAÇÃO INSTITUCIONAL (Coordenação)
+    // =========================================================================
+    public function salvarIdentificacaoEstabelecimento(): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $dados = $this->validate([
+            'estabelecimento_ibge' => ['required', 'string', 'digits:6'],
+            'estabelecimento_cnes' => ['required', 'string', 'digits:7'],
+            'logoEstabelecimento' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
+            'removerLogoEstabelecimento' => ['boolean'],
+        ]);
+
+        $configuracao = ConfiguracaoEstabelecimento::atual();
+        $antes = [
+            'codigo_ibge_padrao' => $configuracao->codigo_ibge_padrao,
+            'cnes' => $configuracao->cnes,
+            'logo_path' => $configuracao->logo_path,
+        ];
+        $logoAnterior = $configuracao->logo_path;
+        $novoCaminho = $logoAnterior;
+
+        if ($this->logoEstabelecimento !== null) {
+            $novoCaminho = $this->logoEstabelecimento->store('identidade-estabelecimento', 'public');
+        } elseif ($this->removerLogoEstabelecimento) {
+            $novoCaminho = null;
+        }
+
+        $configuracao->update([
+            'codigo_ibge_padrao' => $dados['estabelecimento_ibge'],
+            'cnes' => $dados['estabelecimento_cnes'],
+            'logo_path' => $novoCaminho,
+        ]);
+
+        if ($logoAnterior !== null && $logoAnterior !== $novoCaminho) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($logoAnterior);
+        }
+
+        LogAuditoria::create([
+            'user_id' => auth()->id(),
+            'acao' => 'ATUALIZACAO_ESTABELECIMENTO',
+            'tabela_afetada' => 'configuracoes_estabelecimento',
+            'registro_id' => $configuracao->id,
+            'ip_address' => request()->ip() ?? '127.0.0.1',
+            'detalhes' => [
+                'antes' => $antes,
+                'depois' => [
+                    'codigo_ibge_padrao' => $configuracao->codigo_ibge_padrao,
+                    'cnes' => $configuracao->cnes,
+                    'logo_path' => $configuracao->logo_path,
+                ],
+            ],
+            'created_at' => now(),
+        ]);
+
+        $this->logoEstabelecimento = null;
+        $this->removerLogoEstabelecimento = false;
+        $this->resetValidation();
+
+        $this->dispatch('toast', tipo: 'sucesso', titulo: 'Identificação atualizada', mensagem: 'Os dados institucionais foram salvos com sucesso.');
     }
 
     // =========================================================================
@@ -312,7 +393,7 @@ class ConfiguracoesSistema extends Component
             'pac_modalidades',
         ]);
         $this->pac_sexo = 'M';
-        $this->pac_municipio_ibge = '270430';
+        $this->pac_municipio_ibge = ConfiguracaoEstabelecimento::atual()->codigo_ibge_padrao;
         $this->modalPacienteAberto = true;
     }
 
