@@ -132,7 +132,7 @@ class BpaiExportServiceTest extends TestCase
         $this->assertStringContainsString('CBO 223605 incompatível', (string) $auditoria['inconsistentes']->first()->mensagem_inconsistencia);
 
         $conteudoConfigurado = $bpaiExportService->gerarConteudoPosicional('202611', $auditoria['validados']);
-        $linhaConfigurada = explode("\\r\\n", rtrim($conteudoConfigurado, "\\r\\n"))[1];
+        $linhaConfigurada = explode("\r\n", rtrim($conteudoConfigurado, "\r\n"))[1];
         $this->assertSame('7654321', substr($linhaConfigurada, 2, 7));
 
         // Gera arquivo posicional apenas com os registros validados:
