@@ -39,4 +39,3 @@ class ModalNovidadesVersao extends Component
         ]);
     }
 }
-

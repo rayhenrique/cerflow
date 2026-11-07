@@ -2,6 +2,11 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.1.2] - 2026-11-06
+
+### Alterado
+- Padronização PSR-12 nos componentes `ModalNovidadesVersao` e `AjudaSobre` e atualização das referências de release no guia `deploy.md`.
+
 ## [1.1.1] - 2026-11-06
 
 ### Adicionado

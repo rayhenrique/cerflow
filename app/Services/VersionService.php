@@ -43,6 +43,16 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.1.2',
+                'data' => '06/11/2026',
+                'titulo' => 'Padronização PSR-12 dos Componentes de Versão e Revisão do Guia de Deploy CloudPanel',
+                'tipo' => 'Patch Release',
+                'destaques' => [
+                    'Padronização PSR-12 nos componentes Livewire de controle de versão (ModalNovidadesVersao e AjudaSobre).',
+                    'Sincronização das referências de tag SemVer no guia de deploy para CloudPanel (cer.kltecnologia.com).',
+                ],
+            ],
+            [
                 'versao' => '1.1.1',
                 'data' => '06/11/2026',
                 'titulo' => 'Documentação de Produção CloudPanel (cer.kltecnologia.com) e Licenciamento Proprietário KL Tecnologia',

@@ -149,7 +149,7 @@ Acesse no navegador:
 - **E-mail Inicial (Coordenação Geral):** `coordenacao@cerflow.gov.br`
 - **Senha Inicial:** `password`
 
-> Assim que fizer o primeiro login, o **Modal de Novidades da Versão (`v1.1.0`)** será exibido automaticamente. Recomenda-se alterar a senha do usuário inicial imediatamente após o primeiro acesso.
+> Assim que fizer o primeiro login, o **Modal de Novidades da Versão (`v1.1.2`)** será exibido automaticamente. Recomenda-se alterar a senha do usuário inicial imediatamente após o primeiro acesso.
 
 ---
 
@@ -164,7 +164,7 @@ cd /home/kltecnologia-cer/htdocs/cer.kltecnologia.com
 ./deploy.sh
 
 # OU atualizar travado em uma tag de release específica (SemVer):
-./deploy.sh v1.1.0
+./deploy.sh v1.1.2
 ```
 
 O script `./deploy.sh` executa automaticamente:
@@ -186,3 +186,4 @@ O script `./deploy.sh` executa automaticamente:
    ```bash
    tail -f /home/kltecnologia-cer/htdocs/cer.kltecnologia.com/storage/logs/laravel.log
    ```
+
