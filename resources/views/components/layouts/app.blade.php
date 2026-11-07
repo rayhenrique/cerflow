@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-@php($configuracaoEstabelecimento = \App\Models\ConfiguracaoEstabelecimento::atual())
 <html lang="pt-BR" class="h-full bg-slate-50">
 <head>
     <meta charset="utf-8">
@@ -21,6 +20,7 @@
       @keydown.escape.window="mobileMenuOpen = false">
     @php
         $versaoSistema = app(\App\Services\VersionService::class)->versaoAtual();
+        $configuracaoEstabelecimento = \App\Models\ConfiguracaoEstabelecimento::atual();
         $emConfiguracoes = request()->routeIs('configuracoes.*');
         $secaoConfigAtual = request()->route('secao');
     @endphp

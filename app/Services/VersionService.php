@@ -44,6 +44,18 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.8.0',
+                'data' => '07/11/2026',
+                'titulo' => 'Identificação do Estabelecimento, Logo Oficial e Estabilização do Layout',
+                'tipo' => 'Nova Versão',
+                'destaques' => [
+                    'Nova seção de Identificação do Estabelecimento em Configurações (exclusiva para Coordenação), permitindo cadastrar o CNES oficial e o código IBGE padrão da unidade.',
+                    'Envio, visualização e remoção da Logomarca Oficial do estabelecimento, exibida dinamicamente na tela de login e nos menus do sistema.',
+                    'Utilização automática do CNES configurado no cabeçalho do sistema e nas linhas da exportação oficial BPA-i (SIA/SUS).',
+                    'Ajustes de estabilidade no carregamento do sistema e rotas institucionais protegidas.',
+                ],
+            ],
+            [
                 'versao' => '1.7.0',
                 'data' => '07/11/2026',
                 'titulo' => 'Identidade CER Digital, Tradução Completa e Janela de Novidades Individual',

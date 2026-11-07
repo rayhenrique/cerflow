@@ -16,12 +16,13 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.app')]
 #[Title('Configurações e Cadastros Base — CER Digital')]
@@ -36,6 +37,7 @@ class ConfiguracoesSistema extends Component
     public string $estabelecimento_ibge = '270430';
 
     public string $estabelecimento_cnes = '2000001';
+
     public string $abaAtiva = 'pacientes';
 
     // --- Filtros de Busca ---
@@ -238,10 +240,15 @@ class ConfiguracoesSistema extends Component
             'removerLogoEstabelecimento' => ['boolean'],
         ]);
 
-        $configuracao = ConfiguracaoEstabelecimento::atual();
+        $configuracao = ConfiguracaoEstabelecimento::query()->find(1);
+        if ($configuracao === null) {
+            $configuracao = new ConfiguracaoEstabelecimento;
+            $configuracao->id = 1;
+        }
+
         $antes = [
-            'codigo_ibge_padrao' => $configuracao->codigo_ibge_padrao,
-            'cnes' => $configuracao->cnes,
+            'codigo_ibge_padrao' => $configuracao->codigo_ibge_padrao ?? '270430',
+            'cnes' => $configuracao->cnes ?? '2000001',
             'logo_path' => $configuracao->logo_path,
         ];
         $logoAnterior = $configuracao->logo_path;
@@ -253,14 +260,13 @@ class ConfiguracoesSistema extends Component
             $novoCaminho = null;
         }
 
-        $configuracao->update([
-            'codigo_ibge_padrao' => $dados['estabelecimento_ibge'],
-            'cnes' => $dados['estabelecimento_cnes'],
-            'logo_path' => $novoCaminho,
-        ]);
+        $configuracao->codigo_ibge_padrao = $dados['estabelecimento_ibge'];
+        $configuracao->cnes = $dados['estabelecimento_cnes'];
+        $configuracao->logo_path = $novoCaminho;
+        $configuracao->save();
 
         if ($logoAnterior !== null && $logoAnterior !== $novoCaminho) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($logoAnterior);
+            Storage::disk('public')->delete($logoAnterior);
         }
 
         LogAuditoria::create([

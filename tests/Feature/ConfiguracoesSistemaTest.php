@@ -14,6 +14,7 @@ use App\Rules\CnsValido;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -198,12 +199,13 @@ class ConfiguracoesSistemaTest extends TestCase
         $this->actingAs($terapeuta)->get('/configuracoes/estabelecimento')->assertForbidden();
     }
 
-    public function test_coordenacao_pode_salvar_dados_institucionais_e_logo(): void
+    public function test_coordenacao_pode_salvar_substituir_e_remover_logo(): void
     {
         Storage::fake('public');
         $coordenador = User::factory()->create(['ativo' => true]);
         $coordenador->assignRole('coordenacao');
 
+        // 1. Upload inicial da logo
         Livewire::actingAs($coordenador)
             ->test(ConfiguracoesSistema::class, ['secao' => 'estabelecimento'])
             ->set('estabelecimento_ibge', '270430')
@@ -217,11 +219,86 @@ class ConfiguracoesSistemaTest extends TestCase
         $this->assertSame('270430', $configuracao->codigo_ibge_padrao);
         $this->assertSame('1234567', $configuracao->cnes);
         $this->assertNotNull($configuracao->logo_path);
-        Storage::disk('public')->assertExists($configuracao->logo_path);
+        $primeiraLogo = $configuracao->logo_path;
+        Storage::disk('public')->assertExists($primeiraLogo);
         $this->assertDatabaseHas('logs_auditoria', [
             'acao' => 'ATUALIZACAO_ESTABELECIMENTO',
             'tabela_afetada' => 'configuracoes_estabelecimento',
         ]);
+
+        // 2. Substituição da logo
+        Livewire::actingAs($coordenador)
+            ->test(ConfiguracoesSistema::class, ['secao' => 'estabelecimento'])
+            ->set('estabelecimento_ibge', '270430')
+            ->set('estabelecimento_cnes', '1234567')
+            ->set('logoEstabelecimento', UploadedFile::fake()->image('nova_logo.png', 300, 120))
+            ->call('salvarIdentificacaoEstabelecimento')
+            ->assertHasNoErrors()
+            ->assertDispatched('toast');
+
+        $configuracao = ConfiguracaoEstabelecimento::atual();
+        $segundaLogo = $configuracao->logo_path;
+        $this->assertNotNull($segundaLogo);
+        $this->assertNotSame($primeiraLogo, $segundaLogo);
+        Storage::disk('public')->assertMissing($primeiraLogo);
+        Storage::disk('public')->assertExists($segundaLogo);
+
+        // 3. Remoção da logo
+        Livewire::actingAs($coordenador)
+            ->test(ConfiguracoesSistema::class, ['secao' => 'estabelecimento'])
+            ->set('estabelecimento_ibge', '270430')
+            ->set('estabelecimento_cnes', '1234567')
+            ->set('removerLogoEstabelecimento', true)
+            ->call('salvarIdentificacaoEstabelecimento')
+            ->assertHasNoErrors()
+            ->assertDispatched('toast');
+
+        $configuracao = ConfiguracaoEstabelecimento::atual();
+        $this->assertNull($configuracao->logo_path);
+        Storage::disk('public')->assertMissing($segundaLogo);
+    }
+
+    public function test_exibicao_da_logo_no_login_e_menu_com_fallback(): void
+    {
+        Storage::fake('public');
+        $coordenador = User::factory()->create(['ativo' => true]);
+        $coordenador->assignRole('coordenacao');
+
+        // Sem logo: login exibe "CER Digital", layout exibe badge "CD" e "CER Digital"
+        ConfiguracaoEstabelecimento::atual()->update(['logo_path' => null, 'cnes' => '2000001']);
+
+        $this->get('/login')
+            ->assertOk()
+            ->assertSee('CER Digital')
+            ->assertDontSee('alt="Logo do estabelecimento"', false);
+
+        $this->actingAs($coordenador)
+            ->get('/dashboard')
+            ->assertOk()
+            ->assertSee('CD')
+            ->assertSee('CER Digital')
+            ->assertSee('CNES 2000001')
+            ->assertDontSee('alt="Logo do estabelecimento"', false);
+
+        // Com logo configurada:
+        $logoFake = UploadedFile::fake()->image('logo_estab.png', 200, 80)->store('identidade-estabelecimento', 'public');
+        ConfiguracaoEstabelecimento::atual()->update([
+            'logo_path' => $logoFake,
+            'cnes' => '9988776',
+        ]);
+
+        auth()->logout();
+
+        $this->get('/login')
+            ->assertOk()
+            ->assertSee('alt="Logo do estabelecimento"', false)
+            ->assertSee(Storage::disk('public')->url($logoFake), false);
+
+        $this->actingAs($coordenador)
+            ->get('/dashboard')
+            ->assertOk()
+            ->assertSee('alt="Logo do estabelecimento"', false)
+            ->assertSee('CNES 9988776');
     }
 
     public function test_novo_paciente_recebe_ibge_padrao_configurado(): void
@@ -236,4 +313,27 @@ class ConfiguracoesSistemaTest extends TestCase
             ->assertSet('pac_municipio_ibge', '270915');
     }
 
+    public function test_configuracao_estabelecimento_padrao_e_fallback_sem_escrita(): void
+    {
+        $padrao = ConfiguracaoEstabelecimento::padrao();
+        $this->assertSame('270430', $padrao->codigo_ibge_padrao);
+        $this->assertSame('2000001', $padrao->cnes);
+        $this->assertNull($padrao->logo_path);
+        $this->assertFalse($padrao->exists);
+
+        $atual = ConfiguracaoEstabelecimento::atual();
+        $this->assertInstanceOf(ConfiguracaoEstabelecimento::class, $atual);
+        $this->assertSame('270430', $atual->codigo_ibge_padrao);
+    }
+
+    public function test_fallback_temporario_seguro_quando_tabela_nao_existe(): void
+    {
+        Schema::dropIfExists('configuracoes_estabelecimento');
+
+        $atual = ConfiguracaoEstabelecimento::atual();
+
+        $this->assertSame('270430', $atual->codigo_ibge_padrao);
+        $this->assertSame('2000001', $atual->cnes);
+        $this->assertNull($atual->logo_path);
+    }
 }

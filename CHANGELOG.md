@@ -2,6 +2,23 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.8.0] - 2026-11-07
+
+### Adicionado
+- **Módulo de Identificação do Estabelecimento (Coordenação):**
+  - Nova aba em Configurações para gestão dos dados institucionais da unidade de saúde.
+  - Parametrização do Código IBGE padrão do município e do código CNES da unidade.
+  - Upload, pré-visualização, substituição e remoção da Logomarca Oficial do estabelecimento (armazenada em disco público com suporte a PNG, JPG, JPEG e WebP de até 2MB).
+  - Exibição dinâmica da logomarca na tela de login e nos menus de navegação (desktop e mobile), com fallback automático para a identidade textual "CER Digital" e o badge "CD".
+  - Integração do CNES institucional no cabeçalho do sistema e no layout posicional oficial do faturamento BPA-i SIA/SUS.
+  - Registro detalhado de auditoria LGPD para todas as alterações de dados institucionais e arquivos de imagem.
+
+### Corrigido
+- Correção de escopo de compilação Blade no layout principal (`components/layouts/app.blade.php`), eliminando erro 500 no carregamento da aplicação.
+- Registro da rota `/configuracoes/estabelecimento` com preservação estrita do controle de acesso (RBAC restrito à Coordenação).
+- Implementação de leitura pura e fallback em memória em `ConfiguracaoEstabelecimento::atual()`, evitando escritas desnecessárias durante a renderização e tratando com segurança a ausência da tabela antes das migrations.
+- Adição de isolamento de banco em testes com `RefreshDatabase` no `ExampleTest`.
+
 ## [1.7.0] - 2026-11-07
 
 ### Adicionado
