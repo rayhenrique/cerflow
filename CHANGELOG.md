@@ -2,6 +2,19 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.1.0] - 2026-11-06
+
+### Adicionado
+- **Modal de Novidades da Versão no Login (`ModalNovidadesVersao`):** exibido automaticamente sempre que um usuário realiza login no sistema, apresentando os destaques da release ativa (`v1.1.0`).
+- **Módulo Ajuda & Sobre (`AjudaSobre` — `/ajuda`):** central de documentação operacional por perfil SUS e linha do tempo interativa mostrando a evolução de todas as versões (`v1.0.0`, `v1.0.1`, `v1.1.0`).
+- **Serviço de Versionamento (`VersionService`):** gerenciamento centralizado da versão SemVer e histórico de releases.
+
+## [1.0.1] - 2026-11-06
+
+### Adicionado
+- Script de deploy automatizado `deploy.sh` para VPS Hostinger / CloudPanel (suporte a deploy por branch ou tag SemVer, migrations, reset de cache do Spatie, build Vite e `artisan optimize`).
+- Documentação operacional completa de produção e deploy no `README.md`.
+
 ## [1.0.0] - 2026-11-06
 
 ### Adicionado
@@ -25,3 +38,4 @@ Todas as alterações relevantes deste projeto são documentadas neste arquivo, 
   - Componentes `GradeSemanal`, `RecepcaoCheckin`, `ProntuarioPaciente` e `FaturamentoBpai`.
 - **Fase 6 (Testes Automatizados e Homologação):**
   - Suíte completa PHPUnit (Unit, Feature e Homologação estrutural DATASUS BPA-i) e padronização PSR-12 via Laravel Pint.
+

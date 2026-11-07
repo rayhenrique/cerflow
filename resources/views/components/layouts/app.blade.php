@@ -9,6 +9,9 @@
     @livewireStyles
 </head>
 <body class="h-full font-sans text-slate-900 antialiased" x-data="{ mobileMenuOpen: false }">
+    @php
+        $versaoSistema = app(\App\Services\VersionService::class)->versaoAtual();
+    @endphp
     <div class="min-h-full flex">
         <!-- Sidebar Desktop (Estilo Linear / Filament) -->
         <aside class="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 bg-slate-900 text-slate-300 border-r border-slate-800">
@@ -19,7 +22,7 @@
                     </span>
                     <div>
                         <span class="text-sm font-semibold tracking-tight text-white block leading-none">CER Flow</span>
-                        <span class="text-[11px] text-slate-400 font-mono">SIA/SUS • BPA-i</span>
+                        <span class="text-[11px] text-slate-400 font-mono">SIA/SUS • v{{ $versaoSistema }}</span>
                     </div>
                 </div>
             </div>
@@ -57,6 +60,19 @@
                             Faturamento BPA-i
                         </a>
                     @endif
+
+                    <div class="pt-4 mt-4 border-t border-slate-800/80">
+                        <a href="{{ route('ajuda.sobre') }}"
+                           class="group flex items-center justify-between rounded-lg px-3 py-2 font-medium transition {{ request()->routeIs('ajuda.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
+                            <span class="flex items-center gap-3">
+                                <span class="h-2 w-2 rounded-full {{ request()->routeIs('ajuda.*') ? 'bg-teal-400' : 'bg-slate-600' }}"></span>
+                                Ajuda & Sobre
+                            </span>
+                            <span class="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono text-teal-400 border border-slate-700">
+                                v{{ $versaoSistema }}
+                            </span>
+                        </a>
+                    </div>
                 @endauth
             </nav>
 
@@ -87,6 +103,12 @@
                     <h1 class="text-sm font-semibold text-slate-900">{{ $header ?? 'Painel Operacional CER' }}</h1>
                 </div>
                 <div class="flex items-center gap-3 text-xs text-slate-500">
+                    <button type="button"
+                            onclick="Livewire.dispatch('abrir-modal-versao')"
+                            class="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-2.5 py-1 font-mono font-semibold text-teal-700 border border-teal-200 hover:bg-teal-100 transition"
+                            title="Clique para ver as novidades desta versão">
+                        ✨ v{{ $versaoSistema }} — Novidades
+                    </button>
                     <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
                         <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
                         CNES {{ \App\Services\BpaiExportService::CNES_PADRAO }}
@@ -100,7 +122,10 @@
         </div>
     </div>
 
+    @auth
+        <livewire:modal-novidades-versao />
+    @endauth
+
     @livewireScripts
 </body>
 </html>
-

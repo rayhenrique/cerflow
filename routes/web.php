@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Livewire\AjudaSobre;
 use App\Livewire\FaturamentoBpai;
 use App\Livewire\GradeSemanal;
 use App\Livewire\ProntuarioPaciente;
@@ -26,4 +27,8 @@ Route::middleware(['auth'])->group(function (): void {
     Route::get('/faturamento', FaturamentoBpai::class)
         ->middleware(['role:faturamento|coordenacao'])
         ->name('faturamento.bpai');
+
+    Route::get('/ajuda', AjudaSobre::class)
+        ->middleware('role:recepcao|terapeuta|faturamento|coordenacao')
+        ->name('ajuda.sobre');
 });

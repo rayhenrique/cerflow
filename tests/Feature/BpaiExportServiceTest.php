@@ -168,4 +168,3 @@ class BpaiExportServiceTest extends TestCase
         $this->assertSame('20161110', substr($linha03, 142, 8));     // 143-150 Data nascimento
     }
 }
-

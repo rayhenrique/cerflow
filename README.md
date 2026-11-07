@@ -1,58 +1,94 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# CER Flow — Gestão de Reabilitação, PEP Multiprofissional e BPA-i (SIA/SUS)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistema monolítico reativo desenvolvido em **Laravel 13.x**, **Livewire 4.x**, **Alpine.js 3.x** e **Tailwind CSS v4**, projetado para Centros Especializados em Reabilitação (CER - SUS). Unifica a grade semanal recorrente por salas e terapeutas, recepção/check-in com alerta de absenteísmo, Prontuário Eletrônico Multiprofissional (PEP) com assinatura eletrônica SHA-256 (trava legal de 24h) e exportação magnética posicional do **BPA-i (Boletim de Produção Ambulatorial Individualizado - DATASUS)**.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Stack Tecnológica
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **Backend:** PHP 8.3+ / Laravel 13.x
+- **Banco de Dados:** MySQL 8.0+ (`InnoDB`, `utf8mb4_unicode_ci`)
+- **Frontend Reativo:** Laravel Livewire 4.x + Alpine.js 3.x
+- **Estilização:** Tailwind CSS v4 + Vite
+- **RBAC:** Spatie Laravel-Permission (`coordenacao`, `recepcao`, `terapeuta`, `faturamento`)
+- **Autenticação:** Laravel Fortify
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## Instalação em Produção (VPS Hostinger + CloudPanel)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### 1. Criar o Site no CloudPanel
+1. No painel do **CloudPanel**, clique em **+ Add Site** → **Create a PHP Site**.
+2. Selecione a aplicação **Laravel 12 / 13** e **PHP 8.3** (ou superior).
+3. Em **Databases**, crie o banco de dados MySQL 8.0+ (`cer_flow`) e o respectivo usuário.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### 2. Primeiro Deploy via SSH (Usuário do Site)
+Acesse via SSH com o **Site User** do CloudPanel:
 
 ```bash
-composer require laravel/boost --dev
+cd ~/htdocs/<seu-dominio>
+rm -rf ./* ./.??* 2>/dev/null || true
 
-php artisan boost:install
+git clone https://github.com/rayhenrique/cerflow.git .
+cp .env.example .env
+nano .env
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Ajuste as variáveis de produção no `.env`:
 
-## Contributing
+```dotenv
+APP_NAME="CER Flow"
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://seu-dominio.gov.br
+APP_TIMEZONE=America/Maceio
+APP_LOCALE=pt_BR
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=cer_flow
+DB_USERNAME=seu_usuario_mysql
+DB_PASSWORD=sua_senha_mysql
+```
 
-## Code of Conduct
+Finalize a instalação inicial:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+composer install --no-interaction --no-dev --prefer-dist --optimize-autoloader
+php artisan key:generate
+php artisan migrate --seed --force
+npm ci && npm run build
+php artisan optimize
+chmod +x deploy.sh
+```
 
-## Security Vulnerabilities
+> **Credencial Inicial (Coordenação Geral):**
+> - **E-mail:** `coordenacao@cerflow.gov.br`
+> - **Senha:** `password` *(altere imediatamente após o primeiro login)*
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
+## Atualizações Contínuas e Controle de Versão
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Para atualizar o servidor pela branch `main` ou por uma tag de versão específica (`SemVer`):
+
+```bash
+# Atualizar para a última versão da branch main
+./deploy.sh
+
+# Ou atualizar para uma tag de release específica
+./deploy.sh v1.0.1
+```
+
+---
+
+## Suíte de Testes e Qualidade de Código
+
+```bash
+# Executar testes unitários, de feature e homologação estrutural BPA-i DATASUS
+php artisan test
+
+# Verificar padronização estrita PSR-12
+./vendor/bin/pint --test
+```

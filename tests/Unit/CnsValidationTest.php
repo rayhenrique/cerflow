@@ -44,4 +44,3 @@ class CnsValidationTest extends TestCase
         $this->assertFalse(CnsValido::validar('700000000000006')); // Soma módulo 11 inválida
     }
 }
-
