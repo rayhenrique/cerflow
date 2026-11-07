@@ -2,6 +2,23 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.11.0] - 2026-11-07
+
+### Adicionado
+- **Módulo de Integração com o e-SUS APS PEC (`/configuracoes/esus`):**
+  - Conexão PostgreSQL isolada e segura em modo estrito de leitura (`SET default_transaction_read_only = on`), sem permissão de gravação, exclusão ou alteração de DDL no banco do PEC.
+  - Armazenamento com criptografia nativa no banco do CER Digital (`encrypted` via `APP_KEY`), com máscara no frontend (`••••••••••••`) e preservação segura ao manter o campo em branco.
+  - Sanitização de logs e mensagens de erro: dados pessoais de saúde (LGPD), DSNs de conexão, hosts e senhas nunca são registrados em log nem exibidos para o usuário.
+  - Diagnóstico dinâmico de schema via `information_schema`: detecção do tipo de banco (DW PEC vs PEC Operacional) e validação da tabela oficial de integração (`tb_acomp_cidadaos_vinculados`).
+  - Interrupção segura de sincronização (`status: INTERROMPIDO`) com diagnóstico detalhado caso a tabela oficial de DW não esteja presente, sem criar ou inventar estruturas incompatíveis.
+  - Sincronização e importação unidirecional e-SUS PEC ➔ CER Digital com processamento em lotes (chunking de 200 registros) e controle de memória.
+  - Mapeamento completo dos dados cadastrais do cidadão (nome, CPF, CNS, data de nascimento, sexo, nome da mãe, telefone celular, endereço, bairro, código IBGE, UBS de referência e ACS).
+  - Regras de desduplicação SUS: identificação primária por ID externo estável do PEC, busca unívoca por CPF e busca por CNS; detecção de conflitos cruzados (duplicidades identificadas são registradas para revisão manual).
+  - Blindagem de dados locais: valores nulos da origem jamais sobrescrevem campos preenchidos localmente, e dados clínicos (`cid_principal`, `cid_secundario`, modalidades e evoluções) são totalmente preservados.
+  - Rastreabilidade cadastral com novas colunas `origem_cadastro = 'ESUS_APS'`, `id_externo_esus` e `data_ultima_sincronizacao_esus`.
+  - Agendamento automático via Job em fila (`SincronizarEsusPecJob`) configurado diariamente às 02:00 (`America/Sao_Paulo`) com bloqueio de concorrência (`withoutOverlapping()`).
+  - Painel visual em Configurações exclusivo para Coordenação/Administração com cards de indicadores, botão "Testar Conexão" com medição de latência, botão "Sincronizar Agora" para disparo manual e histórico de sincronizações com paginação e status.
+
 ## [1.10.0] - 2026-11-07
 
 ### Adicionado

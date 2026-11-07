@@ -44,6 +44,20 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.11.0',
+                'data' => '07/11/2026',
+                'titulo' => 'Integração com e-SUS APS PEC & Sincronização Unidirecional de Pacientes',
+                'tipo' => 'Nova Versão',
+                'destaques' => [
+                    'Novo módulo de Integração com o e-SUS APS PEC em Configurações, restrito à Coordenação e Administração.',
+                    'Conexão PostgreSQL isolada e segura em modo somente leitura (read-only), sem risco de escrita na base do PEC.',
+                    'Armazenamento seguro de credenciais com criptografia nativa AES-256 e sanitização contra vazamento em logs.',
+                    'Diagnóstico dinâmico de schema e validação da tabela oficial de integração do DW PEC (tb_acomp_cidadaos_vinculados).',
+                    'Sincronização com regras de desduplicação SUS por ID externo, CPF e CNS, preservando integralmente dados clínicos locais.',
+                    'Agendamento automático diário às 02:00 e disparo manual sob demanda com histórico detalhado de execuções.',
+                ],
+            ],
+            [
                 'versao' => '1.10.0',
                 'data' => '07/11/2026',
                 'titulo' => 'Reformulação do Cadastro de Pacientes & Separação de Dados Clínicos',

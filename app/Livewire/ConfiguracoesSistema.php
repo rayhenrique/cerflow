@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Models\ConfiguracaoEstabelecimento;
+use App\Models\ConfiguracaoEsusPec;
+use App\Models\HistoricoSincronizacaoEsus;
 use App\Models\LogAuditoria;
 use App\Models\Paciente;
 use App\Models\ProcedimentoSigtap;
@@ -12,6 +14,7 @@ use App\Models\Profissional;
 use App\Models\Sala;
 use App\Models\User;
 use App\Rules\CnsValido;
+use App\Services\EsusPecIntegrationService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -164,6 +167,42 @@ class ConfiguracoesSistema extends Component
 
     public string $novo_pin = '';
 
+    // --- Integração e-SUS APS PEC (Coordenação) ---
+    public bool $esus_ativo = false;
+
+    public string $esus_host = 'localhost';
+
+    public int $esus_porta = 5433;
+
+    public string $esus_banco = 'esus';
+
+    public string $esus_usuario = 'esus_leitura';
+
+    public string $esus_senha = '';
+
+    public bool $esus_tem_senha = false;
+
+    public string $esus_endereco_web = 'http://189.89.61.50:8181';
+
+    public string $esus_ultimo_status = 'NAO_TESTADO';
+
+    public ?string $esus_mensagem_status = null;
+
+    public ?string $esus_tipo_banco = null;
+
+    public ?string $esus_tabela_origem = null;
+
+    public int $esus_total_tabelas = 0;
+
+    /** @var array<string, mixed>|null */
+    public ?array $esus_diagnostico = null;
+
+    public ?string $esus_ultima_conexao = null;
+
+    public ?string $esus_ultima_sincronizacao = null;
+
+    public ?string $esus_ultima_sincronizacao_status = null;
+
     public function mount(?string $secao = null): void
     {
         $user = auth()->user();
@@ -176,6 +215,7 @@ class ConfiguracoesSistema extends Component
             $configuracao = ConfiguracaoEstabelecimento::atual();
             $this->estabelecimento_ibge = $configuracao->codigo_ibge_padrao;
             $this->estabelecimento_cnes = $configuracao->cnes;
+            $this->carregarConfiguracaoEsus();
         }
 
         $permitidas = $this->abasPermitidas();
@@ -218,7 +258,7 @@ class ConfiguracoesSistema extends Component
         }
 
         if ($user->hasRole('coordenacao')) {
-            return ['pacientes', 'salas', 'profissionais', 'sigtap', 'auditoria', 'estabelecimento', 'perfil'];
+            return ['pacientes', 'salas', 'profissionais', 'sigtap', 'auditoria', 'estabelecimento', 'esus', 'perfil'];
         }
 
         $abas = ['perfil'];
@@ -297,6 +337,137 @@ class ConfiguracoesSistema extends Component
         $this->resetValidation();
 
         $this->dispatch('toast', tipo: 'sucesso', titulo: 'Identificação atualizada', mensagem: 'Os dados institucionais foram salvos com sucesso.');
+    }
+
+    // =========================================================================
+    // INTEGRAÇÃO e-SUS APS PEC (Coordenação)
+    // =========================================================================
+    public function carregarConfiguracaoEsus(): void
+    {
+        $config = ConfiguracaoEsusPec::atual();
+        $this->esus_ativo = (bool) $config->ativo;
+        $this->esus_host = (string) ($config->host ?: 'localhost');
+        $this->esus_porta = (int) ($config->porta ?: 5433);
+        $this->esus_banco = (string) ($config->banco ?: 'esus');
+        $this->esus_usuario = (string) ($config->usuario ?: 'esus_leitura');
+        $this->esus_senha = '';
+        $this->esus_tem_senha = $config->temSenha();
+        $this->esus_endereco_web = (string) ($config->endereco_web_pec ?: 'http://189.89.61.50:8181');
+        $this->esus_ultimo_status = (string) ($config->ultimo_status_conexao ?: 'NAO_TESTADO');
+        $this->esus_mensagem_status = $config->mensagem_status_conexao;
+        $this->esus_tipo_banco = $config->tipo_banco_detectado;
+        $this->esus_tabela_origem = $config->tabela_origem_detectada;
+        $this->esus_total_tabelas = (int) ($config->total_tabelas_descobertas ?: 0);
+        $this->esus_diagnostico = is_array($config->detalhes_schema) ? $config->detalhes_schema : null;
+        $this->esus_ultima_conexao = $config->ultima_conexao_em?->format('d/m/Y H:i:s');
+        $this->esus_ultima_sincronizacao = $config->ultima_sincronizacao_em?->format('d/m/Y H:i:s');
+        $this->esus_ultima_sincronizacao_status = $config->ultima_sincronizacao_status;
+    }
+
+    public function salvarConfiguracaoEsus(): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $dados = $this->validate([
+            'esus_ativo' => ['boolean'],
+            'esus_host' => ['required', 'string', 'max:255'],
+            'esus_porta' => ['required', 'integer', 'between:1,65535'],
+            'esus_banco' => ['required', 'string', 'max:100'],
+            'esus_usuario' => ['required', 'string', 'max:100'],
+            'esus_senha' => ['nullable', 'string', 'max:255'],
+            'esus_endereco_web' => ['nullable', 'url', 'max:255'],
+        ]);
+
+        $config = ConfiguracaoEsusPec::atual();
+        $config->ativo = (bool) $dados['esus_ativo'];
+        $config->host = trim($dados['esus_host']);
+        $config->porta = (int) $dados['esus_porta'];
+        $config->banco = trim($dados['esus_banco']);
+        $config->usuario = trim($dados['esus_usuario']);
+        $config->endereco_web_pec = ! empty($dados['esus_endereco_web']) ? trim((string) $dados['esus_endereco_web']) : 'http://189.89.61.50:8181';
+
+        // Atualiza a senha apenas se informada
+        if ($this->esus_senha !== '') {
+            $config->senha = $this->esus_senha;
+        }
+
+        $config->save();
+
+        LogAuditoria::create([
+            'user_id' => auth()->id(),
+            'acao' => 'ATUALIZACAO_CONFIG_ESUS',
+            'tabela_afetada' => 'configuracoes_esus_pec',
+            'registro_id' => $config->id,
+            'ip_address' => request()->ip() ?? '127.0.0.1',
+            'detalhes' => [
+                'ativo' => $config->ativo,
+                'host' => $config->host,
+                'porta' => $config->porta,
+                'banco' => $config->banco,
+                'usuario' => $config->usuario,
+                'senha_atualizada' => $this->esus_senha !== '',
+            ],
+            'created_at' => now(),
+        ]);
+
+        $this->carregarConfiguracaoEsus();
+        $this->resetValidation();
+
+        $this->dispatch('toast', tipo: 'sucesso', titulo: 'Parâmetros e-SUS salvos', mensagem: 'As configurações de conexão foram armazenadas com criptografia segura.');
+    }
+
+    public function testarConexaoEsus(EsusPecIntegrationService $service): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $this->validate([
+            'esus_host' => ['required', 'string', 'max:255'],
+            'esus_porta' => ['required', 'integer', 'between:1,65535'],
+            'esus_banco' => ['required', 'string', 'max:100'],
+            'esus_usuario' => ['required', 'string', 'max:100'],
+        ]);
+
+        $config = ConfiguracaoEsusPec::atual();
+        $config->host = trim($this->esus_host);
+        $config->porta = (int) $this->esus_porta;
+        $config->banco = trim($this->esus_banco);
+        $config->usuario = trim($this->esus_usuario);
+        if ($this->esus_senha !== '') {
+            $config->senha = $this->esus_senha;
+        }
+        $config->save();
+
+        $resultado = $service->testarConexao($config);
+        $this->carregarConfiguracaoEsus();
+
+        if ($resultado['sucesso']) {
+            $this->dispatch('toast', tipo: 'sucesso', titulo: 'Conexão e-SUS validada', mensagem: $resultado['mensagem']);
+        } else {
+            $this->dispatch('toast', tipo: 'erro', titulo: 'Falha na conexão PostgreSQL', mensagem: $resultado['mensagem']);
+        }
+    }
+
+    public function sincronizarEsusAgora(EsusPecIntegrationService $service): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $historico = $service->sincronizarPacientes('MANUAL');
+        $this->carregarConfiguracaoEsus();
+
+        if ($historico->status === 'SUCESSO') {
+            $msg = sprintf(
+                'Sincronização concluída com sucesso em %ds: %d novos pacientes, %d atualizados (%d consultados).',
+                $historico->duracao_segundos,
+                $historico->novos_pacientes,
+                $historico->pacientes_atualizados,
+                $historico->total_consultado
+            );
+            $this->dispatch('toast', tipo: 'sucesso', titulo: 'Sincronização e-SUS concluída', mensagem: $msg);
+        } elseif ($historico->status === 'INTERROMPIDO') {
+            $this->dispatch('toast', tipo: 'alerta', titulo: 'Sincronização interrompida', mensagem: $historico->mensagem_erro ?? 'Operação interrompida por segurança.');
+        } else {
+            $this->dispatch('toast', tipo: 'erro', titulo: 'Erro na sincronização', mensagem: $historico->mensagem_erro ?? 'Ocorreu um erro durante a leitura do e-SUS PEC.');
+        }
     }
 
     // =========================================================================
@@ -1195,6 +1366,14 @@ class ConfiguracoesSistema extends Component
             }
         }
 
+        $historicoEsus = collect();
+        if ($isCoordenacao) {
+            $historicoEsus = HistoricoSincronizacaoEsus::query()
+                ->latest('iniciado_em')
+                ->limit(20)
+                ->get();
+        }
+
         $listaUbs = [];
         if ($podePacientes) {
             $ubsDoBanco = Paciente::query()
@@ -1225,6 +1404,7 @@ class ConfiguracoesSistema extends Component
             'procedimentosSigtap' => $procedimentosSigtap,
             'logsAuditoria' => $logsAuditoria,
             'logInspecionado' => $logInspecionado,
+            'historicoEsus' => $historicoEsus,
             'listaUbs' => $listaUbs,
         ]);
     }

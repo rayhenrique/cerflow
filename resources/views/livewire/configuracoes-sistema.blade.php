@@ -31,6 +31,11 @@
                 'titulo' => 'Identificação do Estabelecimento',
                 'subtitulo' => 'Configure a logo institucional, o código IBGE padrão e o CNES utilizado no faturamento SUS.',
             ],
+            'esus' => [
+                'badge' => 'Atenção Primária à Saúde',
+                'titulo' => 'Integração e-SUS APS PEC',
+                'subtitulo' => 'Conexão segura somente-leitura com o banco PostgreSQL do e-SUS PEC para descoberta de schema e sincronização de pacientes.',
+            ],
             'perfil' => [
                 'badge' => 'Credenciais Pessoais',
                 'titulo' => 'Meu Perfil & PIN de Assinatura Clínica',
@@ -74,6 +79,19 @@
                     class="w-full sm:w-auto justify-center inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     Novo Procedimento SIGTAP
+                </button>
+            @elseif ($abaAtiva === 'esus' && in_array('esus', $abasPermitidas, true))
+                <button type="button" wire:click="testarConexaoEsus" wire:loading.attr="disabled"
+                    class="w-full sm:w-auto justify-center inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-xs hover:bg-slate-50 transition cursor-pointer disabled:opacity-60">
+                    <svg class="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    <span wire:loading.remove wire:target="testarConexaoEsus">Testar Conexão</span>
+                    <span wire:loading wire:target="testarConexaoEsus">Testando...</span>
+                </button>
+                <button type="button" wire:click="sincronizarEsusAgora" wire:loading.attr="disabled"
+                    class="w-full sm:w-auto justify-center inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer disabled:opacity-60">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    <span wire:loading.remove wire:target="sincronizarEsusAgora">Sincronizar Agora</span>
+                    <span wire:loading wire:target="sincronizarEsusAgora">Sincronizando...</span>
                 </button>
             @endif
         </div>
@@ -136,6 +154,339 @@
                     </div>
                 </form>
             </section>
+        </div>
+    @endif
+
+    {{-- ===================================================================== --}}
+    {{-- INTEGRAÇÃO e-SUS APS PEC (Coordenação)                                 --}}
+    {{-- ===================================================================== --}}
+    @if ($abaAtiva === 'esus' && in_array('esus', $abasPermitidas, true))
+        <div class="space-y-6">
+            <!-- Banner Informativo & Segurança -->
+            <div class="rounded-xl border border-teal-200 bg-teal-50/60 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="flex items-start gap-3">
+                    <div class="rounded-lg bg-teal-600 p-2 text-white shrink-0 mt-0.5">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-bold text-slate-900">Integração Segura Unidirecional (Somente Leitura)</h2>
+                        <p class="text-xs text-slate-600 mt-0.5">
+                            O CER Digital lê exclusivamente a base do e-SUS PEC via PostgreSQL, sem jamais executar comandos de escrita no servidor de origem.
+                            A senha é criptografada com AES-256-CBC no banco local.
+                        </p>
+                    </div>
+                </div>
+                @if ($esus_endereco_web)
+                    <a href="{{ $esus_endereco_web }}" target="_blank" rel="noopener noreferrer"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-teal-300 bg-white px-3 py-1.5 text-xs font-semibold text-teal-800 hover:bg-teal-50 transition shrink-0">
+                        <span>Acessar Web PEC</span>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                    </a>
+                @endif
+            </div>
+
+            <!-- Cards Rápidos de Indicadores -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Status da Integração -->
+                <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+                    <span class="text-xs text-slate-500 block">Status da Integração</span>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="w-2.5 h-2.5 rounded-full {{ $esus_ativo ? 'bg-emerald-500' : 'bg-slate-400' }}"></span>
+                        <span class="font-bold text-sm text-slate-800">{{ $esus_ativo ? 'Ativa' : 'Inativa' }}</span>
+                    </div>
+                    <span class="text-[11px] text-slate-400 mt-1 block">Rotina agendada diariamente às 02:00</span>
+                </div>
+
+                <!-- Conexão PostgreSQL -->
+                <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+                    <span class="text-xs text-slate-500 block">Conexão PostgreSQL</span>
+                    <div class="flex items-center gap-2 mt-1">
+                        @if ($esus_ultimo_status === 'SUCESSO')
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                            <span class="font-bold text-sm text-emerald-700">Conectado</span>
+                        @elseif ($esus_ultimo_status === 'ERRO')
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                            <span class="font-bold text-sm text-rose-700">Falha de Conexão</span>
+                        @else
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                            <span class="font-bold text-sm text-slate-600">Não Testado</span>
+                        @endif
+                    </div>
+                    <span class="text-[11px] text-slate-400 mt-1 block truncate">
+                        {{ $esus_host }}:{{ $esus_porta }}/{{ $esus_banco }}
+                    </span>
+                </div>
+
+                <!-- Diagnóstico de Schema -->
+                <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+                    <span class="text-xs text-slate-500 block">Origem Detectada</span>
+                    <div class="flex items-center gap-2 mt-1">
+                        @if ($esus_tipo_banco === 'DW_PEC')
+                            <span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-xs font-bold font-mono">DW PEC Oficial</span>
+                        @elseif ($esus_tipo_banco === 'PEC_OPERACIONAL')
+                            <span class="px-2 py-0.5 rounded bg-amber-50 text-amber-700 text-xs font-bold font-mono">PEC Operacional</span>
+                        @else
+                            <span class="text-xs font-semibold text-slate-500">Pendente de teste</span>
+                        @endif
+                    </div>
+                    <span class="text-[11px] text-slate-400 mt-1 block">
+                        {{ $esus_tabela_origem ? "Tabela: {$esus_tabela_origem}" : 'Aguardando teste de conexão' }}
+                    </span>
+                </div>
+
+                <!-- Última Sincronização -->
+                <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+                    <span class="text-xs text-slate-500 block">Última Sincronização</span>
+                    <span class="font-bold text-sm text-slate-800 mt-1 block">
+                        {{ $esus_ultima_sincronizacao ?: 'Nenhuma realizada' }}
+                    </span>
+                    @if ($esus_ultima_sincronizacao_status)
+                        <span class="text-[11px] font-semibold {{ $esus_ultima_sincronizacao_status === 'SUCESSO' ? 'text-emerald-600' : ($esus_ultima_sincronizacao_status === 'INTERROMPIDO' ? 'text-amber-600' : 'text-rose-600') }} mt-1 block">
+                            Status: {{ $esus_ultima_sincronizacao_status }}
+                        </span>
+                    @else
+                        <span class="text-[11px] text-slate-400 mt-1 block">Execuções registradas abaixo</span>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Grid: Formulário de Conexão + Diagnóstico Detalhado -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Coluna Esquerda: Parâmetros de Conexão (7 cols) -->
+                <div class="lg:col-span-7 bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+                    <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-900">Parâmetros de Conexão PostgreSQL</h3>
+                            <p class="text-xs text-slate-500">Configuração de acesso read-only ao e-SUS APS PEC</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" wire:model="esus_ativo" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-600"></div>
+                            <span class="ml-2 text-xs font-semibold text-slate-700">Habilitar Integração</span>
+                        </label>
+                    </div>
+
+                    <form wire:submit="salvarConfiguracaoEsus" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Host / Servidor *</label>
+                                <input type="text" wire:model="esus_host" placeholder="localhost ou IP do servidor e-SUS"
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-teal-600 focus:outline-none">
+                                <p class="text-[10px] text-slate-400 mt-1">'localhost' refere-se ao host onde o CER Digital é executado.</p>
+                                @error('esus_host') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Porta *</label>
+                                <input type="number" wire:model="esus_porta" placeholder="5433"
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-teal-600 focus:outline-none">
+                                @error('esus_porta') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Nome do Banco de Dados *</label>
+                                <input type="text" wire:model="esus_banco" placeholder="esus"
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-teal-600 focus:outline-none">
+                                @error('esus_banco') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Usuário PostgreSQL *</label>
+                                <input type="text" wire:model="esus_usuario" placeholder="esus_leitura"
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-teal-600 focus:outline-none">
+                                <p class="text-[10px] text-slate-400 mt-1">Usuário com privilégios exclusivamente de leitura (SELECT).</p>
+                                @error('esus_usuario') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block text-xs font-bold text-slate-700">Senha de Acesso</label>
+                                @if ($esus_tem_senha)
+                                    <span class="inline-flex items-center gap-1 text-[11px] text-emerald-600 font-semibold">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                        Senha criptografada salva
+                                    </span>
+                                @endif
+                            </div>
+                            <input type="password" wire:model="esus_senha" placeholder="{{ $esus_tem_senha ? '•••••••••••• (deixe em branco para manter a atual)' : 'Informe a senha de leitura' }}"
+                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-teal-600 focus:outline-none">
+                            <p class="text-[11px] text-slate-400 mt-1">
+                                Criptografada no banco de dados do CER com a APP_KEY. Nunca exibida descriptografada.
+                            </p>
+                            @error('esus_senha') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Endereço Web do PEC (Interface do Usuário)</label>
+                            <input type="url" wire:model="esus_endereco_web" placeholder="http://189.89.61.50:8181"
+                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-teal-600 focus:outline-none">
+                            <p class="text-[11px] text-slate-400 mt-1">Endereço web HTTP do PEC (não confundir com o endpoint PostgreSQL).</p>
+                            @error('esus_endereco_web') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                            <button type="button" wire:click="testarConexaoEsus" wire:loading.attr="disabled"
+                                class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer disabled:opacity-60">
+                                <svg class="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                <span wire:loading.remove wire:target="testarConexaoEsus">Testar Conexão</span>
+                                <span wire:loading wire:target="testarConexaoEsus">Testando...</span>
+                            </button>
+
+                            <button type="submit" wire:loading.attr="disabled"
+                                class="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2 text-xs font-bold text-white hover:bg-teal-700 transition cursor-pointer disabled:opacity-60">
+                                <span wire:loading.remove wire:target="salvarConfiguracaoEsus">Salvar Configurações</span>
+                                <span wire:loading wire:target="salvarConfiguracaoEsus">Salvando...</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Coluna Direita: Diagnóstico & Descoberta do Schema (5 cols) -->
+                <div class="lg:col-span-5 bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+                    <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-900">Descoberta do Banco e-SUS</h3>
+                            <p class="text-xs text-slate-500">Auditoria estrutural e diagnóstico de compatibilidade</p>
+                        </div>
+                        <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-mono text-slate-600">
+                            {{ $esus_total_tabelas }} tabelas
+                        </span>
+                    </div>
+
+                    @if ($esus_mensagem_status)
+                        <div class="rounded-lg p-3 text-xs {{ $esus_ultimo_status === 'SUCESSO' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200' }}">
+                            <div class="font-bold mb-0.5">{{ $esus_ultimo_status === 'SUCESSO' ? 'Conexão Estabelecida' : 'Falha no Teste de Conexão' }}</div>
+                            <p>{{ $esus_mensagem_status }}</p>
+                            @if ($esus_ultima_conexao)
+                                <span class="text-[10px] opacity-75 mt-1 block">Testado em {{ $esus_ultima_conexao }}</span>
+                            @endif
+                        </div>
+                    @endif
+
+                    <div class="space-y-3 text-xs">
+                        <div class="flex items-center justify-between py-2 border-b border-slate-100">
+                            <span class="text-slate-500">Classificação do Banco</span>
+                            <span class="font-bold text-slate-800">
+                                @if ($esus_tipo_banco === 'DW_PEC')
+                                    DW e-SUS APS PEC (Oficial)
+                                @elseif ($esus_tipo_banco === 'PEC_OPERACIONAL')
+                                    PEC Operacional (Transacional)
+                                @else
+                                    Não identificado
+                                @endif
+                            </span>
+                        </div>
+
+                        <div class="flex items-center justify-between py-2 border-b border-slate-100">
+                            <span class="text-slate-500">Tabela de Cidadãos Vinculados</span>
+                            <span class="font-mono font-semibold {{ $esus_tabela_origem === 'tb_acomp_cidadaos_vinculados' ? 'text-emerald-700' : 'text-slate-600' }}">
+                                {{ $esus_tabela_origem ?: 'tb_acomp_cidadaos_vinculados (Ausente)' }}
+                            </span>
+                        </div>
+
+                        <div class="flex items-center justify-between py-2 border-b border-slate-100">
+                            <span class="text-slate-500">Compatibilidade para Importação</span>
+                            @if ($esus_tipo_banco === 'DW_PEC')
+                                <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[11px]">Compatível (DW)</span>
+                            @else
+                                <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[11px]">Requer DW Oficial</span>
+                            @endif
+                        </div>
+
+                        @if ($esus_diagnostico && !empty($esus_diagnostico['colunas_origem']))
+                            <div>
+                                <span class="text-slate-500 block mb-1">Colunas Mapeadas na Tabela:</span>
+                                <div class="flex flex-wrap gap-1 max-h-24 overflow-y-auto p-1.5 rounded-lg bg-slate-50 border border-slate-200">
+                                    @foreach ($esus_diagnostico['colunas_origem'] as $col)
+                                        <span class="px-1.5 py-0.5 rounded bg-white text-slate-700 font-mono text-[10px] border border-slate-200">{{ $col }}</span>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+
+                        <div class="rounded-lg bg-slate-50 p-3 text-[11px] text-slate-600 space-y-1">
+                            <span class="font-bold text-slate-700 block">Referência Oficial:</span>
+                            <p>Documentação de Integração Bridge / e-SUS APS:</p>
+                            <a href="https://integracao.esusaps.bridge.ufsc.tech/" target="_blank" rel="noopener noreferrer" class="text-teal-700 hover:underline font-mono break-all block">
+                                https://integracao.esusaps.bridge.ufsc.tech/
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabela: Histórico de Sincronizações -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900">Histórico de Sincronizações e-SUS PEC</h3>
+                        <p class="text-xs text-slate-500">Últimas execuções manuais e agendadas com estatísticas agregadas</p>
+                    </div>
+                    <button type="button" wire:click="sincronizarEsusAgora" wire:loading.attr="disabled"
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-teal-700 transition cursor-pointer disabled:opacity-60">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span wire:loading.remove wire:target="sincronizarEsusAgora">Sincronizar Agora</span>
+                        <span wire:loading wire:target="sincronizarEsusAgora">Executando...</span>
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200 text-sm">
+                        <thead class="bg-slate-50 text-xs font-bold uppercase text-slate-500">
+                            <tr>
+                                <th class="px-5 py-3 text-left">Início / Duração</th>
+                                <th class="px-5 py-3 text-center">Tipo</th>
+                                <th class="px-5 py-3 text-center">Status</th>
+                                <th class="px-5 py-3 text-center">Consultados</th>
+                                <th class="px-5 py-3 text-center">Novos</th>
+                                <th class="px-5 py-3 text-center">Atualizados</th>
+                                <th class="px-5 py-3 text-center">Duplicidades</th>
+                                <th class="px-5 py-3 text-left">Observação / Erro</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-xs">
+                            @forelse ($historicoEsus as $hist)
+                                <tr class="hover:bg-slate-50/80">
+                                    <td class="px-5 py-3 text-slate-700">
+                                        <div class="font-bold">{{ $hist->iniciado_em?->format('d/m/Y H:i:s') }}</div>
+                                        <div class="text-[11px] text-slate-400">{{ $hist->duracao_segundos }}s de execução</div>
+                                    </td>
+                                    <td class="px-5 py-3 text-center">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $hist->tipo_execucao === 'AGENDADA' ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-700' }}">
+                                            {{ $hist->tipo_execucao }}
+                                        </span>
+                                    </td>
+                                    <td class="px-5 py-3 text-center">
+                                        <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold
+                                            {{ $hist->status === 'SUCESSO' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : '' }}
+                                            {{ $hist->status === 'INTERROMPIDO' ? 'bg-amber-50 text-amber-700 border border-amber-200' : '' }}
+                                            {{ $hist->status === 'ERRO' || $hist->status === 'CONEXAO_FALHOU' ? 'bg-rose-50 text-rose-700 border border-rose-200' : '' }}
+                                            {{ $hist->status === 'EM_ANDAMENTO' ? 'bg-blue-50 text-blue-700 border border-blue-200' : '' }}">
+                                            {{ $hist->status }}
+                                        </span>
+                                    </td>
+                                    <td class="px-5 py-3 text-center font-mono font-bold text-slate-800">{{ $hist->total_consultado }}</td>
+                                    <td class="px-5 py-3 text-center font-mono text-emerald-700 font-bold">+{{ $hist->novos_pacientes }}</td>
+                                    <td class="px-5 py-3 text-center font-mono text-teal-700 font-bold">{{ $hist->pacientes_atualizados }}</td>
+                                    <td class="px-5 py-3 text-center font-mono text-amber-700 font-bold">{{ $hist->duplicidades_identificadas }}</td>
+                                    <td class="px-5 py-3 text-slate-500 max-w-xs truncate" title="{{ $hist->mensagem_erro }}">
+                                        {{ $hist->mensagem_erro ?: 'Sincronização executada com sucesso.' }}
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="8" class="px-5 py-8 text-center text-slate-400 text-xs">
+                                        Nenhuma sincronização realizada até o momento. Utilize o botão "Sincronizar Agora" ou aguarde a rotina agendada (02:00).
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     @endif
 

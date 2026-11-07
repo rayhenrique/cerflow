@@ -36,6 +36,7 @@ class Paciente extends Model
         'ativo',
         'origem_cadastro',
         'id_externo_esus',
+        'data_ultima_sincronizacao_esus',
     ];
 
     protected function casts(): array
@@ -44,6 +45,7 @@ class Paciente extends Model
             'data_nascimento' => 'date',
             'modalidades_reabilitacao' => 'array',
             'ativo' => 'boolean',
+            'data_ultima_sincronizacao_esus' => 'datetime',
         ];
     }
 
@@ -75,5 +77,10 @@ class Paciente extends Model
     public function temDiagnosticoClinico(): bool
     {
         return ! empty($this->cid_principal);
+    }
+
+    public function getIdentificadorExternoEsusAttribute(): ?string
+    {
+        return $this->id_externo_esus;
     }
 }
