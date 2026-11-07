@@ -164,8 +164,10 @@ class BpaiExportService
     public function gerarConteudoPosicional(
         string $competencia,
         ?Collection $producoesValidadas = null,
-        string $cnes = self::CNES_PADRAO
+        ?string $cnes = null
     ): string {
+        $cnes ??= ConfiguracaoEstabelecimento::atual()->cnes;
+
         if ($producoesValidadas === null) {
             $auditoria = $this->auditarCompetencia($competencia, true);
             $producoesValidadas = $auditoria['validados'];
@@ -325,6 +327,9 @@ class BpaiExportService
         ?string $ipAddress = null,
         string $cnes = self::CNES_PADRAO
     ): StreamedResponse {
+        $cnes ??= ConfiguracaoEstabelecimento::atual()->cnes;
+        abort_unless(preg_match('/^\\d{7}$/', $cnes) === 1, 422, 'Configure um CNES válido de 7 dígitos em Configurações > Identificação do Estabelecimento antes de exportar o BPA-i.');
+
         $auditoria = $this->auditarCompetencia($competencia, true);
         $validados = $auditoria['validados'];
         $loteId = sprintf('BPA-%s-%s', $competencia, strtoupper(Str::random(6)));
