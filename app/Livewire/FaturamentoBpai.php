@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
+use App\Models\ConfiguracaoEstabelecimento;
 use App\Services\BpaiExportService;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
