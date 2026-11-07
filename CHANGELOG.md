@@ -2,6 +2,17 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.2.0] - 2026-11-06
+
+### Adicionado
+- **Módulo de Configurações, Parâmetros SUS e Cadastros Base (`ConfiguracoesSistema` — `/configuracoes`):**
+  - Aba de Salas e Espaços Físicos (`salas`).
+  - Aba de Usuários, Perfis RBAC e Profissionais de Saúde com CNS, CBO, Conselho e PIN de assinatura (`users` + `profissionais`).
+  - Aba de Cadastro de Pacientes SUS com validação algorítmica de CNS de 15 dígitos (`pacientes`).
+  - Aba de Parametrização de Procedimentos SIGTAP x CBO (`procedimentos_sigtap`).
+  - Aba de Trilha Imutável de Auditoria LGPD/CFM (`logs_auditoria`).
+  - Aba Minha Conta & PIN para atualização individual de senha e PIN eletrônico.
+
 ## [1.1.4] - 2026-11-06
 
 ### Corrigido

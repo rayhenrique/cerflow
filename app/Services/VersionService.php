@@ -43,6 +43,18 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.2.0',
+                'data' => '06/11/2026',
+                'titulo' => 'Novo Módulo de Configurações, Parâmetros SUS & Cadastros Base (/configuracoes)',
+                'tipo' => 'Minor Release',
+                'destaques' => [
+                    'Gestão completa de Salas e Espaços Físicos da grade (Consultórios, Sensorial, AVD, Pediatria, Anexos) com ativação/inativação rápida.',
+                    'Cadastro integrado de Usuários, Perfis RBAC (Spatie) e Profissionais de Saúde com CBO, Conselho, CNS (15 dígitos) e PIN de assinatura SHA-256.',
+                    'Cadastro de Pacientes SUS com validação algorítmica de CNS, código IBGE, CID-10 e Modalidades de Reabilitação.',
+                    'Parametrização da tabela de procedimentos SIGTAP x CBO, consulta à Trilha de Auditoria LGPD/CFM e autoatendimento de Senha/PIN.',
+                ],
+            ],
+            [
                 'versao' => '1.1.4',
                 'data' => '06/11/2026',
                 'titulo' => 'Blindagem do Script deploy.sh contra Conflitos de Permissão (chmod) no Linux',

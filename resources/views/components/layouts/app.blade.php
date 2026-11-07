@@ -61,7 +61,13 @@
                         </a>
                     @endif
 
-                    <div class="pt-4 mt-4 border-t border-slate-800/80">
+                    <div class="pt-4 mt-4 border-t border-slate-800/80 space-y-1">
+                        <a href="{{ route('configuracoes.index') }}"
+                           class="group flex items-center gap-3 rounded-lg px-3 py-2 font-medium transition {{ request()->routeIs('configuracoes.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
+                            <span class="h-2 w-2 rounded-full {{ request()->routeIs('configuracoes.*') ? 'bg-teal-400' : 'bg-slate-600' }}"></span>
+                            Configurações & Cadastros
+                        </a>
+
                         <a href="{{ route('ajuda.sobre') }}"
                            class="group flex items-center justify-between rounded-lg px-3 py-2 font-medium transition {{ request()->routeIs('ajuda.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
                             <span class="flex items-center gap-3">
