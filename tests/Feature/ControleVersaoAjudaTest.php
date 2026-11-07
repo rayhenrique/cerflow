@@ -74,6 +74,7 @@ class ControleVersaoAjudaTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Central de Ajuda & Sobre o CER Flow', false);
+        $response->assertSee('v1.6.2');
         $response->assertSee('v1.6.1');
         $response->assertSee('v1.6.0');
         $response->assertSee('v1.5.0');

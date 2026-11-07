@@ -2,6 +2,11 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.6.2] - 2026-11-07
+
+### Corrigido
+- Removida a referência à coluna inexistente `quantidade` na consulta de `producoes_bpai` dentro de `DashboardInicial::calcularMetricasBpai()`, corrigindo o erro `500 Server Error (SQLSTATE[42S22]: Unknown column 'quantidade')` ao acessar `/dashboard` em banco MySQL 8.0 de produção.
+
 ## [1.6.1] - 2026-11-07
 
 ### Corrigido

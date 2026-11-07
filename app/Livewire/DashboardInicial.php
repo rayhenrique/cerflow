@@ -166,10 +166,10 @@ class DashboardInicial extends Component
     {
         $producoesComp = ProducaoBpai::query()
             ->where('competencia', $competenciaLimpa)
-            ->get(['id', 'status_exportacao', 'quantidade']);
+            ->get(['id', 'status_exportacao']);
 
         return [
-            'total' => (int) $producoesComp->sum('quantidade'),
+            'total' => $producoesComp->count(),
             'aptos' => $producoesComp->whereIn('status_exportacao', ['PENDENTE', 'VALIDADO', 'EXPORTADO'])->count(),
             'exportados' => $producoesComp->where('status_exportacao', 'EXPORTADO')->count(),
             'inconsistentes' => $producoesComp->where('status_exportacao', 'INCONSISTENTE')->count(),

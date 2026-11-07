@@ -44,6 +44,15 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.6.2',
+                'data' => '07/11/2026',
+                'titulo' => 'Correção no Carregamento do Painel Inicial (Dashboard)',
+                'tipo' => 'Correção Rápida',
+                'destaques' => [
+                    'Corrigida a consulta dos números de produção SUS (BPA-i) no Painel Inicial para abrir sem erro no servidor de produção.',
+                ],
+            ],
+            [
                 'versao' => '1.6.1',
                 'data' => '07/11/2026',
                 'titulo' => 'Otimização dos Cálculos do Painel Inicial (Dashboard)',
