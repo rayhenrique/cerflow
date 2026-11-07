@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+@php($configuracaoEstabelecimento = \\App\\Models\\ConfiguracaoEstabelecimento::atual())
 <html lang="pt-BR" class="h-full bg-slate-50">
 <head>
     <meta charset="utf-8">
@@ -56,9 +57,11 @@
                  class="relative flex w-full max-w-xs flex-1 flex-col bg-slate-900 text-slate-300 border-r border-slate-800">
                 <div class="flex h-16 shrink-0 items-center justify-between px-5 border-b border-slate-800">
                     <div class="flex items-center gap-2.5">
-                        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500 text-slate-950 font-bold text-sm shadow-xs">
-                            CD
-                        </span>
+                        @if ($configuracaoEstabelecimento->logo_path)
+                            <img src="{{ \\Illuminate\\Support\\Facades\\Storage::disk('public')->url($configuracaoEstabelecimento->logo_path) }}" alt="Logo do estabelecimento" class="h-9 w-9 rounded-lg bg-white object-contain p-0.5">
+                        @else
+                            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500 text-slate-950 font-bold text-sm shadow-xs">CD</span>
+                        @endif
                         <div>
                             <span class="text-sm font-semibold tracking-tight text-white block leading-none">CER Digital</span>
                             <span class="text-[11px] text-slate-400 font-mono">SIA/SUS • v{{ $versaoSistema }}</span>
@@ -253,9 +256,11 @@
                class="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 bg-slate-900 text-slate-300 border-r border-slate-800 transition-all duration-200 z-30">
             <div class="flex h-16 shrink-0 items-center justify-between px-4 border-b border-slate-800">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 min-w-0" :class="sidebarCollapsed ? 'mx-auto' : ''">
-                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-500 text-slate-950 font-bold text-sm shadow-xs">
-                        CD
-                    </span>
+                    @if ($configuracaoEstabelecimento->logo_path)
+                        <img src="{{ \\Illuminate\\Support\\Facades\\Storage::disk('public')->url($configuracaoEstabelecimento->logo_path) }}" alt="Logo do estabelecimento" class="h-9 w-9 shrink-0 rounded-lg bg-white object-contain p-0.5">
+                    @else
+                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-500 text-slate-950 font-bold text-sm shadow-xs">CD</span>
+                    @endif
                     <div x-show="!sidebarCollapsed" class="truncate">
                         <span class="text-sm font-semibold tracking-tight text-white block leading-none">CER Digital</span>
                         <span class="text-[11px] text-slate-400 font-mono">SIA/SUS • v{{ $versaoSistema }}</span>
