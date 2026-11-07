@@ -3,7 +3,7 @@
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
         <div>
             <div class="flex items-center gap-2.5">
-                <h2 class="text-lg font-bold text-slate-900">Central de Ajuda & Sobre o CER Flow</h2>
+                <h2 class="text-lg font-bold text-slate-900">Central de Ajuda & Sobre o CER Digital</h2>
                 <span class="rounded-md bg-teal-50 px-2.5 py-0.5 text-xs font-mono font-bold text-teal-700 border border-teal-200">
                     v{{ $versaoAtual }}
                 </span>

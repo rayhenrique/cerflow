@@ -21,9 +21,9 @@
                         </h3>
                     </div>
                     <button type="button"
-                            x-on:click="visivel = false"
-                            wire:click="fecharModal"
-                            class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                            x-on:click="visivel = false; $wire.fecharModal()"
+                            class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
+                            aria-label="Fechar janela de novidades">
                         ✕
                     </button>
                 </div>
@@ -44,15 +44,14 @@
 
                 <div class="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
                     <a href="{{ route('ajuda.sobre') }}"
-                       x-on:click="visivel = false"
+                       x-on:click="visivel = false; $wire.fecharModal()"
                        class="font-semibold text-teal-700 hover:text-teal-600 underline underline-offset-4">
                         Ver evolução completa das versões →
                     </a>
 
                     <button type="button"
-                            x-on:click="visivel = false"
-                            wire:click="fecharModal"
-                            class="rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white shadow-xs hover:bg-slate-800">
+                            x-on:click="visivel = false; $wire.fecharModal()"
+                            class="rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white shadow-xs hover:bg-slate-800 cursor-pointer">
                         Entendi, continuar
                     </button>
                 </div>

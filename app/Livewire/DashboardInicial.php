@@ -18,7 +18,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
-#[Title('Dashboard Operacional — CER Flow')]
+#[Title('Painel Inicial Operacional — CER Digital')]
 class DashboardInicial extends Component
 {
     public string $competencia = '';

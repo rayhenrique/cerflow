@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ==============================================================================
-# CER Flow — Script de Deploy Automatizado (Hostinger VPS / CloudPanel)
+# CER Digital — Script de Deploy Automatizado (Hostinger VPS / CloudPanel)
 # Uso:
 #   ./deploy.sh              -> Atualiza pela branch main
 #   ./deploy.sh v1.1.4       -> Faz deploy de uma tag específica (Release)
@@ -10,7 +10,7 @@ set -euo pipefail
 
 TARGET_REF="${1:-main}"
 
-echo "🚀 Iniciando deploy do CER Flow (Ref: ${TARGET_REF})..."
+echo "🚀 Iniciando deploy do CER Digital (Ref: ${TARGET_REF})..."
 
 # Garante que se o script falhar no meio, a aplicação volte do modo de manutenção
 trap 'php artisan up || true' ERR

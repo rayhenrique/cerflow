@@ -10,8 +10,6 @@ use App\Models\Paciente;
 use App\Policies\AgendamentoPolicy;
 use App\Policies\EvolucaoPolicy;
 use App\Policies\PacientePolicy;
-use Illuminate\Auth\Events\Login;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -33,10 +31,5 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(EvolucaoClinica::class, EvolucaoPolicy::class);
         Gate::policy(Agendamento::class, AgendamentoPolicy::class);
         Gate::policy(Paciente::class, PacientePolicy::class);
-
-        Event::listen(Login::class, function (): void {
-            session()->put('exibir_modal_versao', true);
-            session()->forget('ultima_versao_vista');
-        });
     }
 }

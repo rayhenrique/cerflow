@@ -15,7 +15,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
-#[Title('Recepção e Check-in — CER Flow')]
+#[Title('Recepção e Check-in — CER Digital')]
 class RecepcaoCheckin extends Component
 {
     public string $dataFiltro = '';

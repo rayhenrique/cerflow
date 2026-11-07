@@ -1,9 +1,9 @@
-# Guia de Deploy em Produção — CER Flow (Hostinger VPS + CloudPanel)
+# Guia de Deploy em Produção — CER Digital (Hostinger VPS + CloudPanel)
 
 > **Propriedade Intelectual:** [KL Tecnologia](https://kltecnologia.com)  
 > **Repositório Oficial:** [https://github.com/rayhenrique/cerflow](https://github.com/rayhenrique/cerflow)
 
-Este documento descreve o passo a passo exato para implantar e atualizar o **CER Flow** na VPS Hostinger utilizando o **CloudPanel**, parametrizado exatamente com os dados do seu ambiente:
+Este documento descreve o passo a passo exato para implantar e atualizar o **CER Digital** na VPS Hostinger utilizando o **CloudPanel**, parametrizado exatamente com os dados do seu ambiente:
 
 | Parâmetro no CloudPanel | Valor Configurado |
 | :--- | :--- |
@@ -54,7 +54,7 @@ cd /home/kltecnologia-cer/htdocs/cer.kltecnologia.com
 # Remove os arquivos iniciais gerados pelo CloudPanel
 rm -rf ./* ./.??* 2>/dev/null || true
 
-# Clona o repositório oficial do CER Flow
+# Clona o repositório oficial do CER Digital
 git clone https://github.com/rayhenrique/cerflow.git .
 ```
 
@@ -74,7 +74,7 @@ nano .env
 Deixe o bloco principal do `.env` exatamente assim (substituindo `SUA_SENHA_DO_BANCO_CER` pela senha definida no CloudPanel):
 
 ```dotenv
-APP_NAME="CER Flow"
+APP_NAME="CER Digital"
 APP_ENV=production
 APP_KEY=
 APP_DEBUG=false
@@ -181,7 +181,7 @@ O script `./deploy.sh` executa automaticamente:
 
 ## 8. Dicas Importantes para CloudPanel
 
-1. **Varnish Cache:** Como o **CER Flow** utiliza **Livewire 4** e sessões autenticadas em tempo real (grade, check-in e prontuário), mantenha o **Varnish Cache desativado** na aba *Varnish Cache* do CloudPanel para evitar cache de páginas autenticadas ou tokens CSRF.
+1. **Varnish Cache:** Como o **CER Digital** utiliza **Livewire 4** e sessões autenticadas em tempo real (grade, check-in e prontuário), mantenha o **Varnish Cache desativado** na aba *Varnish Cache* do CloudPanel para evitar cache de páginas autenticadas ou tokens CSRF.
 2. **Versão do PHP no CLI:** Caso o terminal SSH padrão chame outra versão do PHP, no CloudPanel você pode invocar explicitamente o PHP 8.5 com `/usr/bin/php8.5 artisan ...` ou garantir que o `PHP Version` na aba *Settings* esteja em `8.5`.
 3. **Logs de Erro:** Se precisar inspecionar logs da aplicação ou do Nginx no CloudPanel:
    ```bash

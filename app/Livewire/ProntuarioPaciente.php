@@ -16,7 +16,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
-#[Title('Prontuário Multiprofissional (PEP) — CER Flow')]
+#[Title('Prontuário Multiprofissional (PEP) — CER Digital')]
 class ProntuarioPaciente extends Component
 {
     public ?int $pacienteId = null;

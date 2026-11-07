@@ -17,7 +17,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
-#[Title('Grade Semanal — CER Flow')]
+#[Title('Grade Semanal — CER Digital')]
 class GradeSemanal extends Component
 {
     public string $diaSemana = 'SEGUNDA';

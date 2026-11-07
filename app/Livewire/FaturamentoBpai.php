@@ -13,7 +13,7 @@ use Livewire\Component;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 #[Layout('components.layouts.app')]
-#[Title('Faturamento e Pré-Auditoria BPA-i — CER Flow')]
+#[Title('Faturamento e Pré-Auditoria BPA-i — CER Digital')]
 class FaturamentoBpai extends Component
 {
     public string $competencia = '';

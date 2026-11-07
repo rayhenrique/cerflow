@@ -1,6 +1,22 @@
-# Changelog — CER Flow
+# Changelog — CER Digital
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
+
+## [1.7.0] - 2026-11-07
+
+### Adicionado
+- **Rebranding para CER Digital:** transição de toda a identidade visual visível do sistema de "CER Flow" para "CER Digital" na tela de login, títulos de abas e componentes Livewire, menus de navegação, cabeçalhos, Central de Ajuda, `.env.example`, `config/app.php` e documentação técnica de implantação, preservando a KL Tecnologia como desenvolvedora e proprietária.
+- **Auditoria Completa em Português Brasileiro (PT-BR):**
+  - Tradução dos termos em inglês apresentados ao usuário, incluindo a substituição de "Dashboard Inicial" por "Painel Inicial".
+  - Criação dos arquivos oficiais de internacionalização em `lang/pt_BR` (`auth.php`, `pagination.php`, `passwords.php` e `validation.php`), garantindo mensagens amigáveis e precisas em formulários e autenticação.
+  - Validação do atributo `lang="pt-BR"` em todos os documentos HTML da aplicação.
+  - Preservação estrita das siglas e nomenclaturas oficiais do Ministério da Saúde e DATASUS: SUS, BPA-i, SIGTAP, CNS, CBO, CNES, LGPD, PEP e PIN.
+- **Persistência Individual do Modal de Novidades da Versão:**
+  - Migration reversível adicionando a coluna `ultima_versao_novidades_vista` (string nullable) na tabela `users`.
+  - Componente `ModalNovidadesVersao` refatorado para comparar a versão atual com a coluna do usuário logado, exibindo a janela de novidades apenas uma vez por versão para cada colaborador.
+  - Registro de visualização persistido no banco de dados exclusivamente ao fechar ou confirmar o modal (via botão de fechamento, botão "Entendi, continuar", tecla ESC ou clique fora).
+  - Remoção completa da dependência de chaves de sessão voláteis (`exibir_modal_versao` e `ultima_versao_vista`), assegurando independência entre usuários e dispositivos.
+  - Manutenção do acionamento manual das novidades através do botão de versão na barra superior e na Central de Ajuda.
 
 ## [1.6.2] - 2026-11-07
 

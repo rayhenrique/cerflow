@@ -4,17 +4,17 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? 'CER Flow — Gestão de Reabilitação e BPA-i' }}</title>
+    <title>{{ $title ?? 'CER Digital — Gestão de Reabilitação e BPA-i' }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
 <body class="h-full font-sans text-slate-900 antialiased"
       x-data="{
           mobileMenuOpen: false,
-          sidebarCollapsed: localStorage.getItem('cerflow_sidebar_collapsed') === 'true',
+          sidebarCollapsed: (localStorage.getItem('cerdigital_sidebar_collapsed') ?? localStorage.getItem('cerflow_sidebar_collapsed')) === 'true',
           toggleSidebar() {
               this.sidebarCollapsed = !this.sidebarCollapsed;
-              localStorage.setItem('cerflow_sidebar_collapsed', this.sidebarCollapsed);
+              localStorage.setItem('cerdigital_sidebar_collapsed', this.sidebarCollapsed);
           }
       }"
       @keydown.escape.window="mobileMenuOpen = false">
@@ -57,10 +57,10 @@
                 <div class="flex h-16 shrink-0 items-center justify-between px-5 border-b border-slate-800">
                     <div class="flex items-center gap-2.5">
                         <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500 text-slate-950 font-bold text-sm shadow-xs">
-                            CF
+                            CD
                         </span>
                         <div>
-                            <span class="text-sm font-semibold tracking-tight text-white block leading-none">CER Flow</span>
+                            <span class="text-sm font-semibold tracking-tight text-white block leading-none">CER Digital</span>
                             <span class="text-[11px] text-slate-400 font-mono">SIA/SUS • v{{ $versaoSistema }}</span>
                         </div>
                     </div>
@@ -81,7 +81,7 @@
                                 <svg class="h-5 w-5 shrink-0 {{ request()->routeIs('dashboard') ? 'text-teal-400' : 'text-slate-400 group-hover:text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/>
                                 </svg>
-                                <span>Dashboard Inicial</span>
+                                <span>Painel Inicial</span>
                             </a>
 
                             <a href="{{ route('grade.semanal') }}"
@@ -254,10 +254,10 @@
             <div class="flex h-16 shrink-0 items-center justify-between px-4 border-b border-slate-800">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 min-w-0" :class="sidebarCollapsed ? 'mx-auto' : ''">
                     <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-500 text-slate-950 font-bold text-sm shadow-xs">
-                        CF
+                        CD
                     </span>
                     <div x-show="!sidebarCollapsed" class="truncate">
-                        <span class="text-sm font-semibold tracking-tight text-white block leading-none">CER Flow</span>
+                        <span class="text-sm font-semibold tracking-tight text-white block leading-none">CER Digital</span>
                         <span class="text-[11px] text-slate-400 font-mono">SIA/SUS • v{{ $versaoSistema }}</span>
                     </div>
                 </a>
@@ -277,13 +277,13 @@
                 @auth
                     @if(auth()->user()->hasAnyRole(['recepcao', 'terapeuta', 'faturamento', 'coordenacao']))
                         <a href="{{ route('dashboard') }}"
-                           title="Dashboard Inicial"
+                           title="Painel Inicial"
                            :class="sidebarCollapsed ? 'justify-center px-2' : 'px-3'"
                            class="group flex items-center gap-3 rounded-lg py-2.5 font-medium transition {{ request()->routeIs('dashboard') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
                             <svg class="h-5 w-5 shrink-0 {{ request()->routeIs('dashboard') ? 'text-teal-400' : 'text-slate-400 group-hover:text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/>
                             </svg>
-                            <span x-show="!sidebarCollapsed" class="truncate">Dashboard Inicial</span>
+                            <span x-show="!sidebarCollapsed" class="truncate">Painel Inicial</span>
                         </a>
 
                         <a href="{{ route('grade.semanal') }}"

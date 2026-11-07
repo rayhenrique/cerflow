@@ -73,3 +73,13 @@
 - [x] 6.3 Teste de feature para desmembramento de produção em Atendimento Compartilhado
 - [x] 6.4 Teste de integração do `BpaiExportService` conferindo o layout posicional gerado
 - [x] 6.5 Homologação final com importação do arquivo no validador oficial do BPA do DATASUS
+
+## 📌 Fase 7: Evolução Contínua, Usabilidade e Identidade CER Digital
+- [x] 7.1 Módulo de Configurações, Parâmetros SUS e Cadastros Base com CRUD completo (`ConfiguracoesSistema`)
+- [x] 7.2 Sistema Global de Notificações Toast (`<x-toast-notifications />`) e Linguagem Acessível (`VersionService`)
+- [x] 7.3 Responsividade Mobile, Tablet e Desktop com Drawer off-canvas e tabelas roláveis
+- [x] 7.4 Painel Inicial Operacional em tempo real (`DashboardInicial` — `/dashboard`) com métricas do CER e BPA-i
+- [x] 7.5 Sidebar retrátil com alternância de largura (`lg:w-20` / `lg:w-64`) e ícones vetoriais em todos os itens
+- [x] 7.6 Rebranding completo da identidade visual para **CER Digital** (login, cabeçalho, menus, documentação)
+- [x] 7.7 Auditoria de Internacionalização em Português Brasileiro (PT-BR), criação de `lang/pt_BR` e padronização (Painel Inicial)
+- [x] 7.8 Persistência individual do Modal de Novidades da Versão no banco (`ultima_versao_novidades_vista` na tabela `users`), independente por usuário e dispositivo

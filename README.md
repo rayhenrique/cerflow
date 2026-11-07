@@ -1,8 +1,8 @@
-# CER Flow — Plataforma de Gestão Clínica, Grade Multiprofissional e Faturamento BPA-i (SIA/SUS)
+# CER Digital — Plataforma de Gestão Clínica, Grade Multiprofissional e Faturamento BPA-i (SIA/SUS)
 
 > **Software Proprietário — Todos os direitos reservados à [KL Tecnologia](https://kltecnologia.com).**
 
-O **CER Flow** é uma plataforma web corporativa desenvolvida pela **[KL Tecnologia](https://kltecnologia.com)** especificamente para a operação clínica, assistencial e de faturamento de **Centros Especializados em Reabilitação (CER - SUS)**.
+O **CER Digital** é uma plataforma web corporativa desenvolvida pela **[KL Tecnologia](https://kltecnologia.com)** especificamente para a operação clínica, assistencial e de faturamento de **Centros Especializados em Reabilitação (CER - SUS)**.
 
 A solução foi arquitetada para substituir processos fragmentados baseados em planilhas de cronograma, formulários avulsos de produção e prontuários em papel físico, unificando toda a jornada do usuário do SUS em um único fluxo contínuo: desde a alocação na grade semanal e recepção até a evolução multiprofissional assinada eletronicamente e a exportação magnética oficial para o **DATASUS (SIA/SUS)**.
 
@@ -72,7 +72,7 @@ nano .env
 Configure as variáveis de ambiente de produção no arquivo `.env`:
 
 ```dotenv
-APP_NAME="CER Flow"
+APP_NAME="CER Digital"
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://seu-dominio.com.br

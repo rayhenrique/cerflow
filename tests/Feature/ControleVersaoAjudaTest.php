@@ -23,49 +23,131 @@ class ControleVersaoAjudaTest extends TestCase
         $this->seed(RoleAndPermissionSeeder::class);
     }
 
-    public function test_dispara_modal_de_novidades_no_login_e_tambem_quando_sistema_atualiza_com_usuario_logado(): void
+    public function test_primeiro_acesso_exibe_modal_de_novidades_e_salva_no_banco_ao_fechar(): void
     {
+        $versaoAtiva = app(VersionService::class)->versaoAtual();
+
         $user = User::factory()->create([
             'email' => 'terapeuta@cerflow.gov.br',
             'password' => Hash::make('secret123'),
             'ativo' => true,
+            'ultima_versao_novidades_vista' => null,
         ]);
         $user->assignRole('terapeuta');
 
-        $response = $this->post('/login', [
-            'email' => 'terapeuta@cerflow.gov.br',
-            'password' => 'secret123',
-        ]);
+        // 1. No primeiro acesso, o modal abre automaticamente
+        $componente = Livewire::actingAs($user)
+            ->test(ModalNovidadesVersao::class)
+            ->assertSet('aberto', true);
 
-        $response->assertRedirect('/');
-        $this->assertTrue(session()->get('exibir_modal_versao'));
+        // Enquanto não fechar, o banco continua sem marcar a versão
+        $user->refresh();
+        $this->assertNull($user->ultima_versao_novidades_vista);
 
-        // 1. Ao acessar a tela após login, o modal abre e registra a versão atual vista na sessão
-        $versaoAtiva = app(VersionService::class)->versaoAtual();
-        $paginaGrade = $this->actingAs($user)->get('/grade');
-        $paginaGrade->assertOk();
-        $paginaGrade->assertSee('Novidades da Versão');
-        $paginaGrade->assertSee('v'.$versaoAtiva);
-        $this->assertNull(session()->get('exibir_modal_versao'));
-        $this->assertSame($versaoAtiva, session()->get('ultima_versao_vista'));
+        // 2. Ao fechar o modal, salva a versão no cadastro do usuário
+        $componente->call('fecharModal')
+            ->assertSet('aberto', false);
 
-        // 2. Navegando novamente na mesma versão, o modal permanece fechado
+        $user->refresh();
+        $this->assertSame($versaoAtiva, $user->ultima_versao_novidades_vista);
+
+        // 3. Em um próximo acesso com o mesmo usuário, o modal permanece fechado
         Livewire::actingAs($user)
             ->test(ModalNovidadesVersao::class)
             ->assertSet('aberto', false);
-
-        // 3. Se o sistema foi atualizado enquanto o usuário já estava logado (ultima_versao_vista diferente da atual), o modal abre automaticamente!
-        session()->put('ultima_versao_vista', '1.0.0');
-        Livewire::actingAs($user)
-            ->test(ModalNovidadesVersao::class)
-            ->assertSet('aberto', true)
-            ->call('fecharModal')
-            ->assertSet('aberto', false);
-
-        $this->assertSame($versaoAtiva, session()->get('ultima_versao_vista'));
     }
 
-    public function test_modulo_ajuda_e_sobre_exibe_evolucao_das_versoes_e_manual_sus(): void
+    public function test_apos_fechar_nao_aparece_novamente_nos_proximos_logins(): void
+    {
+        $versaoAtiva = app(VersionService::class)->versaoAtual();
+
+        $user = User::factory()->create([
+            'email' => 'recepcao@cerflow.gov.br',
+            'password' => Hash::make('secret123'),
+            'ativo' => true,
+            'ultima_versao_novidades_vista' => $versaoAtiva,
+        ]);
+        $user->assignRole('recepcao');
+
+        // Faz login via HTTP POST
+        $response = $this->post('/login', [
+            'email' => 'recepcao@cerflow.gov.br',
+            'password' => 'secret123',
+        ]);
+        $response->assertRedirect('/');
+
+        // Ao carregar o componente, não deve abrir
+        Livewire::actingAs($user)
+            ->test(ModalNovidadesVersao::class)
+            ->assertSet('aberto', false);
+    }
+
+    public function test_nova_versao_publicada_faz_modal_reaparecer_uma_unica_vez(): void
+    {
+        $versaoAtiva = app(VersionService::class)->versaoAtual();
+
+        // Usuário que já havia visto uma versão antiga
+        $user = User::factory()->create([
+            'ativo' => true,
+            'ultima_versao_novidades_vista' => '1.0.0',
+        ]);
+        $user->assignRole('terapeuta');
+
+        // Modal deve abrir automaticamente porque 1.0.0 !== $versaoAtiva
+        $componente = Livewire::actingAs($user)
+            ->test(ModalNovidadesVersao::class)
+            ->assertSet('aberto', true);
+
+        // Ao fechar, atualiza para a nova versão
+        $componente->call('fecharModal')
+            ->assertSet('aberto', false);
+
+        $user->refresh();
+        $this->assertSame($versaoAtiva, $user->ultima_versao_novidades_vista);
+
+        // Em nova montagem, não abre novamente
+        Livewire::actingAs($user)
+            ->test(ModalNovidadesVersao::class)
+            ->assertSet('aberto', false);
+    }
+
+    public function test_usuarios_diferentes_possuem_controles_independentes_de_visualizacao(): void
+    {
+        $versaoAtiva = app(VersionService::class)->versaoAtual();
+
+        $userA = User::factory()->create(['ativo' => true, 'ultima_versao_novidades_vista' => $versaoAtiva]);
+        $userA->assignRole('terapeuta');
+
+        $userB = User::factory()->create(['ativo' => true, 'ultima_versao_novidades_vista' => null]);
+        $userB->assignRole('coordenacao');
+
+        // Usuário A já viu a versão atual
+        Livewire::actingAs($userA)
+            ->test(ModalNovidadesVersao::class)
+            ->assertSet('aberto', false);
+
+        // Usuário B ainda não viu e deve receber o modal
+        Livewire::actingAs($userB)
+            ->test(ModalNovidadesVersao::class)
+            ->assertSet('aberto', true);
+    }
+
+    public function test_botao_manual_de_novidades_continua_funcionando(): void
+    {
+        $versaoAtiva = app(VersionService::class)->versaoAtual();
+
+        $user = User::factory()->create(['ativo' => true, 'ultima_versao_novidades_vista' => $versaoAtiva]);
+        $user->assignRole('faturamento');
+
+        // Inicia fechado pois já foi visto
+        Livewire::actingAs($user)
+            ->test(ModalNovidadesVersao::class)
+            ->assertSet('aberto', false)
+            ->dispatch('abrir-modal-versao')
+            ->assertSet('aberto', true);
+    }
+
+    public function test_modulo_ajuda_e_sobre_exibe_identidade_cer_digital_e_todas_as_versoes(): void
     {
         $user = User::factory()->create(['ativo' => true]);
         $user->assignRole('recepcao');
@@ -73,11 +155,11 @@ class ControleVersaoAjudaTest extends TestCase
         $response = $this->actingAs($user)->get('/ajuda');
 
         $response->assertOk();
-        $response->assertSee('Central de Ajuda & Sobre o CER Flow', false);
+        $response->assertSee('Central de Ajuda & Sobre o CER Digital', false);
+        $response->assertSee('v1.7.0');
         $response->assertSee('v1.6.2');
         $response->assertSee('v1.6.1');
         $response->assertSee('v1.6.0');
-        $response->assertSee('v1.5.0');
         $response->assertSee('v1.5.0');
         $response->assertSee('v1.4.0');
         $response->assertSee('v1.3.3');

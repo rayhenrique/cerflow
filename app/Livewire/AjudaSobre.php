@@ -12,7 +12,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
-#[Title('Ajuda & Sobre o Sistema — CER Flow')]
+#[Title('Ajuda & Sobre o Sistema — CER Digital')]
 class AjudaSobre extends Component
 {
     public string $abaAtiva = 'evolucao';

@@ -35,7 +35,7 @@ class VersionService
     }
 
     /**
-     * Retorna a linha do tempo completa de evolução das versões do CER Flow
+     * Retorna a linha do tempo completa de evolução das versões do CER Digital
      * em linguagem simples e acessível para todos os colaboradores da unidade.
      *
      * @return array<int, array{versao: string, data: string, titulo: string, tipo: string, destaques: array<int, string>}>
@@ -43,6 +43,17 @@ class VersionService
     public function historicoVersoes(): array
     {
         return [
+            [
+                'versao' => '1.7.0',
+                'data' => '07/11/2026',
+                'titulo' => 'Identidade CER Digital, Tradução Completa e Janela de Novidades Individual',
+                'tipo' => 'Nova Versão',
+                'destaques' => [
+                    'O sistema agora se chama oficialmente CER Digital, com padronização completa em português brasileiro (Painel Inicial) e novas mensagens do sistema.',
+                    'A janela com as novidades de cada versão agora é salva diretamente no seu usuário: você vê os avisos uma única vez e ela não reaparece mais após você fechar, mesmo trocando de computador ou celular.',
+                    'Você sempre pode rever as novidades a qualquer momento clicando no botão de versão no topo da tela ou na Central de Ajuda.',
+                ],
+            ],
             [
                 'versao' => '1.6.2',
                 'data' => '07/11/2026',
@@ -208,7 +219,7 @@ class VersionService
             [
                 'versao' => '1.0.0',
                 'data' => '06/11/2026',
-                'titulo' => 'Lançamento Inicial do Sistema CER Flow',
+                'titulo' => 'Lançamento Inicial do Sistema CER Digital',
                 'tipo' => 'Lançamento Principal',
                 'destaques' => [
                     'Grade Semanal: agenda visual organizada de 30 em 30 minutos por sala e profissional, permitindo atendimento individual ou em conjunto.',

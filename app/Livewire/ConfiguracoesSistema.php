@@ -21,7 +21,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
-#[Title('Configurações e Cadastros Base — CER Flow')]
+#[Title('Configurações e Cadastros Base — CER Digital')]
 class ConfiguracoesSistema extends Component
 {
     public string $abaAtiva = 'pacientes';

@@ -50,7 +50,7 @@ class DashboardInicialTest extends TestCase
         $response = $this->actingAs($coordenador)->get('/dashboard');
 
         $response->assertOk();
-        $response->assertSee('Dashboard de Indicadores do CER');
+        $response->assertSee('Painel de Indicadores do CER');
         $response->assertSee('Pacientes por Modalidade de Reabilitação');
         $response->assertSee('Assiduidade & Absenteísmo no Mês', false);
 

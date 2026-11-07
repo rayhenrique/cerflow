@@ -5,7 +5,7 @@
             <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 text-xs font-semibold mb-1.5">
                 <span>Visão Geral da Unidade • Competência {{ $competenciaFormatada }}</span>
             </div>
-            <h2 class="text-base sm:text-xl font-bold text-slate-900">Dashboard de Indicadores do CER</h2>
+            <h2 class="text-base sm:text-xl font-bold text-slate-900">Painel de Indicadores do CER</h2>
             <p class="text-xs text-slate-500 mt-0.5">
                 Acompanhamento em tempo real de pacientes ativos, assiduidade, atendimentos multiprofissionais e produção SUS (BPA-i)
             </p>
