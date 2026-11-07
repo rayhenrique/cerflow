@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-@php($configuracaoEstabelecimento = \\App\\Models\\ConfiguracaoEstabelecimento::atual())
+@php($configuracaoEstabelecimento = \App\Models\ConfiguracaoEstabelecimento::atual())
 <html lang="pt-BR" class="h-full bg-slate-50">
 <head>
     <meta charset="utf-8">
@@ -58,7 +58,7 @@
                 <div class="flex h-16 shrink-0 items-center justify-between px-5 border-b border-slate-800">
                     <div class="flex items-center gap-2.5">
                         @if ($configuracaoEstabelecimento->logo_path)
-                            <img src="{{ \\Illuminate\\Support\\Facades\\Storage::disk('public')->url($configuracaoEstabelecimento->logo_path) }}" alt="Logo do estabelecimento" class="h-9 w-9 rounded-lg bg-white object-contain p-0.5">
+                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($configuracaoEstabelecimento->logo_path) }}" alt="Logo do estabelecimento" class="h-9 w-9 rounded-lg bg-white object-contain p-0.5">
                         @else
                             <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500 text-slate-950 font-bold text-sm shadow-xs">CD</span>
                         @endif
@@ -270,7 +270,7 @@
             <div class="flex h-16 shrink-0 items-center justify-between px-4 border-b border-slate-800">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 min-w-0" :class="sidebarCollapsed ? 'mx-auto' : ''">
                     @if ($configuracaoEstabelecimento->logo_path)
-                        <img src="{{ \\Illuminate\\Support\\Facades\\Storage::disk('public')->url($configuracaoEstabelecimento->logo_path) }}" alt="Logo do estabelecimento" class="h-9 w-9 shrink-0 rounded-lg bg-white object-contain p-0.5">
+                        <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($configuracaoEstabelecimento->logo_path) }}" alt="Logo do estabelecimento" class="h-9 w-9 shrink-0 rounded-lg bg-white object-contain p-0.5">
                     @else
                         <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-500 text-slate-950 font-bold text-sm shadow-xs">CD</span>
                     @endif
@@ -384,6 +384,13 @@
                             @endif
 
                             @if(auth()->user()->hasRole('coordenacao'))
+                                <a href="{{ route('configuracoes.secao', ['secao' => 'estabelecimento']) }}"
+                                   title="Identificação do Estabelecimento"
+                                   :class="sidebarCollapsed ? 'justify-center px-2 py-2' : 'px-3 py-1.5'"
+                                   class="flex items-center gap-2.5 rounded-lg font-medium transition {{ $secaoConfigAtual === 'estabelecimento' ? 'bg-slate-800 text-teal-400 font-semibold' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white' }}">
+                                    <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 4.5h18v15H3zM7.5 9h9M7.5 12h9M7.5 15h5"/></svg>
+                                    <span x-show="!sidebarCollapsed" class="truncate">Identificação do Estabelecimento</span>
+                                </a>
                                 <a href="{{ route('configuracoes.secao', ['secao' => 'salas']) }}"
                                    title="Salas & Espaços"
                                    :class="sidebarCollapsed ? 'justify-center px-2 py-2' : 'px-3 py-1.5'"
