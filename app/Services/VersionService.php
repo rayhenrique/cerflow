@@ -44,6 +44,17 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.13.1',
+                'data' => '07/11/2026',
+                'titulo' => 'Desbloqueio e Recuperação Automática de Sincronizações Órfãs do e-SUS',
+                'tipo' => 'Correção e Melhoria',
+                'destaques' => [
+                    'Recuperação automática de sincronizações anteriores estagnadas há mais de 2 horas, marcando-as como INTERROMPIDO e liberando a execução.',
+                    'Nova opção --limpar-bloqueio no comando php artisan esus:sincronizar para liberação pontual de locks e encerramento de processos travados.',
+                    'Suporte à flag --force para forçar a execução imediata sobrescrevendo bloqueios de concorrência anteriores.',
+                ],
+            ],
+            [
                 'versao' => '1.13.0',
                 'data' => '07/11/2026',
                 'titulo' => 'Comando Artisan CLI para Sincronização do e-SUS APS PEC',

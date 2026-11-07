@@ -226,7 +226,7 @@ class SincronizarEsusPecCommandTest extends TestCase
         $this->assertTrue($lock->get());
 
         try {
-            $this->artisan('esus:sincronizar', ['--force' => true])
+            $this->artisan('esus:sincronizar')
                 ->expectsOutputToContain('[ERRO DE CONCORRÊNCIA]')
                 ->assertFailed();
         } finally {
@@ -236,7 +236,7 @@ class SincronizarEsusPecCommandTest extends TestCase
 
     public function test_protecao_contra_concorrencia_com_sincronizacao_em_andamento_no_banco(): void
     {
-        // Cria registro ativo simulando Queue Worker em andamento
+        // Cria registro ativo recente simulando Queue Worker em andamento
         HistoricoSincronizacaoEsus::create([
             'iniciado_em' => now(),
             'tipo_execucao' => 'AGENDADA',
@@ -244,10 +244,82 @@ class SincronizarEsusPecCommandTest extends TestCase
             'total_consultado' => 100,
         ]);
 
-        $this->artisan('esus:sincronizar', ['--force' => true])
+        $this->artisan('esus:sincronizar')
             ->expectsOutputToContain('[ERRO DE CONCORRÊNCIA] Sincronização em andamento detectada')
             ->expectsOutputToContain('Uma sincronização já está sendo executada por: AGENDADA')
+            ->expectsOutputToContain('php artisan esus:sincronizar --force')
             ->assertFailed();
+    }
+
+    public function test_force_substitui_bloqueio_ativo_e_executa_sincronizacao(): void
+    {
+        $pdo = $this->criarPdoSimulado(3);
+        EsusPecIntegrationService::definirPdoTeste($pdo);
+
+        $travado = HistoricoSincronizacaoEsus::create([
+            'iniciado_em' => now(),
+            'tipo_execucao' => 'MANUAL',
+            'status' => 'EM_ANDAMENTO',
+            'total_consultado' => 50,
+        ]);
+
+        $this->artisan('esus:sincronizar', [
+            '--force' => true,
+            '--lote' => '5',
+        ])
+            ->expectsOutputToContain('[SUCESSO] Sincronização e-SUS APS PEC finalizada com êxito!')
+            ->assertSuccessful();
+
+        $travado->refresh();
+        $this->assertSame('INTERROMPIDO', $travado->status);
+        $this->assertSame(3, Paciente::count());
+    }
+
+    public function test_execucao_orfa_antiga_e_recuperada_automaticamente(): void
+    {
+        $pdo = $this->criarPdoSimulado(3);
+        EsusPecIntegrationService::definirPdoTeste($pdo);
+
+        // Registro criado há mais de 2 horas (estagnado/órfão)
+        $orfa = HistoricoSincronizacaoEsus::create([
+            'iniciado_em' => now()->subHours(3),
+            'tipo_execucao' => 'MANUAL',
+            'status' => 'EM_ANDAMENTO',
+            'total_consultado' => 10,
+        ]);
+
+        $this->artisan('esus:sincronizar', ['--lote' => '5'])
+            ->expectsOutputToContain('Identificada execução anterior estagnada')
+            ->expectsOutputToContain('[SUCESSO] Sincronização e-SUS APS PEC finalizada com êxito!')
+            ->assertSuccessful();
+
+        $orfa->refresh();
+        $this->assertSame('INTERROMPIDO', $orfa->status);
+        $this->assertSame(3, Paciente::count());
+    }
+
+    public function test_opcao_limpar_bloqueio(): void
+    {
+        $travado = HistoricoSincronizacaoEsus::create([
+            'iniciado_em' => now(),
+            'tipo_execucao' => 'MANUAL',
+            'status' => 'EM_ANDAMENTO',
+        ]);
+
+        $lock = Cache::lock(EsusPecIntegrationService::LOCK_NAME, 7200);
+        $lock->get();
+
+        $this->artisan('esus:sincronizar', ['--limpar-bloqueio' => true])
+            ->expectsOutputToContain('Bloqueios de sincronização liberados com sucesso')
+            ->assertSuccessful();
+
+        $travado->refresh();
+        $this->assertSame('INTERROMPIDO', $travado->status);
+
+        // Confirma que agora o lock está livre
+        $novoLock = Cache::lock(EsusPecIntegrationService::LOCK_NAME, 7200);
+        $this->assertTrue($novoLock->get());
+        $novoLock->release();
     }
 
     public function test_execucao_com_dry_run_sem_persistencia_e_sem_alterar_checkpoint(): void

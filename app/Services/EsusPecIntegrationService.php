@@ -350,6 +350,13 @@ class EsusPecIntegrationService
 
                 throw new RuntimeException("Já existe uma sincronização com o e-SUS PEC em andamento por {$origem}. Aguarde a conclusão.");
             }
+
+            // Recupera e encerra execuções estagnadas há mais de 2 horas
+            $ativa->update([
+                'status' => 'INTERROMPIDO',
+                'finalizado_em' => now(),
+                'mensagem_erro' => 'Execução anterior expirou por inatividade (> 2 horas) e foi recuperada automaticamente.',
+            ]);
         }
 
         try {

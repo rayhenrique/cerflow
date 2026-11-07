@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\ConfiguracaoEsusPec;
+use App\Models\HistoricoSincronizacaoEsus;
 use App\Services\EsusPecIntegrationService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -23,7 +24,8 @@ class SincronizarEsusPecCommand extends Command
         {--dry-run : Executa validações e matching sem gravar dados ou alterar checkpoint}
         {--reiniciar : Reinicia a leitura desde o primeiro registro ignorando checkpoint existente}
         {--modo= : Modo de sincronização (AUTO, INCREMENTAL, COMPLETA)}
-        {--force : Força a execução sem confirmação interativa}';
+        {--limpar-bloqueio : Libera bloqueios e encerra execuções travadas anteriores}
+        {--force : Força a execução ignorando bloqueios e confirmações}';
 
     /**
      * Descrição do comando exibida na listagem do Artisan.
@@ -71,10 +73,37 @@ class SincronizarEsusPecCommand extends Command
             return self::FAILURE;
         }
 
+        $limparBloqueio = (bool) $this->option('limpar-bloqueio');
+
+        if ($limparBloqueio) {
+            Cache::lock(EsusPecIntegrationService::LOCK_NAME, 7200)->forceRelease();
+            Cache::forget(EsusPecIntegrationService::LOCK_NAME);
+            $afetados = HistoricoSincronizacaoEsus::where('status', 'EM_ANDAMENTO')->update([
+                'status' => 'INTERROMPIDO',
+                'finalizado_em' => now(),
+                'mensagem_erro' => 'Bloqueio liberado manualmente pelo comando esus:sincronizar --limpar-bloqueio.',
+            ]);
+
+            $this->info("Bloqueios de sincronização liberados com sucesso ({$afetados} execução(ões) marcada(s) como INTERROMPIDO).");
+
+            return self::SUCCESS;
+        }
+
+        // Se --force foi passado, limpa preventivamente bloqueios e execuções anteriores travadas
+        if ($force) {
+            Cache::lock(EsusPecIntegrationService::LOCK_NAME, 7200)->forceRelease();
+            Cache::forget(EsusPecIntegrationService::LOCK_NAME);
+            HistoricoSincronizacaoEsus::where('status', 'EM_ANDAMENTO')->update([
+                'status' => 'INTERROMPIDO',
+                'finalizado_em' => now(),
+                'mensagem_erro' => 'Execução anterior cancelada por nova execução forçada (--force).',
+            ]);
+        }
+
         // Validação preventiva de concorrência com Jobs, Web e outros processos CLI
         $lockTeste = Cache::lock(EsusPecIntegrationService::LOCK_NAME, 7200);
         $conseguiuLock = $lockTeste->get();
-        if (! $conseguiuLock) {
+        if (! $conseguiuLock && ! $force) {
             $ativa = $service->verificarExecucaoAtiva();
             $this->newLine();
             $this->error('========================================================================');
@@ -86,14 +115,40 @@ class SincronizarEsusPecCommand extends Command
                 $this->line(sprintf(' Iniciada em                : <comment>%s</comment>', $ativa->iniciado_em?->format('d/m/Y H:i:s') ?? 'Desconhecido'));
             }
             $this->newLine();
-            $this->error('Aguarde a conclusão do processo ativo para executar nova sincronização.');
+            $this->comment(' DICA: Se a sincronização anterior foi interrompida (fechamento do navegador,');
+            $this->comment(' queda de conexão ou travamento da fila), você pode forçar a execução com:');
+            $this->line('   <info>php artisan esus:sincronizar --force</info>');
+            $this->line(' ou apenas liberar o bloqueio com:');
+            $this->line('   <info>php artisan esus:sincronizar --limpar-bloqueio</info>');
+            $this->newLine();
 
             return self::FAILURE;
         }
-        $lockTeste->release();
+        if ($conseguiuLock) {
+            $lockTeste->release();
+        }
 
         $ativa = $service->verificarExecucaoAtiva();
-        if ($ativa) {
+
+        // Recuperação automática de execuções órfãs/abandonadas (> 2 horas)
+        if ($ativa && $ativa->iniciado_em && $ativa->iniciado_em->lessThan(now()->subHours(2))) {
+            $this->warn(sprintf(
+                'Identificada execução anterior estagnada (#%d iniciada em %s). Marcando como INTERROMPIDO e prosseguindo...',
+                $ativa->id,
+                $ativa->iniciado_em->format('d/m/Y H:i:s')
+            ));
+
+            $ativa->update([
+                'status' => 'INTERROMPIDO',
+                'finalizado_em' => now(),
+                'mensagem_erro' => 'Execução anterior expirou por inatividade (> 2 horas) e foi liberada automaticamente.',
+            ]);
+            Cache::lock(EsusPecIntegrationService::LOCK_NAME, 7200)->forceRelease();
+            Cache::forget(EsusPecIntegrationService::LOCK_NAME);
+            $ativa = null;
+        }
+
+        if ($ativa && ! $force) {
             $this->newLine();
             $this->error('========================================================================');
             $this->error(' [ERRO DE CONCORRÊNCIA] Sincronização em andamento detectada');
@@ -102,7 +157,12 @@ class SincronizarEsusPecCommand extends Command
             $this->line(sprintf(' Identificador do Histórico : <comment>#%d</comment>', $ativa->id));
             $this->line(sprintf(' Iniciada em                : <comment>%s</comment>', $ativa->iniciado_em?->format('d/m/Y H:i:s') ?? 'Desconhecido'));
             $this->newLine();
-            $this->error('Aguarde a conclusão do processo ativo para executar nova sincronização.');
+            $this->comment(' DICA: Se a sincronização anterior foi interrompida (fechamento do navegador,');
+            $this->comment(' queda de conexão ou travamento da fila), você pode forçar a execução com:');
+            $this->line('   <info>php artisan esus:sincronizar --force</info>');
+            $this->line(' ou apenas liberar o bloqueio com:');
+            $this->line('   <info>php artisan esus:sincronizar --limpar-bloqueio</info>');
+            $this->newLine();
 
             return self::FAILURE;
         }
