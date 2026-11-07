@@ -52,7 +52,7 @@ class DashboardInicialTest extends TestCase
         $response->assertOk();
         $response->assertSee('Dashboard de Indicadores do CER');
         $response->assertSee('Pacientes por Modalidade de Reabilitação');
-        $response->assertSee('Assiduidade & Absenteísmo no Mês');
+        $response->assertSee('Assiduidade & Absenteísmo no Mês', false);
 
         Livewire::actingAs($coordenador)
             ->test(DashboardInicial::class)
