@@ -19,7 +19,7 @@ class VersionService
             }
         }
 
-        return '1.3.1';
+        return $this->releaseAtual()['versao'];
     }
 
     /**
@@ -44,15 +44,6 @@ class VersionService
     {
         return [
             [
-                'versao' => '1.7.1',
-                'data' => '07/11/2026',
-                'titulo' => 'Sincronização de Metadados de Dependências',
-                'tipo' => 'Manutenção Preventiva',
-                'destaques' => [
-                    'Sincronização interna do hash de integridade das dependências do sistema para eliminar avisos durante atualizações de servidor.',
-                ],
-            ],
-            [
                 'versao' => '1.7.0',
                 'data' => '07/11/2026',
                 'titulo' => 'Identidade CER Digital, Tradução Completa e Janela de Novidades Individual',
@@ -66,7 +57,7 @@ class VersionService
             [
                 'versao' => '1.6.2',
                 'data' => '07/11/2026',
-                'titulo' => 'Correção no Carregamento do Painel Inicial (Dashboard)',
+                'titulo' => 'Correção no Carregamento do Painel Inicial',
                 'tipo' => 'Correção Rápida',
                 'destaques' => [
                     'Corrigida a consulta dos números de produção SUS (BPA-i) no Painel Inicial para abrir sem erro no servidor de produção.',
@@ -75,10 +66,10 @@ class VersionService
             [
                 'versao' => '1.6.1',
                 'data' => '07/11/2026',
-                'titulo' => 'Otimização dos Cálculos do Painel Inicial (Dashboard)',
+                'titulo' => 'Otimização dos Cálculos do Painel Inicial',
                 'tipo' => 'Melhoria de Desempenho',
                 'destaques' => [
-                    'Organização e otimização interna das consultas de estatísticas do Dashboard para carregamento ainda mais rápido.',
+                    'Organização e otimização interna das consultas de estatísticas do Painel Inicial para carregamento ainda mais rápido.',
                 ],
             ],
             [
@@ -95,7 +86,7 @@ class VersionService
             [
                 'versao' => '1.5.0',
                 'data' => '07/11/2026',
-                'titulo' => 'Novo Painel Inicial (Dashboard) com Estatísticas do CER em Tempo Real',
+                'titulo' => 'Novo Painel Inicial com Estatísticas do CER em Tempo Real',
                 'tipo' => 'Nova Funcionalidade',
                 'destaques' => [
                     'Tela inicial com números atualizados da unidade: total de pacientes ativos, atendimentos agendados para hoje, presenças e faltas.',

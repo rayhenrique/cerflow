@@ -43,11 +43,12 @@
                 </div>
 
                 <div class="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
-                    <a href="{{ route('ajuda.sobre') }}"
-                       x-on:click="visivel = false; $wire.fecharModal()"
-                       class="font-semibold text-teal-700 hover:text-teal-600 underline underline-offset-4">
+                    <button type="button"
+                            wire:click="irParaAjudaSobre"
+                            x-on:click="visivel = false"
+                            class="font-semibold text-teal-700 hover:text-teal-600 underline underline-offset-4 cursor-pointer">
                         Ver evolução completa das versões →
-                    </a>
+                    </button>
 
                     <button type="button"
                             x-on:click="visivel = false; $wire.fecharModal()"

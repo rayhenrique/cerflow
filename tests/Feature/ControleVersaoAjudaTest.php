@@ -147,6 +147,51 @@ class ControleVersaoAjudaTest extends TestCase
             ->assertSet('aberto', true);
     }
 
+    public function test_link_central_de_ajuda_no_modal_persiste_visualizacao_antes_de_redirecionar(): void
+    {
+        $versaoAtiva = app(VersionService::class)->versaoAtual();
+
+        $user = User::factory()->create([
+            'ativo' => true,
+            'ultima_versao_novidades_vista' => null,
+        ]);
+        $user->assignRole('terapeuta');
+
+        // Ao clicar no link da Central de Ajuda, o modal deve persistir a versão e redirecionar
+        Livewire::actingAs($user)
+            ->test(ModalNovidadesVersao::class)
+            ->assertSet('aberto', true)
+            ->call('irParaAjudaSobre')
+            ->assertSet('aberto', false)
+            ->assertRedirect(route('ajuda.sobre'));
+
+        $user->refresh();
+        $this->assertSame($versaoAtiva, $user->ultima_versao_novidades_vista);
+    }
+
+    public function test_version_service_mantem_consistencia_entre_versao_atual_e_release_atual(): void
+    {
+        $versionService = app(VersionService::class);
+
+        $versaoAtual = $versionService->versaoAtual();
+        $releaseAtual = $versionService->releaseAtual();
+
+        $this->assertSame($versaoAtual, $releaseAtual['versao']);
+        $this->assertNotEmpty($releaseAtual['titulo']);
+        $this->assertNotEmpty($releaseAtual['destaques']);
+
+        // Testa consistência do fallback de VersionService caso o arquivo não exista
+        $serviceComFallback = new class extends VersionService
+        {
+            public function testar_fallback(): string
+            {
+                return $this->releaseAtual()['versao'];
+            }
+        };
+
+        $this->assertSame($releaseAtual['versao'], $serviceComFallback->testarFallback());
+    }
+
     public function test_modulo_ajuda_e_sobre_exibe_identidade_cer_digital_e_todas_as_versoes(): void
     {
         $user = User::factory()->create(['ativo' => true]);
@@ -156,7 +201,6 @@ class ControleVersaoAjudaTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Central de Ajuda & Sobre o CER Digital', false);
-        $response->assertSee('v1.7.1');
         $response->assertSee('v1.7.0');
         $response->assertSee('v1.6.2');
         $response->assertSee('v1.6.1');

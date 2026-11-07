@@ -48,6 +48,13 @@ class ModalNovidadesVersao extends Component
         $this->aberto = false;
     }
 
+    public function irParaAjudaSobre(VersionService $versionService)
+    {
+        $this->fecharModal($versionService);
+
+        return $this->redirectRoute('ajuda.sobre', navigate: true);
+    }
+
     public function render(VersionService $versionService): View
     {
         return view('livewire.modal-novidades-versao', [
