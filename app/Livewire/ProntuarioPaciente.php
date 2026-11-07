@@ -21,6 +21,8 @@ class ProntuarioPaciente extends Component
 {
     public ?int $pacienteId = null;
 
+    public string $pesquisaPaciente = '';
+
     public ?int $agendamento_id = null;
 
     public ?int $procedimento_id = null;
@@ -61,9 +63,77 @@ class ProntuarioPaciente extends Component
 
         if ($paciente !== null) {
             $this->pacienteId = $paciente;
-        } else {
-            $this->pacienteId = Paciente::query()->ativos()->orderBy('nome')->value('id');
         }
+    }
+
+    public function selecionarPaciente(int $id): void
+    {
+        $paciente = Paciente::query()->ativos()->find($id);
+        if ($paciente !== null) {
+            Gate::authorize('viewProntuario', $paciente);
+            $this->pacienteId = (int) $paciente->id;
+            $this->pesquisaPaciente = '';
+            $this->reset(['agendamento_id', 'procedimento_id', 'queixa_estado_atual', 'conduta_terapeutica', 'intercorrencias', 'pin_assinatura']);
+            $this->resetValidation();
+        }
+    }
+
+    public function limparPacienteSelecionado(): void
+    {
+        $this->pacienteId = null;
+        $this->pesquisaPaciente = '';
+        $this->reset(['agendamento_id', 'procedimento_id', 'queixa_estado_atual', 'conduta_terapeutica', 'intercorrencias', 'pin_assinatura']);
+        $this->resetValidation();
+    }
+
+    /**
+     * Realiza a busca sob demanda de pacientes no banco de dados.
+     *
+     * @return array<int, array{id: int, nome: string, cpf: ?string, cns: ?string, data_nascimento: ?string}>
+     */
+    public function buscarPacientes(): array
+    {
+        $termo = trim($this->pesquisaPaciente);
+
+        if (mb_strlen($termo) < 3) {
+            return [];
+        }
+
+        $termoDigitos = preg_replace('/\D/', '', $termo) ?? '';
+
+        $query = Paciente::query()
+            ->ativos()
+            ->where(function ($q) use ($termo, $termoDigitos): void {
+                $q->where('nome', 'like', '%'.$termo.'%');
+
+                if ($termoDigitos !== '') {
+                    $q->orWhere('cpf', 'like', '%'.$termoDigitos.'%')
+                        ->orWhere('cns', 'like', '%'.$termoDigitos.'%');
+                }
+            });
+
+        return $query
+            ->orderBy('nome')
+            ->limit(20)
+            ->get(['id', 'nome', 'cpf', 'cns', 'data_nascimento'])
+            ->map(fn (Paciente $p): array => [
+                'id' => (int) $p->id,
+                'nome' => (string) $p->nome,
+                'cpf' => $p->cpf ? $this->formatarCpf((string) $p->cpf) : null,
+                'cns' => $p->cns,
+                'data_nascimento' => $p->data_nascimento?->format('d/m/Y'),
+            ])
+            ->all();
+    }
+
+    private function formatarCpf(string $cpf): string
+    {
+        $d = preg_replace('/\D/', '', $cpf) ?? '';
+        if (strlen($d) === 11) {
+            return substr($d, 0, 3).'.'.substr($d, 3, 3).'.'.substr($d, 6, 3).'-'.substr($d, 9, 2);
+        }
+
+        return $cpf;
     }
 
     /**
@@ -207,7 +277,6 @@ class ProntuarioPaciente extends Component
 
     public function render(): View
     {
-        $pacientes = Paciente::query()->ativos()->orderBy('nome')->get();
         $pacienteSelecionado = $this->pacienteId !== null
             ? Paciente::find($this->pacienteId)
             : null;
@@ -237,7 +306,7 @@ class ProntuarioPaciente extends Component
         $procedimentos = ProcedimentoSigtap::query()->ativos()->orderBy('codigo')->get();
 
         return view('livewire.prontuario-paciente', [
-            'pacientes' => $pacientes,
+            'pacientesResultados' => $this->buscarPacientes(),
             'pacienteSelecionado' => $pacienteSelecionado,
             'evolucoes' => $evolucoes,
             'agendamentosPaciente' => $agendamentosPaciente,

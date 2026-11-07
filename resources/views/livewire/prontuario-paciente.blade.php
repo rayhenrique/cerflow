@@ -6,14 +6,87 @@
             <p class="text-xs text-slate-500">Linha do tempo integrada, assinatura eletrônica SHA-256 e trava legal de 24h</p>
         </div>
 
-        <div class="w-full sm:w-80">
-            <select wire:model.live="pacienteId" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold">
-                <option value="">Selecione um paciente...</option>
-                @foreach($pacientes as $pac)
-                    <option value="{{ $pac->id }}">{{ $pac->nome }} (CNS: {{ $pac->cns }})</option>
-                @endforeach
-            </select>
-        </div>
+        @if($pacienteSelecionado)
+            <!-- Seletor de Paciente Sob Demanda (Estado Selecionado) -->
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <div class="flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50/70 px-3 py-2 text-xs max-w-full sm:max-w-md">
+                    <span class="inline-flex items-center justify-center rounded-full bg-teal-600 text-white w-4 h-4 text-[10px] font-bold shrink-0">✓</span>
+                    <span class="font-bold text-slate-900 truncate">{{ $pacienteSelecionado->nome }}</span>
+                    @if($pacienteSelecionado->cns)
+                        <span class="font-mono text-slate-500 hidden md:inline shrink-0">CNS: {{ $pacienteSelecionado->cns }}</span>
+                    @elseif($pacienteSelecionado->cpf)
+                        <span class="font-mono text-slate-500 hidden md:inline shrink-0">CPF: {{ $pacienteSelecionado->cpf }}</span>
+                    @endif
+                </div>
+
+                <button
+                    type="button"
+                    wire:click="limparPacienteSelecionado"
+                    class="shrink-0 inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-rose-600 hover:border-rose-300 transition-colors cursor-pointer"
+                    title="Pesquisar e selecionar outro paciente"
+                >
+                    <span>✕</span>
+                    <span>Trocar</span>
+                </button>
+            </div>
+        @else
+            <!-- Busca Dinâmica Sob Demanda com Auto-complete Dropdown -->
+            <div class="relative w-full sm:w-96">
+                <div class="relative flex items-center">
+                    <input
+                        type="text"
+                        wire:model.live.debounce.400ms="pesquisaPaciente"
+                        placeholder="Digite o nome, CPF ou Cartão SUS do paciente..."
+                        autocomplete="off"
+                        class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-xs placeholder:text-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                        autofocus
+                    >
+                    <!-- Indicador de Carregamento Discreto -->
+                    <div wire:loading wire:target="pesquisaPaciente" class="absolute right-3 text-teal-600">
+                        <svg class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Feedback ou Resultados em Dropdown Suspenso -->
+                @if(mb_strlen(trim($pesquisaPaciente)) >= 3)
+                    <div class="absolute z-50 left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-xl divide-y divide-slate-100">
+                        @forelse($pacientesResultados as $pac)
+                            <button
+                                type="button"
+                                wire:click="selecionarPaciente({{ $pac['id'] }})"
+                                wire:key="pep-paciente-{{ $pac['id'] }}"
+                                class="w-full text-left p-2.5 hover:bg-teal-50/70 focus:bg-teal-50 transition-colors flex items-center justify-between gap-3 group cursor-pointer"
+                            >
+                                <div class="space-y-0.5 min-w-0">
+                                    <div class="font-bold text-slate-800 text-xs truncate group-hover:text-teal-700">
+                                        {{ $pac['nome'] }}
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-x-3 text-[11px] text-slate-500">
+                                        <span>CPF: <strong class="text-slate-700 font-mono">{{ $pac['cpf'] ?? '—' }}</strong></span>
+                                        <span>CNS: <strong class="text-slate-700 font-mono">{{ $pac['cns'] ?? '—' }}</strong></span>
+                                        <span>Nasc: <strong class="text-slate-700">{{ $pac['data_nascimento'] ?? '—' }}</strong></span>
+                                    </div>
+                                </div>
+                                <span class="shrink-0 text-xs font-semibold text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    Abrir PEP →
+                                </span>
+                            </button>
+                        @empty
+                            <div class="p-3 text-center text-xs text-slate-500" wire:loading.remove wire:target="pesquisaPaciente">
+                                Nenhum paciente encontrado para <strong class="text-slate-700">"{{ $pesquisaPaciente }}"</strong>.
+                            </div>
+                        @endforelse
+                    </div>
+                @elseif(mb_strlen(trim($pesquisaPaciente)) > 0)
+                    <div class="absolute z-50 left-0 right-0 mt-1 p-2.5 rounded-lg border border-slate-200 bg-white shadow-md text-xs text-slate-500">
+                        Digite pelo menos 3 caracteres para iniciar a pesquisa.
+                    </div>
+                @endif
+            </div>
+        @endif
     </div>
 
     @if($pacienteSelecionado)
@@ -197,6 +270,19 @@
                     </div>
                 @endforelse
             </div>
+        </div>
+    @else
+        <!-- Estado Inicial: Nenhum Paciente Selecionado -->
+        <div class="bg-white rounded-xl border border-dashed border-slate-300 p-8 sm:p-14 text-center shadow-xs">
+            <div class="mx-auto w-14 h-14 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 mb-4">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+            </div>
+            <h3 class="text-base font-bold text-slate-800">Nenhum Paciente Selecionado</h3>
+            <p class="text-xs text-slate-500 mt-1.5 max-w-md mx-auto leading-relaxed">
+                Digite o nome, CPF ou Cartão SUS do paciente no campo de busca acima para visualizar a linha do tempo clínica, registrar novas evoluções e gerar produção BPA-i.
+            </p>
         </div>
     @endif
 

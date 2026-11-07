@@ -44,6 +44,18 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.15.2',
+                'data' => '07/11/2026',
+                'titulo' => 'Busca Dinâmica de Pacientes no Prontuário Multiprofissional (PEP)',
+                'tipo' => 'Performance e Usabilidade',
+                'destaques' => [
+                    'Eliminação do carregamento forçado do primeiro paciente e de todos os pacientes ativos ao abrir o Prontuário Eletrônico (/prontuario).',
+                    'Pesquisa em tempo real com debounce de 400ms e ativação a partir de 3 caracteres por nome, CPF ou CNS.',
+                    'Dropdown inteligente de resultados limitados a 20 registros com identificação clara (Nome, CPF, CNS e Nascimento).',
+                    'Estado inicial com orientações claras e card de paciente selecionado com opção rápida de troca.',
+                ],
+            ],
+            [
                 'versao' => '1.15.1',
                 'data' => '07/11/2026',
                 'titulo' => 'Paginação na Listagem de Pacientes do CER Digital',
