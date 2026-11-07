@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-@php($configuracaoEstabelecimento = \\App\\Models\\ConfiguracaoEstabelecimento::atual())
+@php($configuracaoEstabelecimento = \App\Models\ConfiguracaoEstabelecimento::atual())
 <html lang="pt-BR" class="h-full bg-slate-50">
 <head>
     <meta charset="utf-8">
@@ -14,7 +14,7 @@
                 SUS / SIA - BPA-i
             </span>
             @if ($configuracaoEstabelecimento->logo_path)
-                <img src="{{ \\Illuminate\\Support\\Facades\\Storage::disk('public')->url($configuracaoEstabelecimento->logo_path) }}" alt="Logo do estabelecimento" class="mb-4 max-h-24 max-w-full object-contain object-left">
+                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($configuracaoEstabelecimento->logo_path) }}" alt="Logo do estabelecimento" class="mb-4 max-h-24 max-w-full object-contain object-left">
             @else
                 <h1 class="mt-3 text-2xl font-bold tracking-tight text-slate-900">CER Digital</h1>
             @endif
