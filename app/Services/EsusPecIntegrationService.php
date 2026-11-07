@@ -19,11 +19,52 @@ use Throwable;
 
 class EsusPecIntegrationService
 {
+    public const LOCK_NAME = 'lock_sincronizacao_esus_pec';
+
+    public const LOCK_TTL_SEGUNDOS = 7200; // 2 horas
+
+    protected static ?PDO $pdoTeste = null;
+
+    /**
+     * Define uma conexão PDO de teste para mock em testes automatizados.
+     */
+    public static function definirPdoTeste(?PDO $pdo): void
+    {
+        self::$pdoTeste = $pdo;
+    }
+
+    /**
+     * Retorna o PDO de teste caso configurado.
+     */
+    public static function obterPdoTeste(): ?PDO
+    {
+        return self::$pdoTeste;
+    }
+
+    /**
+     * Verifica se existe sincronização atualmente em andamento.
+     */
+    public function verificarExecucaoAtiva(?int $ignorarHistoricoId = null): ?HistoricoSincronizacaoEsus
+    {
+        $query = HistoricoSincronizacaoEsus::where('status', 'EM_ANDAMENTO')
+            ->orderByDesc('id');
+
+        if ($ignorarHistoricoId !== null) {
+            $query->where('id', '!=', $ignorarHistoricoId);
+        }
+
+        return $query->first();
+    }
+
     /**
      * Instancia conexão PDO independente e segura para leitura exclusiva do PostgreSQL.
      */
     public function criarConexaoPdo(?ConfiguracaoEsusPec $config = null): PDO
     {
+        if (self::$pdoTeste !== null) {
+            return self::$pdoTeste;
+        }
+
         if (! extension_loaded('pdo_pgsql')) {
             throw new RuntimeException('A extensão PHP pdo_pgsql não está habilitada neste servidor.');
         }
@@ -277,120 +318,150 @@ class EsusPecIntegrationService
         ?PDO $pdoInjetado = null,
         ?int $historicoId = null,
         ?callable $onProgresso = null,
-        ?string $forcarModo = null
+        ?string $forcarModo = null,
+        ?int $tamanhoLote = null,
+        ?int $maxRegistros = null,
+        bool $dryRun = false,
+        bool $reiniciar = false,
+        ?callable $onLoteConcluido = null
     ): HistoricoSincronizacaoEsus {
         $inicio = microtime(true);
         $duracaoConsultaMs = 0;
         $duracaoProcessamentoMs = 0;
         $duracaoGravacaoMs = 0;
 
-        $config = ConfiguracaoEsusPec::atual();
+        // 1. Proteção de concorrência: Lock atômico compartilhado
+        $lock = Cache::lock(self::LOCK_NAME, self::LOCK_TTL_SEGUNDOS);
+        if (! $lock->get()) {
+            $ativa = $this->verificarExecucaoAtiva($historicoId);
+            $origem = $ativa
+                ? sprintf('%s (ID #%d, iniciada em %s)', $ativa->tipo_execucao, $ativa->id, $ativa->iniciado_em?->format('d/m/Y H:i:s') ?? 'momento desconhecido')
+                : 'outro processo ativo';
 
-        $historico = null;
-        if ($historicoId) {
-            $historico = HistoricoSincronizacaoEsus::find($historicoId);
+            throw new RuntimeException("Já existe uma sincronização com o e-SUS PEC em andamento por {$origem}. Aguarde a conclusão ou libere o bloqueio.");
         }
 
-        if (! $historico) {
-            $historico = HistoricoSincronizacaoEsus::create([
-                'iniciado_em' => now(),
-                'tipo_execucao' => $tipoExecucao === 'AGENDADA' ? 'AGENDADA' : 'MANUAL',
-                'status' => 'EM_ANDAMENTO',
-                'total_consultado' => 0,
-                'novos_pacientes' => 0,
-                'pacientes_atualizados' => 0,
-                'registros_ignorados' => 0,
-                'duplicidades_identificadas' => 0,
-                'detalhes' => [
-                    'etapa' => 'Iniciando sincronização',
-                    'percentual' => 0,
-                ],
-            ]);
-        }
+        $ativa = $this->verificarExecucaoAtiva($historicoId);
+        if ($ativa) {
+            $limiteStale = now()->subHours(2);
+            if ($ativa->iniciado_em && $ativa->iniciado_em->greaterThan($limiteStale)) {
+                $lock->release();
+                $origem = sprintf('%s (ID #%d, iniciada em %s)', $ativa->tipo_execucao, $ativa->id, $ativa->iniciado_em->format('d/m/Y H:i:s'));
 
-        if (! $config->ativo && $pdoInjetado === null) {
-            $historico->update([
-                'status' => 'INTERROMPIDO',
-                'finalizado_em' => now(),
-                'duracao_segundos' => 0,
-                'mensagem_erro' => 'A sincronização não foi executada porque a integração e-SUS APS PEC está inativa nas configurações.',
-                'detalhes' => array_merge($historico->detalhes ?? [], [
-                    'etapa' => 'Integração inativa',
-                    'percentual' => 0,
-                ]),
-            ]);
-
-            return $historico;
-        }
-
-        $contadores = [
-            'validos' => 0,
-            'invalidos' => 0,
-            'sem_identificador' => 0,
-            'novos' => 0,
-            'atualizados' => 0,
-            'sem_alteracoes' => 0,
-            'duplicidades' => 0,
-            'falhas' => 0,
-        ];
-
-        $notificarProgresso = function (
-            string $etapa,
-            int $processados,
-            int $total,
-            array $contadoresAtuais,
-            string $modo = 'COMPLETA'
-        ) use ($historico, $onProgresso, &$duracaoConsultaMs, &$duracaoProcessamentoMs, &$duracaoGravacaoMs): void {
-            $percentual = $total > 0 ? (int) min(100, round(($processados / $total) * 100)) : 0;
-
-            $detalhes = array_merge($historico->detalhes ?? [], [
-                'etapa' => $etapa,
-                'processados' => $processados,
-                'total_estimado' => $total,
-                'percentual' => $percentual,
-                'modo_executado' => $modo,
-                'registros_validos' => $contadoresAtuais['validos'],
-                'registros_invalidos' => $contadoresAtuais['invalidos'],
-                'sem_identificador' => $contadoresAtuais['sem_identificador'],
-                'novos_pacientes' => $contadoresAtuais['novos'],
-                'pacientes_atualizados' => $contadoresAtuais['atualizados'],
-                'pacientes_sem_alteracoes' => $contadoresAtuais['sem_alteracoes'],
-                'duplicidades' => $contadoresAtuais['duplicidades'],
-                'falhas_gravacao' => $contadoresAtuais['falhas'],
-                'duracao_consulta_ms' => $duracaoConsultaMs,
-                'duracao_processamento_ms' => $duracaoProcessamentoMs,
-                'duracao_gravacao_ms' => $duracaoGravacaoMs,
-            ]);
-
-            $historico->update([
-                'total_consultado' => $processados,
-                'novos_pacientes' => $contadoresAtuais['novos'],
-                'pacientes_atualizados' => $contadoresAtuais['atualizados'],
-                'registros_ignorados' => $contadoresAtuais['invalidos'] + $contadoresAtuais['sem_identificador'],
-                'duplicidades_identificadas' => $contadoresAtuais['duplicidades'],
-                'detalhes' => $detalhes,
-            ]);
-
-            Cache::put("esus_sync_progresso_{$historico->id}", [
-                'historico_id' => $historico->id,
-                'etapa' => $etapa,
-                'processados' => $processados,
-                'total' => $total,
-                'percentual' => $percentual,
-                'modo' => $modo,
-                'contadores' => $contadoresAtuais,
-                'duracao_consulta_ms' => $duracaoConsultaMs,
-                'duracao_processamento_ms' => $duracaoProcessamentoMs,
-                'duracao_gravacao_ms' => $duracaoGravacaoMs,
-                'status' => $historico->status,
-            ], 300);
-
-            if ($onProgresso) {
-                $onProgresso($etapa, $processados, $total, $contadoresAtuais);
+                throw new RuntimeException("Já existe uma sincronização com o e-SUS PEC em andamento por {$origem}. Aguarde a conclusão.");
             }
-        };
+        }
 
         try {
+            $config = ConfiguracaoEsusPec::atual();
+
+            $historico = null;
+            if ($historicoId) {
+                $historico = HistoricoSincronizacaoEsus::find($historicoId);
+            }
+
+            if (! $historico) {
+                $historico = HistoricoSincronizacaoEsus::create([
+                    'iniciado_em' => now(),
+                    'tipo_execucao' => in_array($tipoExecucao, ['CLI', 'AGENDADA', 'MANUAL'], true) ? $tipoExecucao : 'MANUAL',
+                    'status' => 'EM_ANDAMENTO',
+                    'total_consultado' => 0,
+                    'novos_pacientes' => 0,
+                    'pacientes_atualizados' => 0,
+                    'registros_ignorados' => 0,
+                    'duplicidades_identificadas' => 0,
+                    'detalhes' => [
+                        'etapa' => 'Iniciando sincronização',
+                        'percentual' => 0,
+                        'dry_run' => $dryRun,
+                    ],
+                ]);
+            }
+
+            if (! $config->ativo && $pdoInjetado === null && self::$pdoTeste === null) {
+                $historico->update([
+                    'status' => 'INTERROMPIDO',
+                    'finalizado_em' => now(),
+                    'duracao_segundos' => 0,
+                    'mensagem_erro' => 'A sincronização não foi executada porque a integração e-SUS APS PEC está inativa nas configurações.',
+                    'detalhes' => array_merge($historico->detalhes ?? [], [
+                        'etapa' => 'Integração inativa',
+                        'percentual' => 0,
+                    ]),
+                ]);
+
+                return $historico;
+            }
+
+            $contadores = [
+                'validos' => 0,
+                'invalidos' => 0,
+                'sem_identificador' => 0,
+                'novos' => 0,
+                'atualizados' => 0,
+                'sem_alteracoes' => 0,
+                'duplicidades' => 0,
+                'falhas' => 0,
+            ];
+
+            $notificarProgresso = function (
+                string $etapa,
+                int $processados,
+                int $total,
+                array $contadoresAtuais,
+                string $modo = 'COMPLETA'
+            ) use ($historico, $onProgresso, &$duracaoConsultaMs, &$duracaoProcessamentoMs, &$duracaoGravacaoMs, $dryRun): void {
+                $percentual = $total > 0 ? (int) min(100, round(($processados / $total) * 100)) : 0;
+
+                $detalhes = array_merge($historico->detalhes ?? [], [
+                    'etapa' => $etapa,
+                    'processados' => $processados,
+                    'total_estimado' => $total,
+                    'percentual' => $percentual,
+                    'dry_run' => $dryRun,
+                    'modo_executado' => $modo,
+                    'registros_validos' => $contadoresAtuais['validos'],
+                    'registros_invalidos' => $contadoresAtuais['invalidos'],
+                    'sem_identificador' => $contadoresAtuais['sem_identificador'],
+                    'novos_pacientes' => $contadoresAtuais['novos'],
+                    'pacientes_atualizados' => $contadoresAtuais['atualizados'],
+                    'pacientes_sem_alteracoes' => $contadoresAtuais['sem_alteracoes'],
+                    'duplicidades' => $contadoresAtuais['duplicidades'],
+                    'falhas_gravacao' => $contadoresAtuais['falhas'],
+                    'duracao_consulta_ms' => $duracaoConsultaMs,
+                    'duracao_processamento_ms' => $duracaoProcessamentoMs,
+                    'duracao_gravacao_ms' => $duracaoGravacaoMs,
+                ]);
+
+                $historico->update([
+                    'total_consultado' => $processados,
+                    'novos_pacientes' => $contadoresAtuais['novos'],
+                    'pacientes_atualizados' => $contadoresAtuais['atualizados'],
+                    'registros_ignorados' => $contadoresAtuais['invalidos'] + $contadoresAtuais['sem_identificador'],
+                    'duplicidades_identificadas' => $contadoresAtuais['duplicidades'],
+                    'detalhes' => $detalhes,
+                ]);
+
+                Cache::put("esus_sync_progresso_{$historico->id}", [
+                    'historico_id' => $historico->id,
+                    'etapa' => $etapa,
+                    'processados' => $processados,
+                    'total' => $total,
+                    'percentual' => $percentual,
+                    'dry_run' => $dryRun,
+                    'modo' => $modo,
+                    'contadores' => $contadoresAtuais,
+                    'duracao_consulta_ms' => $duracaoConsultaMs,
+                    'duracao_processamento_ms' => $duracaoProcessamentoMs,
+                    'duracao_gravacao_ms' => $duracaoGravacaoMs,
+                    'status' => $historico->status,
+                ], 300);
+
+                if ($onProgresso) {
+                    $onProgresso($etapa, $processados, $total, $contadoresAtuais);
+                }
+            };
+
             $notificarProgresso('Consultando origem', 0, 0, $contadores);
 
             $pdo = $pdoInjetado ?? $this->criarConexaoPdo($config);
@@ -415,10 +486,12 @@ class EsusPecIntegrationService
                     ],
                 ]);
 
-                $config->update([
-                    'ultima_sincronizacao_em' => now(),
-                    'ultima_sincronizacao_status' => 'INTERROMPIDO',
-                ]);
+                if (! $dryRun) {
+                    $config->update([
+                        'ultima_sincronizacao_em' => now(),
+                        'ultima_sincronizacao_status' => 'INTERROMPIDO',
+                    ]);
+                }
 
                 return $historico;
             }
@@ -437,7 +510,7 @@ class EsusPecIntegrationService
             if ($colunaAtualizacao !== null) {
                 if ($modoConfigurado === 'COMPLETA') {
                     $modoExecucaoReal = 'CARGA_COMPLETA';
-                } elseif ($config->ultimo_checkpoint_em !== null) {
+                } elseif ($config->ultimo_checkpoint_em !== null && ! $reiniciar) {
                     $modoExecucaoReal = 'INCREMENTAL';
                     $janelaMinutos = (int) ($config->janela_seguranca_minutos ?: 1440);
                     $checkpointComJanela = $config->ultimo_checkpoint_em->copy()->subMinutes($janelaMinutos);
@@ -445,11 +518,26 @@ class EsusPecIntegrationService
                     $modoExecucaoReal = 'CARGA_COMPLETA';
                 }
             } else {
-                // Sem coluna nativa de atualização: mantém reconciliação completa otimizada, nunca dados fictícios
                 $modoExecucaoReal = 'RECONCILIACAO_COMPLETA';
             }
 
-            // Projeção seletiva: seleciona estritamente as colunas necessárias existentes na origem (evita SELECT *)
+            // Keyset Pagination / Checkpoint de retomada
+            $retomarDeCheckpoint = ! $reiniciar
+                && $config->ultimo_checkpoint_id
+                && in_array($config->ultima_sincronizacao_status, ['PARCIAL', 'INTERROMPIDO', 'ERRO', 'EM_ANDAMENTO'], true);
+
+            if ($reiniciar) {
+                $ultimoIdChave = 0;
+                if (! $dryRun) {
+                    $config->update(['ultimo_checkpoint_id' => null]);
+                }
+            } elseif ($retomarDeCheckpoint) {
+                $ultimoIdChave = (int) $config->ultimo_checkpoint_id;
+            } else {
+                $ultimoIdChave = 0;
+            }
+
+            // Projeção seletiva: seleciona estritamente as colunas necessárias existentes na origem
             $colunasDesejadas = [
                 'co_seq_acomp_cidadaos_vinc',
                 'co_seq_acomp_cidadaos_vinculados',
@@ -550,15 +638,21 @@ class EsusPecIntegrationService
                 $params[':checkpoint_data'] = $checkpointComJanela->format('Y-m-d H:i:s');
             }
 
-            $whereBase = ! empty($whereParts) ? 'WHERE '.implode(' AND ', $whereParts) : '';
+            // Contagem do total de registros estimados a processar
+            $countWhereParts = $whereParts;
+            $countParams = $params;
+            if ($colunaSequencial && $ultimoIdChave > 0) {
+                $countWhereParts[] = "{$colunaSequencial} > :ultimo_id_chave_count";
+                $countParams[':ultimo_id_chave_count'] = $ultimoIdChave;
+            }
+            $countWhereBase = ! empty($countWhereParts) ? 'WHERE '.implode(' AND ', $countWhereParts) : '';
 
-            // Contagem do total real de registros a processar nesta execução
             $tConsultaCountInicio = microtime(true);
             $totalEstimado = 0;
             try {
-                $sqlCount = "SELECT COUNT(*) FROM {$tabelaOrigem} {$whereBase};";
+                $sqlCount = "SELECT COUNT(*) FROM {$tabelaOrigem} {$countWhereBase};";
                 $stmtCount = $pdo->prepare($sqlCount);
-                $stmtCount->execute($params);
+                $stmtCount->execute($countParams);
                 $totalEstimado = (int) $stmtCount->fetchColumn();
             } catch (Throwable) {
                 $totalEstimado = 0;
@@ -567,13 +661,26 @@ class EsusPecIntegrationService
 
             $notificarProgresso('Consultando origem', 0, $totalEstimado, $contadores, $modoExecucaoReal);
 
-            // Processamento em lotes configuráveis (padrão 500, ajustável até 1.000)
-            $limite = max(100, min(2000, (int) ($config->tamanho_lote ?: 500)));
-            $ultimoIdChave = 0;
+            // Processamento em lotes configuráveis (padrão 2.000 via CLI ou 500 via web)
+            $limite = $tamanhoLote !== null
+                ? max(1, min(5000, $tamanhoLote))
+                : max(100, min(2000, (int) ($config->tamanho_lote ?: 500)));
+
             $offset = 0;
             $totalConsultado = 0;
+            $numeroLote = 0;
 
             while (true) {
+                if ($maxRegistros !== null && $totalConsultado >= $maxRegistros) {
+                    break;
+                }
+
+                $registrosRestantes = ($maxRegistros !== null) ? ($maxRegistros - $totalConsultado) : $limite;
+                $limiteAtual = min($limite, $registrosRestantes);
+                if ($limiteAtual <= 0) {
+                    break;
+                }
+
                 $tConsultaLoteInicio = microtime(true);
 
                 $whereLoop = $whereParts;
@@ -583,10 +690,10 @@ class EsusPecIntegrationService
                     $whereLoop[] = "{$colunaSequencial} > :ultimo_id_chave";
                     $paramsLoop[':ultimo_id_chave'] = $ultimoIdChave;
                     $whereSql = 'WHERE '.implode(' AND ', $whereLoop);
-                    $sql = "SELECT {$selectSql} FROM {$tabelaOrigem} {$whereSql} ORDER BY {$colunaSequencial} ASC LIMIT {$limite};";
+                    $sql = "SELECT {$selectSql} FROM {$tabelaOrigem} {$whereSql} ORDER BY {$colunaSequencial} ASC LIMIT {$limiteAtual};";
                 } else {
                     $whereSql = ! empty($whereLoop) ? 'WHERE '.implode(' AND ', $whereLoop) : '';
-                    $sql = "SELECT {$selectSql} FROM {$tabelaOrigem} {$whereSql} LIMIT {$limite} OFFSET {$offset};";
+                    $sql = "SELECT {$selectSql} FROM {$tabelaOrigem} {$whereSql} LIMIT {$limiteAtual} OFFSET {$offset};";
                 }
 
                 $stmt = $pdo->prepare($sql);
@@ -599,8 +706,17 @@ class EsusPecIntegrationService
                     break;
                 }
 
-                $tProcInicio = microtime(true);
+                $numeroLote++;
+                $loteNovos = 0;
+                $loteAtualizados = 0;
+                $loteSemAlteracoes = 0;
+                $loteDuplicidades = 0;
+                $loteFalhas = 0;
+                $loteValidos = 0;
+                $loteInvalidos = 0;
+                $loteSemIdentificador = 0;
 
+                $tProcInicio = microtime(true);
                 $notificarProgresso('Validando registros', $totalConsultado, $totalEstimado, $contadores, $modoExecucaoReal);
 
                 $loteMapeado = [];
@@ -615,6 +731,7 @@ class EsusPecIntegrationService
                     // Validação de dados cadastrais mínimos: nome e data de nascimento
                     if (empty($dados['nome']) || mb_strlen($dados['nome']) < 2 || empty($dados['data_nascimento'])) {
                         $contadores['invalidos']++;
+                        $loteInvalidos++;
 
                         continue;
                     }
@@ -622,11 +739,13 @@ class EsusPecIntegrationService
                     // Validação de identificador mínimo confiável: não criar sem documento válido
                     if (empty($dados['id_externo_esus']) && empty($dados['cpf']) && empty($dados['cns'])) {
                         $contadores['sem_identificador']++;
+                        $loteSemIdentificador++;
 
                         continue;
                     }
 
                     $contadores['validos']++;
+                    $loteValidos++;
                     $loteMapeado[] = $dados;
 
                     if (! empty($dados['id_externo_esus'])) {
@@ -675,27 +794,51 @@ class EsusPecIntegrationService
 
                     $duracaoProcessamentoMs += (int) round((microtime(true) - $tProcInicio) * 1000);
 
-                    $notificarProgresso('Persistindo lote', $totalConsultado, $totalEstimado, $contadores, $modoExecucaoReal);
+                    $notificarProgresso($dryRun ? 'Simulando lote (Dry-Run)' : 'Persistindo lote', $totalConsultado, $totalEstimado, $contadores, $modoExecucaoReal);
 
-                    // Persistência transacional do lote no banco local do CER Digital
                     $tGravInicio = microtime(true);
-                    DB::transaction(function () use (&$loteMapeado, &$contadores, &$mapaId, &$mapaCpf, &$mapaCns) {
+                    if ($dryRun) {
                         foreach ($loteMapeado as $dadosPaciente) {
-                            $res = $this->processarRegistroPacienteComMapas($dadosPaciente, $mapaId, $mapaCpf, $mapaCns);
-
+                            $res = $this->simularProcessamentoLoteComMapas($dadosPaciente, $mapaId, $mapaCpf, $mapaCns);
                             if ($res === 'NOVO') {
                                 $contadores['novos']++;
+                                $loteNovos++;
                             } elseif ($res === 'ATUALIZADO') {
                                 $contadores['atualizados']++;
+                                $loteAtualizados++;
                             } elseif ($res === 'SEM_ALTERACOES') {
                                 $contadores['sem_alteracoes']++;
+                                $loteSemAlteracoes++;
                             } elseif ($res === 'DUPLICIDADE') {
                                 $contadores['duplicidades']++;
-                            } elseif ($res === 'FALHA_GRAVACAO') {
-                                $contadores['falhas']++;
+                                $loteDuplicidades++;
                             }
                         }
-                    });
+                    } else {
+                        // Persistência transacional do lote no banco local do CER Digital
+                        DB::transaction(function () use (&$loteMapeado, &$contadores, &$mapaId, &$mapaCpf, &$mapaCns, &$loteNovos, &$loteAtualizados, &$loteSemAlteracoes, &$loteDuplicidades, &$loteFalhas) {
+                            foreach ($loteMapeado as $dadosPaciente) {
+                                $res = $this->processarRegistroPacienteComMapas($dadosPaciente, $mapaId, $mapaCpf, $mapaCns);
+
+                                if ($res === 'NOVO') {
+                                    $contadores['novos']++;
+                                    $loteNovos++;
+                                } elseif ($res === 'ATUALIZADO') {
+                                    $contadores['atualizados']++;
+                                    $loteAtualizados++;
+                                } elseif ($res === 'SEM_ALTERACOES') {
+                                    $contadores['sem_alteracoes']++;
+                                    $loteSemAlteracoes++;
+                                } elseif ($res === 'DUPLICIDADE') {
+                                    $contadores['duplicidades']++;
+                                    $loteDuplicidades++;
+                                } elseif ($res === 'FALHA_GRAVACAO') {
+                                    $contadores['falhas']++;
+                                    $loteFalhas++;
+                                }
+                            }
+                        });
+                    }
                     $duracaoGravacaoMs += (int) round((microtime(true) - $tGravInicio) * 1000);
                 } else {
                     $duracaoProcessamentoMs += (int) round((microtime(true) - $tProcInicio) * 1000);
@@ -708,11 +851,31 @@ class EsusPecIntegrationService
                         $ultimoIdChave = (int) $ultimaLinha[$colunaSequencial];
                     }
                 }
-                $offset += $limite;
+                $offset += $limiteAtual;
 
-                // Checkpoint por lote para recuperação em caso de falhas
-                if ($ultimoIdChave > 0) {
+                // Checkpoint por lote para recuperação em caso de falhas (somente se gravação real)
+                if (! $dryRun && $ultimoIdChave > 0) {
                     $config->update(['ultimo_checkpoint_id' => $ultimoIdChave]);
+                }
+
+                $duracaoLoteSegundos = round(microtime(true) - $tConsultaLoteInicio, 2);
+
+                $metricasLote = [
+                    'consultados' => count($linhas),
+                    'validos' => $loteValidos,
+                    'invalidos' => $loteInvalidos,
+                    'sem_identificador' => $loteSemIdentificador,
+                    'novos' => $loteNovos,
+                    'atualizados' => $loteAtualizados,
+                    'sem_alteracoes' => $loteSemAlteracoes,
+                    'duplicidades' => $loteDuplicidades,
+                    'falhas' => $loteFalhas,
+                    'duracao_segundos' => $duracaoLoteSegundos,
+                    'ultimo_id_chave' => $ultimoIdChave,
+                ];
+
+                if ($onLoteConcluido !== null) {
+                    $onLoteConcluido($numeroLote, $metricasLote, $contadores, $totalConsultado, $totalEstimado);
                 }
 
                 $notificarProgresso('Processando lotes', $totalConsultado, $totalEstimado, $contadores, $modoExecucaoReal);
@@ -724,9 +887,48 @@ class EsusPecIntegrationService
             $duracaoTotalMs = (int) round((microtime(true) - $inicio) * 1000);
             $sucessoEfetivo = ($contadores['novos'] + $contadores['atualizados'] + $contadores['sem_alteracoes']) > 0;
 
+            $atingiuLimiteMaxRegistros = ($maxRegistros !== null && $totalConsultado >= $maxRegistros);
+            $existemRegistrosPendentes = false;
+
+            if ($atingiuLimiteMaxRegistros) {
+                try {
+                    if ($colunaSequencial) {
+                        $stmtCheck = $pdo->prepare("SELECT 1 FROM {$tabelaOrigem} WHERE {$colunaSequencial} > :ultimo_id LIMIT 1;");
+                        $stmtCheck->execute([':ultimo_id' => $ultimoIdChave]);
+                        $existemRegistrosPendentes = (bool) $stmtCheck->fetchColumn();
+                    } else {
+                        $stmtCheck = $pdo->prepare("SELECT 1 FROM {$tabelaOrigem} LIMIT 1 OFFSET :offset_check;");
+                        $stmtCheck->execute([':offset_check' => $offset]);
+                        $existemRegistrosPendentes = (bool) $stmtCheck->fetchColumn();
+                    }
+                } catch (Throwable) {
+                    $existemRegistrosPendentes = true;
+                }
+            }
+
             if ($contadores['falhas'] > 0 && ! $sucessoEfetivo) {
                 $statusFinal = 'ERRO';
                 $msgFinal = sprintf('A sincronização falhou: %d erros de gravação durante a persistência.', $contadores['falhas']);
+            } elseif ($dryRun) {
+                $statusFinal = 'DRY_RUN';
+                $msgFinal = sprintf(
+                    '[DRY-RUN] Simulação concluída (%s): %d consultados, %d seriam novos, %d atualizados, %d sem alterações, %d ignorados, %d duplicidades. Nenhum dado foi gravado.',
+                    $modoExecucaoReal,
+                    $totalConsultado,
+                    $contadores['novos'],
+                    $contadores['atualizados'],
+                    $contadores['sem_alteracoes'],
+                    $contadores['invalidos'] + $contadores['sem_identificador'],
+                    $contadores['duplicidades']
+                );
+            } elseif ($atingiuLimiteMaxRegistros && $existemRegistrosPendentes) {
+                $statusFinal = 'PARCIAL';
+                $msgFinal = sprintf(
+                    'Sincronização pausada após atingir o limite de %d registros (--max-registros=%d). Último checkpoint registrado: %d. Execute novamente sem --reiniciar para prosseguir.',
+                    $totalConsultado,
+                    $maxRegistros,
+                    $ultimoIdChave
+                );
             } elseif ($totalConsultado > 0 && ! $sucessoEfetivo) {
                 $statusFinal = 'INTERROMPIDO';
                 $msgFinal = sprintf(
@@ -754,6 +956,7 @@ class EsusPecIntegrationService
             $detalhesFinais = [
                 'etapa' => 'Concluído',
                 'percentual' => 100,
+                'dry_run' => $dryRun,
                 'tipo_banco' => $diagnostico['tipo_banco'],
                 'tabela' => $tabelaOrigem,
                 'versao_pec' => $diagnostico['versao_pec'],
@@ -788,25 +991,27 @@ class EsusPecIntegrationService
                 'pacientes_atualizados' => $contadores['atualizados'],
                 'registros_ignorados' => $contadores['invalidos'] + $contadores['sem_identificador'],
                 'duplicidades_identificadas' => $contadores['duplicidades'],
-                'mensagem_erro' => $statusFinal === 'SUCESSO' ? null : $msgFinal,
+                'mensagem_erro' => in_array($statusFinal, ['SUCESSO', 'PARCIAL', 'DRY_RUN'], true) ? null : $msgFinal,
                 'detalhes' => $detalhesFinais,
             ]);
 
-            // Persiste checkpoint após confirmação de gravação
-            if ($statusFinal === 'SUCESSO') {
-                $config->update([
-                    'ultima_sincronizacao_em' => now(),
-                    'ultima_sincronizacao_status' => $statusFinal,
-                    'ultimo_checkpoint_em' => now(),
-                    'ultimo_checkpoint_id' => $ultimoIdChave ?: $config->ultimo_checkpoint_id,
-                    'coluna_atualizacao_detectada' => $colunaAtualizacao,
-                    'coluna_sequencial_detectada' => $colunaSequencial,
-                ]);
-            } else {
-                $config->update([
-                    'ultima_sincronizacao_em' => now(),
-                    'ultima_sincronizacao_status' => $statusFinal,
-                ]);
+            // Persiste checkpoint após confirmação de gravação (apenas se não for dry-run)
+            if (! $dryRun) {
+                if (in_array($statusFinal, ['SUCESSO', 'PARCIAL'], true)) {
+                    $config->update([
+                        'ultima_sincronizacao_em' => now(),
+                        'ultima_sincronizacao_status' => $statusFinal,
+                        'ultimo_checkpoint_em' => now(),
+                        'ultimo_checkpoint_id' => $ultimoIdChave ?: $config->ultimo_checkpoint_id,
+                        'coluna_atualizacao_detectada' => $colunaAtualizacao,
+                        'coluna_sequencial_detectada' => $colunaSequencial,
+                    ]);
+                } else {
+                    $config->update([
+                        'ultima_sincronizacao_em' => now(),
+                        'ultima_sincronizacao_status' => $statusFinal,
+                    ]);
+                }
             }
 
             Cache::put("esus_sync_progresso_{$historico->id}", [
@@ -815,6 +1020,7 @@ class EsusPecIntegrationService
                 'processados' => $totalConsultado,
                 'total' => $totalConsultado,
                 'percentual' => 100,
+                'dry_run' => $dryRun,
                 'modo' => $modoExecucaoReal,
                 'contadores' => $contadores,
                 'duracao_consulta_ms' => $duracaoConsultaMs,
@@ -828,26 +1034,32 @@ class EsusPecIntegrationService
             $duracao = (int) round(microtime(true) - $inicio);
             $msgErro = $e->getMessage();
 
-            $historico->update([
-                'status' => 'ERRO',
-                'finalizado_em' => now(),
-                'duracao_segundos' => $duracao,
-                'mensagem_erro' => $msgErro,
-                'detalhes' => array_merge($historico->detalhes ?? [], [
-                    'etapa' => 'Erro na execução',
-                    'falhas_gravacao' => $contadores['falhas'] + 1,
-                    'duracao_consulta_ms' => $duracaoConsultaMs,
-                    'duracao_processamento_ms' => $duracaoProcessamentoMs,
-                    'duracao_gravacao_ms' => $duracaoGravacaoMs,
-                ]),
-            ]);
+            if (isset($historico) && $historico instanceof HistoricoSincronizacaoEsus) {
+                $historico->update([
+                    'status' => 'ERRO',
+                    'finalizado_em' => now(),
+                    'duracao_segundos' => $duracao,
+                    'mensagem_erro' => $msgErro,
+                    'detalhes' => array_merge($historico->detalhes ?? [], [
+                        'etapa' => 'Erro na execução',
+                        'falhas_gravacao' => ($contadores['falhas'] ?? 0) + 1,
+                        'duracao_consulta_ms' => $duracaoConsultaMs,
+                        'duracao_processamento_ms' => $duracaoProcessamentoMs,
+                        'duracao_gravacao_ms' => $duracaoGravacaoMs,
+                    ]),
+                ]);
+            }
 
-            $config->update([
-                'ultima_sincronizacao_em' => now(),
-                'ultima_sincronizacao_status' => 'ERRO',
-            ]);
+            if (! $dryRun) {
+                ConfiguracaoEsusPec::atual()->update([
+                    'ultima_sincronizacao_em' => now(),
+                    'ultima_sincronizacao_status' => 'ERRO',
+                ]);
+            }
 
-            return $historico;
+            return $historico ?? throw $e;
+        } finally {
+            $lock->release();
         }
     }
 
@@ -976,6 +1188,121 @@ class EsusPecIntegrationService
     }
 
     /**
+     * Simula o processamento de um paciente em modo Dry-Run sem persistir dados no banco.
+     *
+     * @param  array<string, mixed>  $dados
+     * @param  array<string, Paciente>  $mapaId
+     * @param  array<string, array<int, Paciente>>  $mapaCpf
+     * @param  array<string, array<int, Paciente>>  $mapaCns
+     * @return 'NOVO'|'ATUALIZADO'|'SEM_ALTERACOES'|'DUPLICIDADE'
+     */
+    public function simularProcessamentoLoteComMapas(
+        array $dados,
+        array &$mapaId,
+        array &$mapaCpf,
+        array &$mapaCns
+    ): string {
+        $idExterno = $dados['id_externo_esus'] ?? null;
+        $cpf = $dados['cpf'] ?? null;
+        $cns = $dados['cns'] ?? null;
+
+        // 1. Identificador estável do cidadão
+        $pacientePorId = null;
+        if (! empty($idExterno) && isset($mapaId[$idExterno])) {
+            $pacientePorId = $mapaId[$idExterno];
+        }
+
+        // 2. Busca por CPF
+        $pacientePorCpf = null;
+        if (! empty($cpf) && isset($mapaCpf[$cpf])) {
+            $candidatos = $mapaCpf[$cpf];
+            if (count($candidatos) > 1) {
+                return 'DUPLICIDADE';
+            }
+            if (count($candidatos) === 1) {
+                $pacientePorCpf = $candidatos[0];
+            }
+        }
+
+        // 3. Busca por CNS
+        $pacientePorCns = null;
+        if (! empty($cns) && isset($mapaCns[$cns])) {
+            $candidatos = $mapaCns[$cns];
+            if (count($candidatos) > 1) {
+                return 'DUPLICIDADE';
+            }
+            if (count($candidatos) === 1) {
+                $pacientePorCns = $candidatos[0];
+            }
+        }
+
+        // Conflitos cruzados
+        if ($pacientePorCpf && $pacientePorCns && $pacientePorCpf->id !== $pacientePorCns->id) {
+            return 'DUPLICIDADE';
+        }
+        if ($pacientePorId && $pacientePorCpf && $pacientePorId->id !== $pacientePorCpf->id) {
+            return 'DUPLICIDADE';
+        }
+        if ($pacientePorId && $pacientePorCns && $pacientePorId->id !== $pacientePorCns->id) {
+            return 'DUPLICIDADE';
+        }
+
+        $pacienteExistente = $pacientePorId ?: ($pacientePorCpf ?: $pacientePorCns);
+
+        if ($pacienteExistente) {
+            $haveraAlteracao = false;
+            if (empty($pacienteExistente->id_externo_esus) && ! empty($dados['id_externo_esus'])) {
+                $haveraAlteracao = true;
+            }
+            if (empty($pacienteExistente->cpf) && ! empty($dados['cpf'])) {
+                $haveraAlteracao = true;
+            }
+            if (empty($pacienteExistente->cns) && ! empty($dados['cns'])) {
+                $haveraAlteracao = true;
+            }
+
+            $camposOpcionais = [
+                'nome_mae',
+                'telefone_contato',
+                'telefone_secundario',
+                'endereco',
+                'bairro',
+                'ubs_referencia',
+                'nome_acs',
+            ];
+            foreach ($camposOpcionais as $campo) {
+                if (empty($pacienteExistente->{$campo}) && ! empty($dados[$campo])) {
+                    $haveraAlteracao = true;
+                    break;
+                }
+            }
+
+            return $haveraAlteracao ? 'ATUALIZADO' : 'SEM_ALTERACOES';
+        }
+
+        // Simula novo paciente adicionando à memória para detectar duplicações internas do mesmo lote
+        $pacienteSimulado = new Paciente([
+            'id' => -1 * (count($mapaId) + count($mapaCpf) + count($mapaCns) + 1),
+            'nome' => $dados['nome'] ?? '',
+            'cpf' => $cpf,
+            'cns' => $cns,
+            'id_externo_esus' => $idExterno,
+        ]);
+
+        if (! empty($idExterno)) {
+            $mapaId[$idExterno] = $pacienteSimulado;
+        }
+        if (! empty($cpf)) {
+            $mapaCpf[$cpf] = [$pacienteSimulado];
+        }
+        if (! empty($cns)) {
+            $mapaCns[$cns] = [$pacienteSimulado];
+        }
+
+        return 'NOVO';
+    }
+
+    /**
      * Processa um registro mapeado utilizando mapas de busca em memória para alta performance.
      *
      * @param  array<string, mixed>  $dados
@@ -1062,42 +1389,38 @@ class EsusPecIntegrationService
         }
 
         // 4. Inserção de novo paciente no banco do CER Digital
-        try {
-            $novoPaciente = Paciente::create([
-                'nome' => $nome,
-                'cpf' => $cpf,
-                'cns' => $cns,
-                'data_nascimento' => $dtNascimento,
-                'sexo' => $dados['sexo'] ?? 'M',
-                'nome_mae' => $dados['nome_mae'] ?? null,
-                'municipio_ibge' => $dados['municipio_ibge'] ?? '270430',
-                'ubs_referencia' => $dados['ubs_referencia'] ?? null,
-                'nome_acs' => $dados['nome_acs'] ?? null,
-                'telefone_contato' => $dados['telefone_contato'] ?? null,
-                'telefone_secundario' => $dados['telefone_secundario'] ?? null,
-                'endereco' => $dados['endereco'] ?? null,
-                'bairro' => $dados['bairro'] ?? null,
-                'origem_cadastro' => 'ESUS_APS',
-                'id_externo_esus' => $idExterno,
-                'data_ultima_sincronizacao_esus' => now(),
-                'ativo' => true,
-            ]);
+        $novoPaciente = Paciente::create([
+            'nome' => $nome,
+            'cpf' => $cpf,
+            'cns' => $cns,
+            'data_nascimento' => $dtNascimento,
+            'sexo' => $dados['sexo'] ?? 'M',
+            'nome_mae' => $dados['nome_mae'] ?? null,
+            'municipio_ibge' => $dados['municipio_ibge'] ?? '270430',
+            'ubs_referencia' => $dados['ubs_referencia'] ?? null,
+            'nome_acs' => $dados['nome_acs'] ?? null,
+            'telefone_contato' => $dados['telefone_contato'] ?? null,
+            'telefone_secundario' => $dados['telefone_secundario'] ?? null,
+            'endereco' => $dados['endereco'] ?? null,
+            'bairro' => $dados['bairro'] ?? null,
+            'origem_cadastro' => 'ESUS_APS',
+            'id_externo_esus' => $idExterno,
+            'data_ultima_sincronizacao_esus' => now(),
+            'ativo' => true,
+        ]);
 
-            // Registra nos índices em memória para evitar colisões no mesmo lote
-            if (! empty($idExterno)) {
-                $mapaId[$idExterno] = $novoPaciente;
-            }
-            if (! empty($cpf)) {
-                $mapaCpf[$cpf] = [$novoPaciente];
-            }
-            if (! empty($cns)) {
-                $mapaCns[$cns] = [$novoPaciente];
-            }
-
-            return 'NOVO';
-        } catch (Throwable) {
-            return 'FALHA_GRAVACAO';
+        // Registra nos índices em memória para evitar colisões no mesmo lote
+        if (! empty($idExterno)) {
+            $mapaId[$idExterno] = $novoPaciente;
         }
+        if (! empty($cpf)) {
+            $mapaCpf[$cpf] = [$novoPaciente];
+        }
+        if (! empty($cns)) {
+            $mapaCns[$cns] = [$novoPaciente];
+        }
+
+        return 'NOVO';
     }
 
     /**

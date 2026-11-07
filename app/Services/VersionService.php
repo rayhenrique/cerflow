@@ -44,6 +44,20 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.13.0',
+                'data' => '07/11/2026',
+                'titulo' => 'Comando Artisan CLI para Sincronização do e-SUS APS PEC',
+                'tipo' => 'Nova Versão',
+                'destaques' => [
+                    'Novo comando de console php artisan esus:sincronizar para execução direta pelo terminal da VPS, sem depender de navegador ou worker.',
+                    'Processamento em lotes configuráveis (--lote=2000) e limite opcional (--max-registros) para homologação por etapas.',
+                    'Modo simulação (--dry-run) que executa validação, matching e desduplicação completa sem persistir dados no banco local.',
+                    'Controle e retomada automática por checkpoint a partir do último identificador processado, com opção de reinício (--reiniciar).',
+                    'Bloqueio atômico de concorrência com Cache Lock e validação de status ativo contra execuções simultâneas.',
+                    'Saída rica no terminal em tempo real com métricas lote a lote e tabela consolidada de resultados do Symfony Console.',
+                ],
+            ],
+            [
                 'versao' => '1.12.0',
                 'data' => '07/11/2026',
                 'titulo' => 'Otimização e-SUS PEC, Keyset Pagination e Segundo Plano na VPS',
