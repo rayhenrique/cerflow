@@ -44,6 +44,31 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.15.0',
+                'data' => '07/11/2026',
+                'titulo' => 'Busca Sob Demanda de Pacientes no Novo Agendamento',
+                'tipo' => 'Performance e Usabilidade',
+                'destaques' => [
+                    'Abertura instantânea do modal de agendamento na grade semanal, eliminando a carga antecipada de todos os pacientes ativos.',
+                    'Pesquisa em tempo real com debounce de 400ms e ativação a partir de 3 caracteres por nome, CPF ou CNS.',
+                    'Normalização automática de pontuação de documentos para localização ágil.',
+                    'Exibição de resultados em lista compacta com limite de 20 registros e dados essenciais de identificação (Nome, CPF, CNS e Nascimento).',
+                    'Card visual de confirmação do paciente selecionado com ação rápida de troca ou limpeza.',
+                ],
+            ],
+            [
+                'versao' => '1.14.0',
+                'data' => '07/11/2026',
+                'titulo' => 'Complementação de Vínculos de UBS e ACS do e-SUS PEC',
+                'tipo' => 'Nova Versão',
+                'destaques' => [
+                    'Resolução relacional da UBS de referência vinculada via dimensões do PEC sem confundir equipes com unidades de saúde.',
+                    'Resolução individual e por equipe do Agente Comunitário de Saúde (ACS) validado estritamente pelos CBOs 515105 e 322255.',
+                    'Novo modo --apenas-vinculos no comando esus:sincronizar para enriquecimento de pacientes sem criar registros ou alterar dados pessoais.',
+                    'Novo comando php artisan esus:diagnostico para validação prévia de conexões, contagens e schemas do PostgreSQL do e-SUS.',
+                ],
+            ],
+            [
                 'versao' => '1.13.1',
                 'data' => '07/11/2026',
                 'titulo' => 'Desbloqueio e Recuperação Automática de Sincronizações Órfãs do e-SUS',

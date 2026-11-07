@@ -32,6 +32,11 @@ class GradeSemanal extends Component
 
     public ?int $paciente_id = null;
 
+    public string $pesquisaPaciente = '';
+
+    /** @var ?array{id: int, nome: string, cpf: ?string, cns: ?string, data_nascimento: ?string} */
+    public ?array $pacienteSelecionado = null;
+
     public ?int $sala_id = null;
 
     public string $hora_inicio = '08:00';
@@ -105,10 +110,97 @@ class GradeSemanal extends Component
         Gate::authorize('create', Agendamento::class);
 
         $this->resetValidation();
+        $this->limparPacienteSelecionado();
         $this->sala_id = $salaId;
         $this->hora_inicio = $horaInicio;
         $this->hora_fim = CarbonImmutable::createFromFormat('H:i', $horaInicio)->addMinutes(30)->format('H:i');
         $this->modalAberto = true;
+    }
+
+    public function fecharModal(): void
+    {
+        $this->modalAberto = false;
+        $this->limparPacienteSelecionado();
+        $this->resetValidation();
+    }
+
+    public function selecionarPaciente(int $id): void
+    {
+        $paciente = Paciente::query()
+            ->ativos()
+            ->find($id, ['id', 'nome', 'cpf', 'cns', 'data_nascimento']);
+
+        if ($paciente !== null) {
+            $this->paciente_id = (int) $paciente->id;
+            $this->pacienteSelecionado = [
+                'id' => (int) $paciente->id,
+                'nome' => (string) $paciente->nome,
+                'cpf' => $paciente->cpf ? $this->formatarCpf((string) $paciente->cpf) : null,
+                'cns' => $paciente->cns,
+                'data_nascimento' => $paciente->data_nascimento?->format('d/m/Y'),
+            ];
+            $this->pesquisaPaciente = '';
+            $this->resetValidation('paciente_id');
+        }
+    }
+
+    public function limparPacienteSelecionado(): void
+    {
+        $this->paciente_id = null;
+        $this->pacienteSelecionado = null;
+        $this->pesquisaPaciente = '';
+    }
+
+    /**
+     * Realiza a busca sob demanda de pacientes no banco de dados.
+     *
+     * @return array<int, array{id: int, nome: string, cpf: ?string, cns: ?string, data_nascimento: ?string}>
+     */
+    public function buscarPacientes(): array
+    {
+        $termo = trim($this->pesquisaPaciente);
+
+        // Requisito: Exigir pelo menos 3 caracteres para iniciar a busca
+        if (mb_strlen($termo) < 3) {
+            return [];
+        }
+
+        // Normalização: extração de dígitos para busca em CPF e CNS
+        $termoDigitos = preg_replace('/\D/', '', $termo) ?? '';
+
+        $query = Paciente::query()
+            ->ativos()
+            ->where(function ($q) use ($termo, $termoDigitos): void {
+                $q->where('nome', 'like', '%'.$termo.'%');
+
+                if ($termoDigitos !== '') {
+                    $q->orWhere('cpf', 'like', '%'.$termoDigitos.'%')
+                        ->orWhere('cns', 'like', '%'.$termoDigitos.'%');
+                }
+            });
+
+        return $query
+            ->orderBy('nome')
+            ->limit(20)
+            ->get(['id', 'nome', 'cpf', 'cns', 'data_nascimento'])
+            ->map(fn (Paciente $p): array => [
+                'id' => (int) $p->id,
+                'nome' => (string) $p->nome,
+                'cpf' => $p->cpf ? $this->formatarCpf((string) $p->cpf) : null,
+                'cns' => $p->cns,
+                'data_nascimento' => $p->data_nascimento?->format('d/m/Y'),
+            ])
+            ->all();
+    }
+
+    private function formatarCpf(string $cpf): string
+    {
+        $d = preg_replace('/\D/', '', $cpf) ?? '';
+        if (strlen($d) === 11) {
+            return substr($d, 0, 3).'.'.substr($d, 3, 3).'.'.substr($d, 6, 3).'-'.substr($d, 9, 2);
+        }
+
+        return $cpf;
     }
 
     /**
@@ -129,6 +221,20 @@ class GradeSemanal extends Component
             'recorrente' => ['boolean'],
             'semanasRecorrencia' => ['integer', 'min:1', 'max:12'],
             'observacao' => ['nullable', 'string', 'max:255'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function messages(): array
+    {
+        return [
+            'paciente_id.required' => 'É obrigatório selecionar um paciente para o agendamento.',
+            'paciente_id.exists' => 'O paciente selecionado não foi encontrado ou não está ativo.',
+            'sala_id.required' => 'Selecione uma sala ou espaço para o agendamento.',
+            'profissionaisSelecionados.required' => 'Selecione ao menos um profissional para o agendamento.',
+            'profissionaisSelecionados.min' => 'Selecione ao menos um profissional para o agendamento.',
         ];
     }
 
@@ -157,7 +263,8 @@ class GradeSemanal extends Component
         );
 
         $this->modalAberto = false;
-        $this->reset(['paciente_id', 'profissionaisSelecionados', 'observacao']);
+        $this->limparPacienteSelecionado();
+        $this->reset(['profissionaisSelecionados', 'observacao']);
         $mensagem = 'Agendamento registrado com sucesso na grade.';
         session()->flash('sucesso', $mensagem);
         $this->dispatch('toast', tipo: 'sucesso', titulo: 'Horário agendado', mensagem: $mensagem);
@@ -196,11 +303,26 @@ class GradeSemanal extends Component
             $gradeIndexada[$agendamento->sala_id][$horaSlot][] = $agendamento;
         }
 
+        if ($this->paciente_id !== null && $this->pacienteSelecionado === null) {
+            $paciente = Paciente::query()->ativos()->find($this->paciente_id, ['id', 'nome', 'cpf', 'cns', 'data_nascimento']);
+            if ($paciente !== null) {
+                $this->pacienteSelecionado = [
+                    'id' => (int) $paciente->id,
+                    'nome' => (string) $paciente->nome,
+                    'cpf' => $paciente->cpf ? $this->formatarCpf((string) $paciente->cpf) : null,
+                    'cns' => $paciente->cns,
+                    'data_nascimento' => $paciente->data_nascimento?->format('d/m/Y'),
+                ];
+            } else {
+                $this->paciente_id = null;
+            }
+        }
+
         return view('livewire.grade-semanal', [
             'salas' => $salas,
             'slots' => $slots,
             'gradeIndexada' => $gradeIndexada,
-            'pacientes' => Paciente::query()->ativos()->orderBy('nome')->get(['id', 'nome', 'cns']),
+            'pacientesResultados' => $this->buscarPacientes(),
             'profissionaisDisponiveis' => Profissional::query()->ativos()->orderBy('nome')->get(['id', 'nome', 'especialidade', 'cbo_padrao']),
         ]);
     }

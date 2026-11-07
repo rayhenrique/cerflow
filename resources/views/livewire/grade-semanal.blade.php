@@ -135,18 +135,116 @@
             <div class="w-full max-w-lg rounded-xl bg-white p-4 sm:p-6 shadow-xl border border-slate-200 my-auto max-h-[92vh] overflow-y-auto">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                     <h3 class="text-sm sm:text-base font-bold text-slate-900">Agendamento na Grade Semanal</h3>
-                    <button type="button" wire:click="$set('modalAberto', false)" class="text-slate-400 hover:text-slate-600 text-sm cursor-pointer">✕</button>
+                    <button type="button" wire:click="fecharModal" class="text-slate-400 hover:text-slate-600 text-sm cursor-pointer">✕</button>
                 </div>
 
                 <form wire:submit="salvarAgendamento" class="mt-4 space-y-4 text-xs">
+                    <!-- Campo de Busca de Paciente Sob Demanda -->
                     <div>
-                        <label class="block font-semibold text-slate-700">Paciente (CNS Válido)</label>
-                        <select wire:model="paciente_id" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2">
-                            <option value="">Selecione o usuário do CER...</option>
-                            @foreach($pacientes as $pac)
-                                <option value="{{ $pac->id }}">{{ $pac->nome }} — CNS: {{ $pac->cns ?? 'Pendente' }}</option>
-                            @endforeach
-                        </select>
+                        <label class="block font-semibold text-slate-700">
+                            Paciente <span class="text-rose-600">*</span>
+                        </label>
+
+                        @if($pacienteSelecionado)
+                            <!-- Card de Paciente Selecionado -->
+                            <div class="mt-1 flex items-start justify-between gap-3 rounded-lg border border-teal-200 bg-teal-50/70 p-3">
+                                <div class="space-y-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="inline-flex items-center justify-center rounded-full bg-teal-600 text-white w-5 h-5 text-xs font-bold">
+                                            ✓
+                                        </span>
+                                        <span class="font-bold text-slate-900 text-xs sm:text-sm">
+                                            {{ $pacienteSelecionado['nome'] }}
+                                        </span>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-0.5 text-[11px] text-slate-600 pl-7">
+                                        <div>
+                                            <span class="text-slate-400 font-medium">CPF:</span>
+                                            <span class="font-mono text-slate-800">{{ $pacienteSelecionado['cpf'] ?? 'Não informado' }}</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-slate-400 font-medium">CNS:</span>
+                                            <span class="font-mono text-slate-800">{{ $pacienteSelecionado['cns'] ?? 'Não informado' }}</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-slate-400 font-medium">Nasc:</span>
+                                            <span class="text-slate-800">{{ $pacienteSelecionado['data_nascimento'] ?? 'Não informado' }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    wire:click="limparPacienteSelecionado"
+                                    class="shrink-0 inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-rose-600 hover:border-rose-300 transition-colors cursor-pointer"
+                                    title="Remover seleção e pesquisar outro paciente"
+                                >
+                                    <span>✕</span>
+                                    <span>Trocar</span>
+                                </button>
+                            </div>
+                        @else
+                            <!-- Input de Pesquisa Sob Demanda -->
+                            <div class="relative mt-1">
+                                <div class="relative flex items-center">
+                                    <input
+                                        type="text"
+                                        wire:model.live.debounce.400ms="pesquisaPaciente"
+                                        placeholder="Digite o nome, CPF ou Cartão SUS do paciente"
+                                        autocomplete="off"
+                                        class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-xs placeholder:text-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                        autofocus
+                                    >
+                                    <!-- Indicador de Carregamento Discreto -->
+                                    <div wire:loading wire:target="pesquisaPaciente" class="absolute right-3 text-teal-600">
+                                        <svg class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+
+                                <!-- Feedback e Lista de Resultados -->
+                                @if(mb_strlen(trim($pesquisaPaciente)) < 3)
+                                    <p class="mt-1.5 text-[11px] text-slate-500 flex items-center gap-1">
+                                        <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        Pesquise um paciente para iniciar
+                                    </p>
+                                @else
+                                    <div class="mt-2 max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-sm divide-y divide-slate-100">
+                                        @forelse($pacientesResultados as $pac)
+                                            <button
+                                                type="button"
+                                                wire:click="selecionarPaciente({{ $pac['id'] }})"
+                                                wire:key="paciente-resultado-{{ $pac['id'] }}"
+                                                class="w-full text-left p-2.5 hover:bg-teal-50/60 focus:bg-teal-50 transition-colors flex items-center justify-between gap-3 group cursor-pointer"
+                                            >
+                                                <div class="space-y-0.5 min-w-0">
+                                                    <div class="font-bold text-slate-800 text-xs truncate group-hover:text-teal-700">
+                                                        {{ $pac['nome'] }}
+                                                    </div>
+                                                    <div class="flex flex-wrap items-center gap-x-3 text-[11px] text-slate-500">
+                                                        <span>CPF: <strong class="text-slate-700 font-mono">{{ $pac['cpf'] ?? '—' }}</strong></span>
+                                                        <span>CNS: <strong class="text-slate-700 font-mono">{{ $pac['cns'] ?? '—' }}</strong></span>
+                                                        <span>Nasc: <strong class="text-slate-700">{{ $pac['data_nascimento'] ?? '—' }}</strong></span>
+                                                    </div>
+                                                </div>
+                                                <span class="shrink-0 text-xs font-semibold text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    Selecionar →
+                                                </span>
+                                            </button>
+                                        @empty
+                                            <div class="p-3 text-center text-xs text-slate-500" wire:loading.remove wire:target="pesquisaPaciente">
+                                                Nenhum paciente encontrado
+                                            </div>
+                                        @endforelse
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
+
                         @error('paciente_id') <span class="text-red-600 mt-1 block">{{ $message }}</span> @enderror
                     </div>
 
@@ -212,7 +310,7 @@
                     </div>
 
                     <div class="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-3 border-t border-slate-100">
-                        <button type="button" wire:click="$set('modalAberto', false)" class="w-full sm:w-auto rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 cursor-pointer">
+                        <button type="button" wire:click="fecharModal" class="w-full sm:w-auto rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 cursor-pointer">
                             Cancelar
                         </button>
                         <button type="submit" class="w-full sm:w-auto rounded-lg bg-teal-600 px-4 py-2 font-semibold text-white hover:bg-teal-500 cursor-pointer">

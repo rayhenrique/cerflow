@@ -46,4 +46,3 @@ class DiagnosticoEsusPecCommand extends Command
         }
     }
 }
-
