@@ -2,6 +2,11 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.3.3] - 2026-11-06
+
+### Adicionado
+- Exibição automática do **Modal de Novidades da Versão** (`ModalNovidadesVersao`) mesmo para usuários já autenticados sempre que a versão do sistema (`VERSION`) for atualizada, comparando `session('ultima_versao_vista')` com `VersionService::versaoAtual()`.
+
 ## [1.3.2] - 2026-11-06
 
 ### Corrigido

@@ -36,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
 
         Event::listen(Login::class, function (): void {
             session()->put('exibir_modal_versao', true);
+            session()->forget('ultima_versao_vista');
         });
     }
 }

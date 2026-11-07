@@ -44,6 +44,15 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.3.3',
+                'data' => '06/11/2026',
+                'titulo' => 'Aviso Automático de Nova Versão Mesmo para Quem Já Está Logado',
+                'tipo' => 'Melhoria de Uso',
+                'destaques' => [
+                    'Agora, sempre que o sistema for atualizado para uma versão nova, a janela de novidades aparece automaticamente na tela mesmo para quem já estava com o sistema aberto.',
+                ],
+            ],
+            [
                 'versao' => '1.3.2',
                 'data' => '06/11/2026',
                 'titulo' => 'Sincronização Automática de Versões na Atualização do Servidor',

@@ -23,7 +23,7 @@ class ControleVersaoAjudaTest extends TestCase
         $this->seed(RoleAndPermissionSeeder::class);
     }
 
-    public function test_dispara_modal_de_novidades_da_versao_sempre_que_usuario_faz_login(): void
+    public function test_dispara_modal_de_novidades_no_login_e_tambem_quando_sistema_atualiza_com_usuario_logado(): void
     {
         $user = User::factory()->create([
             'email' => 'terapeuta@cerflow.gov.br',
@@ -40,23 +40,29 @@ class ControleVersaoAjudaTest extends TestCase
         $response->assertRedirect('/');
         $this->assertTrue(session()->get('exibir_modal_versao'));
 
-        // Ao acessar a tela após login, o modal de novidades da versão deve estar aberto, exibir a versão atual e consumir a flag:
+        // 1. Ao acessar a tela após login, o modal abre e registra a versão atual vista na sessão
         $versaoAtiva = app(VersionService::class)->versaoAtual();
         $paginaGrade = $this->actingAs($user)->get('/grade');
         $paginaGrade->assertOk();
         $paginaGrade->assertSee('Novidades da Versão');
         $paginaGrade->assertSee('v'.$versaoAtiva);
         $this->assertNull(session()->get('exibir_modal_versao'));
+        $this->assertSame($versaoAtiva, session()->get('ultima_versao_vista'));
 
-        // Também permite abrir e fechar o modal diretamente pelo componente Livewire:
-        session()->put('exibir_modal_versao', true);
+        // 2. Navegando novamente na mesma versão, o modal permanece fechado
+        Livewire::actingAs($user)
+            ->test(ModalNovidadesVersao::class)
+            ->assertSet('aberto', false);
+
+        // 3. Se o sistema foi atualizado enquanto o usuário já estava logado (ultima_versao_vista diferente da atual), o modal abre automaticamente!
+        session()->put('ultima_versao_vista', '1.0.0');
         Livewire::actingAs($user)
             ->test(ModalNovidadesVersao::class)
             ->assertSet('aberto', true)
             ->call('fecharModal')
             ->assertSet('aberto', false);
 
-        $this->assertNull(session()->get('exibir_modal_versao'));
+        $this->assertSame($versaoAtiva, session()->get('ultima_versao_vista'));
     }
 
     public function test_modulo_ajuda_e_sobre_exibe_evolucao_das_versoes_e_manual_sus(): void
@@ -68,6 +74,7 @@ class ControleVersaoAjudaTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Central de Ajuda & Sobre o CER Flow', false);
+        $response->assertSee('v1.3.3');
         $response->assertSee('v1.3.2');
         $response->assertSee('v1.3.1');
         $response->assertSee('v1.3.0');

@@ -13,10 +13,15 @@ class ModalNovidadesVersao extends Component
 {
     public bool $aberto = false;
 
-    public function mount(): void
+    public function mount(VersionService $versionService): void
     {
-        if (session()->pull('exibir_modal_versao', false) === true) {
+        $versaoAtual = $versionService->versaoAtual();
+        $foiLogin = session()->pull('exibir_modal_versao', false) === true;
+        $ultimaVersaoVista = session()->get('ultima_versao_vista');
+
+        if ($foiLogin || $ultimaVersaoVista !== $versaoAtual) {
             $this->aberto = true;
+            session()->put('ultima_versao_vista', $versaoAtual);
         }
     }
 
@@ -26,9 +31,10 @@ class ModalNovidadesVersao extends Component
         $this->aberto = true;
     }
 
-    public function fecharModal(): void
+    public function fecharModal(VersionService $versionService): void
     {
         session()->forget('exibir_modal_versao');
+        session()->put('ultima_versao_vista', $versionService->versaoAtual());
         $this->aberto = false;
     }
 
