@@ -100,6 +100,33 @@ class SincronizarEsusPecCommand extends Command
             ]);
         }
 
+        $limparBloqueio = (bool) $this->option('limpar-bloqueio');
+
+        if ($limparBloqueio) {
+            Cache::lock(EsusPecIntegrationService::LOCK_NAME, 7200)->forceRelease();
+            Cache::forget(EsusPecIntegrationService::LOCK_NAME);
+            $afetados = HistoricoSincronizacaoEsus::where('status', 'EM_ANDAMENTO')->update([
+                'status' => 'INTERROMPIDO',
+                'finalizado_em' => now(),
+                'mensagem_erro' => 'Bloqueio liberado manualmente pelo comando esus:sincronizar --limpar-bloqueio.',
+            ]);
+
+            $this->info("Bloqueios de sincronização liberados com sucesso ({$afetados} execução(ões) marcada(s) como INTERROMPIDO).");
+
+            return self::SUCCESS;
+        }
+
+        // Se --force foi passado, limpa preventivamente bloqueios e execuções anteriores travadas
+        if ($force) {
+            Cache::lock(EsusPecIntegrationService::LOCK_NAME, 7200)->forceRelease();
+            Cache::forget(EsusPecIntegrationService::LOCK_NAME);
+            HistoricoSincronizacaoEsus::where('status', 'EM_ANDAMENTO')->update([
+                'status' => 'INTERROMPIDO',
+                'finalizado_em' => now(),
+                'mensagem_erro' => 'Execução anterior cancelada por nova execução forçada (--force).',
+            ]);
+        }
+
         // Validação preventiva de concorrência com Jobs, Web e outros processos CLI
         $lockTeste = Cache::lock(EsusPecIntegrationService::LOCK_NAME, 7200);
         $conseguiuLock = $lockTeste->get();
