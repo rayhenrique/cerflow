@@ -529,7 +529,7 @@
                     </button>
                     <span class="hidden md:inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
                         <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                        CNES {{ \App\Services\BpaiExportService::CNES_PADRAO }}
+                        CNES {{ $configuracaoEstabelecimento->cnes }}
                     </span>
                 </div>
             </header>
