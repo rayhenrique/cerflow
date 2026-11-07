@@ -44,6 +44,15 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.3.2',
+                'data' => '06/11/2026',
+                'titulo' => 'Sincronização Automática de Versões na Atualização do Servidor',
+                'tipo' => 'Melhoria de Estabilidade',
+                'destaques' => [
+                    'Ajuste no processo de atualização do servidor para substituir automaticamente etiquetas de versões antigas sem interromper a instalação.',
+                ],
+            ],
+            [
                 'versao' => '1.3.1',
                 'data' => '06/11/2026',
                 'titulo' => 'Textos de Ajuda e Novidades Mais Simples e Fáceis de Entender',

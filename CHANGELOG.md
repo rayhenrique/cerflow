@@ -2,6 +2,11 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.3.2] - 2026-11-06
+
+### Corrigido
+- Adicionada a flag `--force` ao comando `git fetch --all --tags --force --prune` no `deploy.sh` para evitar que tags recriadas (`would clobber existing tag`) interrompam a execução do deploy sob `set -e`.
+
 ## [1.3.1] - 2026-11-06
 
 ### Alterado

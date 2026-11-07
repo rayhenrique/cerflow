@@ -18,9 +18,9 @@ trap 'php artisan up || true' ERR
 # 1. Ativa modo de manutenção
 php artisan down --retry=15 || true
 
-# 2. Ignora diferenças de permissão (chmod) no Git e sincroniza com o repositório remoto
+# 2. Ignora diferenças de permissão (chmod) no Git e sincroniza com o repositório remoto (forçando atualização de tags)
 git config core.fileMode false
-git fetch --all --tags --prune
+git fetch --all --tags --force --prune
 
 if [[ "${TARGET_REF}" == v* ]]; then
     echo "📌 Fazendo checkout forçado da tag ${TARGET_REF}..."
