@@ -319,6 +319,31 @@
                             @error('esus_senha') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
                         </div>
 
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Modo de Sincronização</label>
+                                <select wire:model="esus_modo_sincronizacao"
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-teal-600 focus:outline-none bg-white">
+                                    <option value="AUTO">Automático (Incremental se disponível)</option>
+                                    <option value="INCREMENTAL">Incremental (Apenas novos e modificados)</option>
+                                    <option value="COMPLETA">Carga Completa (Reconciliação total)</option>
+                                </select>
+                                <p class="text-[10px] text-slate-400 mt-1">Se não houver coluna temporal no DW, o modo automático utiliza Reconciliação Completa por Keyset.</p>
+                                @error('esus_modo_sincronizacao') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Tamanho do Lote (Chunk Size)</label>
+                                <select wire:model="esus_tamanho_lote"
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-teal-600 focus:outline-none bg-white">
+                                    <option value="500">500 registros por lote (Padrão balanceado)</option>
+                                    <option value="1000">1.000 registros por lote (Alta performance)</option>
+                                </select>
+                                <p class="text-[10px] text-slate-400 mt-1">Lotes processados em transações atômicas com pré-carregamento em memória.</p>
+                                @error('esus_tamanho_lote') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                            </div>
+                        </div>
+
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1">Endereço Web do PEC (Interface do Usuário)</label>
                             <input type="url" wire:model="esus_endereco_web" placeholder="http://189.89.61.50:8181"
@@ -396,6 +421,29 @@
                             @endif
                         </div>
 
+                        <div class="flex items-center justify-between py-2 border-b border-slate-100">
+                            <span class="text-slate-500">Coluna Temporal de Atualização</span>
+                            @if ($esus_coluna_atualizacao)
+                                <span class="font-mono text-emerald-700 font-bold text-[11px]">{{ $esus_coluna_atualizacao }} (Incremental ativa)</span>
+                            @else
+                                <span class="text-slate-500 text-[11px]">Ausente (Reconciliação por Keyset)</span>
+                            @endif
+                        </div>
+
+                        <div class="flex items-center justify-between py-2 border-b border-slate-100">
+                            <span class="text-slate-500">Identificador Sequencial (Keyset)</span>
+                            <span class="font-mono text-slate-700 font-semibold text-[11px]">
+                                {{ $esus_coluna_sequencial ?: 'co_seq_acomp_cidadaos_vinc' }}
+                            </span>
+                        </div>
+
+                        <div class="flex items-center justify-between py-2 border-b border-slate-100">
+                            <span class="text-slate-500">Último Checkpoint</span>
+                            <span class="text-slate-700 font-semibold text-[11px]">
+                                {{ $esus_ultimo_checkpoint_em ?: 'Pendente (primeira carga)' }}
+                            </span>
+                        </div>
+
                         @if ($esus_diagnostico && !empty($esus_diagnostico['colunas_origem']))
                             <div>
                                 <span class="text-slate-500 block mb-1">Colunas Mapeadas na Tabela:</span>
@@ -461,20 +509,30 @@
                         <h3 class="text-sm font-bold text-slate-900">Histórico de Sincronizações e-SUS PEC</h3>
                         <p class="text-xs text-slate-500">Últimas execuções manuais e agendadas com estatísticas agregadas</p>
                     </div>
-                    <button type="button" wire:click="sincronizarEsusAgora" wire:loading.attr="disabled"
-                        class="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-teal-700 transition cursor-pointer disabled:opacity-60">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                        <span wire:loading.remove wire:target="sincronizarEsusAgora">Sincronizar Agora</span>
-                        <span wire:loading wire:target="sincronizarEsusAgora">Executando...</span>
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button type="button" wire:click="sincronizarEsusAgora('COMPLETA')" wire:loading.attr="disabled"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer disabled:opacity-60"
+                            title="Executa reconciliação de todos os cidadãos vinculados">
+                            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span>Carga Completa</span>
+                        </button>
+
+                        <button type="button" wire:click="sincronizarEsusAgora" wire:loading.attr="disabled"
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-teal-700 transition cursor-pointer disabled:opacity-60">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            <span wire:loading.remove wire:target="sincronizarEsusAgora">Sincronizar Agora</span>
+                            <span wire:loading wire:target="sincronizarEsusAgora">Executando...</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-slate-200 text-sm">
                         <thead class="bg-slate-50 text-xs font-bold uppercase text-slate-500">
                             <tr>
-                                <th class="px-4 py-3 text-left">Início / Duração</th>
-                                <th class="px-3 py-3 text-center">Tipo</th>
+                                <th class="px-4 py-3 text-left">Início / Tempos</th>
+                                <th class="px-2 py-3 text-center">Modo</th>
+                                <th class="px-2 py-3 text-center">Tipo</th>
                                 <th class="px-3 py-3 text-center">Status</th>
                                 <th class="px-3 py-3 text-center">Consultados</th>
                                 <th class="px-3 py-3 text-center">Novos</th>
@@ -482,6 +540,7 @@
                                 <th class="px-3 py-3 text-center">Sem Alt.</th>
                                 <th class="px-3 py-3 text-center">Duplicidades</th>
                                 <th class="px-3 py-3 text-center">Ignorados</th>
+                                <th class="px-2 py-3 text-center">Falhas</th>
                                 <th class="px-4 py-3 text-left">Observação / Diagnóstico</th>
                             </tr>
                         </thead>
@@ -490,10 +549,19 @@
                                 <tr class="hover:bg-slate-50/80">
                                     <td class="px-4 py-3 text-slate-700">
                                         <div class="font-bold">{{ $hist->iniciado_em?->format('d/m/Y H:i:s') }}</div>
-                                        <div class="text-[11px] text-slate-400">{{ $hist->duracao_segundos }}s de execução</div>
+                                        <div class="text-[11px] font-semibold text-slate-600">{{ $hist->duracao_segundos }}s total</div>
+                                        <div class="text-[10px] text-slate-400 font-mono">Cons: {{ $hist->duracao_consulta_formatada }} | Grav: {{ $hist->duracao_gravacao_formatada }}</div>
                                     </td>
-                                    <td class="px-3 py-3 text-center">
-                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $hist->tipo_execucao === 'AGENDADA' ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-700' }}">
+                                    <td class="px-2 py-3 text-center">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold
+                                            {{ $hist->modo_executado === 'INCREMENTAL' ? 'bg-teal-50 text-teal-700 border border-teal-200' : '' }}
+                                            {{ $hist->modo_executado === 'CARGA_COMPLETA' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : '' }}
+                                            {{ $hist->modo_executado === 'RECONCILIACAO_COMPLETA' ? 'bg-slate-100 text-slate-700 border border-slate-200' : '' }}">
+                                            {{ $hist->modo_executado === 'RECONCILIACAO_COMPLETA' ? 'RECONCILIAÇÃO' : $hist->modo_executado }}
+                                        </span>
+                                    </td>
+                                    <td class="px-2 py-3 text-center">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $hist->tipo_execucao === 'AGENDADA' ? 'bg-purple-50 text-purple-700' : 'bg-slate-100 text-slate-700' }}">
                                             {{ $hist->tipo_execucao }}
                                         </span>
                                     </td>
@@ -512,13 +580,16 @@
                                     <td class="px-3 py-3 text-center font-mono text-slate-600 font-bold">{{ number_format($hist->pacientes_sem_alteracoes, 0, ',', '.') }}</td>
                                     <td class="px-3 py-3 text-center font-mono text-amber-700 font-bold">{{ number_format($hist->duplicidades_identificadas, 0, ',', '.') }}</td>
                                     <td class="px-3 py-3 text-center font-mono text-slate-500 font-bold">{{ number_format($hist->registros_ignorados, 0, ',', '.') }}</td>
+                                    <td class="px-2 py-3 text-center font-mono font-bold {{ $hist->falhas_gravacao > 0 ? 'text-rose-600' : 'text-slate-400' }}">
+                                        {{ $hist->falhas_gravacao }}
+                                    </td>
                                     <td class="px-4 py-3 text-slate-500 max-w-xs truncate" title="{{ $hist->mensagem_erro ?: ($hist->detalhes['mensagem_resumo'] ?? 'Sincronização executada com sucesso.') }}">
                                         {{ $hist->mensagem_erro ?: ($hist->detalhes['mensagem_resumo'] ?? 'Sincronização executada com sucesso.') }}
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="10" class="px-5 py-8 text-center text-slate-400 text-xs">
+                                    <td colspan="12" class="px-5 py-8 text-center text-slate-400 text-xs">
                                         Nenhuma sincronização realizada até o momento. Utilize o botão "Sincronizar Agora" ou aguarde a rotina agendada (02:00).
                                     </td>
                                 </tr>

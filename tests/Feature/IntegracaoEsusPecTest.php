@@ -752,4 +752,279 @@ class IntegracaoEsusPecTest extends TestCase
         $historico = HistoricoSincronizacaoEsus::latest('id')->first();
         $this->assertNotNull($historico);
     }
+
+    public function test_diagnostico_schema_detecta_presenca_e_ausencia_de_coluna_atualizacao(): void
+    {
+        $service = new EsusPecIntegrationService;
+
+        // Caso 1: Tabela DW padrão oficial sem coluna de atualização
+        $pdoSemTimestamp = new PDO('sqlite::memory:');
+        $pdoSemTimestamp->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdoSemTimestamp->exec('
+            CREATE TABLE tb_acomp_cidadaos_vinculados (
+                co_seq_acomp_cidadaos_vinc INTEGER PRIMARY KEY,
+                co_fat_cidadao_pec INTEGER,
+                no_cidadao VARCHAR(255),
+                dt_nascimento_cidadao DATE
+            );
+        ');
+
+        $diag1 = $service->descobrirSchema($pdoSemTimestamp);
+        $this->assertTrue($diag1['compativel_importacao']);
+        $this->assertFalse($diag1['suporta_incremental']);
+        $this->assertNull($diag1['coluna_atualizacao']);
+        $this->assertSame('co_seq_acomp_cidadaos_vinc', $diag1['coluna_sequencial']);
+        $this->assertStringContainsString('Reconciliação Completa Otimizada via Keyset Pagination', $diag1['diagnostico_texto']);
+
+        // Caso 2: Tabela com coluna de atualização cadastral adicionada (dt_atualizacao)
+        $pdoComTimestamp = new PDO('sqlite::memory:');
+        $pdoComTimestamp->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdoComTimestamp->exec('
+            CREATE TABLE tb_acomp_cidadaos_vinculados (
+                co_seq_acomp_cidadaos_vinc INTEGER PRIMARY KEY,
+                co_fat_cidadao_pec INTEGER,
+                no_cidadao VARCHAR(255),
+                dt_nascimento_cidadao DATE,
+                dt_atualizacao TIMESTAMP
+            );
+        ');
+
+        $diag2 = $service->descobrirSchema($pdoComTimestamp);
+        $this->assertTrue($diag2['compativel_importacao']);
+        $this->assertTrue($diag2['suporta_incremental']);
+        $this->assertSame('dt_atualizacao', $diag2['coluna_atualizacao']);
+        $this->assertSame('co_seq_acomp_cidadaos_vinc', $diag2['coluna_sequencial']);
+        $this->assertStringContainsString('Sincronização incremental ativa', $diag2['diagnostico_texto']);
+    }
+
+    public function test_sincronizacao_incremental_com_coluna_temporal_e_janela_seguranca(): void
+    {
+        $pdo = new PDO('sqlite::memory:');
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->exec('
+            CREATE TABLE tb_acomp_cidadaos_vinculados (
+                co_seq_acomp_cidadaos_vinc INTEGER PRIMARY KEY,
+                co_fat_cidadao_pec INTEGER,
+                no_cidadao VARCHAR(255),
+                nu_cpf_cidadao VARCHAR(11),
+                nu_cns_cidadao VARCHAR(15),
+                dt_nascimento_cidadao DATE,
+                dt_atualizacao TIMESTAMP
+            );
+        ');
+
+        $cns1 = CnsValido::gerarDefinitivo('33333333333');
+        $cns2 = CnsValido::gerarDefinitivo('44444444444');
+
+        // Registro 1: atualizado há 5 dias (fora da janela de segurança de 24h a partir de ontem)
+        // Registro 2: atualizado há 2 horas (dentro da janela)
+        $stmt = $pdo->prepare('
+            INSERT INTO tb_acomp_cidadaos_vinculados VALUES
+            (1, 2001, "Cidadao Antigo Fora Janela", "11122233301", ?, "1990-01-01", ?),
+            (2, 2002, "Cidadao Recente Dentro Janela", "11122233302", ?, "1992-02-02", ?);
+        ');
+        $stmt->execute([
+            $cns1,
+            now()->subDays(5)->format('Y-m-d H:i:s'),
+            $cns2,
+            now()->subHours(2)->format('Y-m-d H:i:s'),
+        ]);
+
+        $config = ConfiguracaoEsusPec::atual();
+        $config->update([
+            'ativo' => true,
+            'modo_sincronizacao' => 'INCREMENTAL',
+            'janela_seguranca_minutos' => 1440, // 24 horas
+            'ultimo_checkpoint_em' => now()->subDay(), // Checkpoint de 1 dia atrás
+        ]);
+
+        $service = new EsusPecIntegrationService;
+        $historico = $service->sincronizarPacientes('MANUAL', $pdo);
+
+        $this->assertSame('SUCESSO', $historico->status);
+        $this->assertSame('INCREMENTAL', $historico->detalhes['modo_executado']);
+        $this->assertSame(1, $historico->total_consultado);
+        $this->assertSame(1, $historico->novos_pacientes);
+
+        $pacienteImportado = Paciente::where('id_externo_esus', '2002')->first();
+        $this->assertNotNull($pacienteImportado);
+        $this->assertSame('Cidadao Recente Dentro Janela', $pacienteImportado->nome);
+
+        // O paciente com data anterior à janela não foi consultado
+        $this->assertNull(Paciente::where('id_externo_esus', '2001')->first());
+
+        // Confirma atualização do checkpoint
+        $config->refresh();
+        $this->assertNotNull($config->ultimo_checkpoint_em);
+        $this->assertTrue($config->ultimo_checkpoint_em->isToday());
+    }
+
+    public function test_sincronizacao_sem_coluna_temporal_utiliza_reconciliacao_completa_e_keyset(): void
+    {
+        $pdo = new PDO('sqlite::memory:');
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->exec('
+            CREATE TABLE tb_acomp_cidadaos_vinculados (
+                co_seq_acomp_cidadaos_vinc INTEGER PRIMARY KEY,
+                co_fat_cidadao_pec INTEGER,
+                no_cidadao VARCHAR(255),
+                nu_cpf_cidadao VARCHAR(11),
+                nu_cns_cidadao VARCHAR(15),
+                dt_nascimento_cidadao DATE
+            );
+        ');
+
+        $cns1 = CnsValido::gerarDefinitivo('55555555551');
+        $cns2 = CnsValido::gerarDefinitivo('55555555552');
+
+        $stmt = $pdo->prepare('
+            INSERT INTO tb_acomp_cidadaos_vinculados VALUES
+            (10, 3001, "Cidadao Keyset 1", "22233344401", ?, "1985-03-15"),
+            (20, 3002, "Cidadao Keyset 2", "22233344402", ?, "1988-06-20");
+        ');
+        $stmt->execute([$cns1, $cns2]);
+
+        $config = ConfiguracaoEsusPec::atual();
+        $config->update([
+            'ativo' => true,
+            'modo_sincronizacao' => 'AUTO',
+        ]);
+
+        $service = new EsusPecIntegrationService;
+        $historico = $service->sincronizarPacientes('MANUAL', $pdo);
+
+        $this->assertSame('SUCESSO', $historico->status);
+        $this->assertSame('RECONCILIACAO_COMPLETA', $historico->detalhes['modo_executado']);
+        $this->assertSame('KEYSET_PAGINATION', $historico->detalhes['paginacao']);
+        $this->assertSame('co_seq_acomp_cidadaos_vinc', $historico->detalhes['coluna_sequencial']);
+        $this->assertSame(2, $historico->total_consultado);
+        $this->assertSame(2, $historico->novos_pacientes);
+        $this->assertSame(20, $historico->detalhes['ultimo_id_processado']);
+    }
+
+    public function test_keyset_pagination_processa_lotes_corretamente_e_persiste_checkpoint_id(): void
+    {
+        $pdo = new PDO('sqlite::memory:');
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->exec('
+            CREATE TABLE tb_acomp_cidadaos_vinculados (
+                co_seq_acomp_cidadaos_vinc INTEGER PRIMARY KEY,
+                co_fat_cidadao_pec INTEGER,
+                no_cidadao VARCHAR(255),
+                nu_cpf_cidadao VARCHAR(11),
+                nu_cns_cidadao VARCHAR(15),
+                dt_nascimento_cidadao DATE
+            );
+        ');
+
+        // Insere 12 registros para processamento em lotes de 5 (deverá processar 3 páginas)
+        for ($i = 1; $i <= 12; $i++) {
+            $cpf = sprintf('333444%05d', $i);
+            $cns = CnsValido::gerarDefinitivo(sprintf('6666%07d', $i));
+            $nome = "Cidadao Lote {$i}";
+            $stmt = $pdo->prepare('INSERT INTO tb_acomp_cidadaos_vinculados VALUES (?, ?, ?, ?, ?, "1995-01-01");');
+            $stmt->execute([$i * 10, 4000 + $i, $nome, $cpf, $cns]);
+        }
+
+        $config = ConfiguracaoEsusPec::atual();
+        $config->update([
+            'ativo' => true,
+            'tamanho_lote' => 5,
+        ]);
+
+        $service = new EsusPecIntegrationService;
+        $historico = $service->sincronizarPacientes('MANUAL', $pdo);
+
+        $this->assertSame('SUCESSO', $historico->status);
+        $this->assertSame(12, $historico->total_consultado);
+        $this->assertSame(12, $historico->novos_pacientes);
+        $this->assertSame(120, $historico->detalhes['ultimo_id_processado']);
+
+        // Checkpoint do último ID deve ser exatamente 120
+        $config->refresh();
+        $this->assertSame(120, $config->ultimo_checkpoint_id);
+    }
+
+    public function test_metricas_de_tempo_consulta_processamento_e_gravacao_sao_registradas_separadamente(): void
+    {
+        $pdo = new PDO('sqlite::memory:');
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->exec('
+            CREATE TABLE tb_acomp_cidadaos_vinculados (
+                co_seq_acomp_cidadaos_vinc INTEGER PRIMARY KEY,
+                co_fat_cidadao_pec INTEGER,
+                no_cidadao VARCHAR(255),
+                nu_cpf_cidadao VARCHAR(11),
+                nu_cns_cidadao VARCHAR(15),
+                dt_nascimento_cidadao DATE
+            );
+        ');
+
+        $cns = CnsValido::gerarDefinitivo('77777777777');
+        $stmt = $pdo->prepare('INSERT INTO tb_acomp_cidadaos_vinculados VALUES (1, 5001, "Cidadao Metricas", "44455566601", ?, "1990-05-15");');
+        $stmt->execute([$cns]);
+
+        $config = ConfiguracaoEsusPec::atual();
+        $config->update(['ativo' => true]);
+
+        $service = new EsusPecIntegrationService;
+        $historico = $service->sincronizarPacientes('MANUAL', $pdo);
+
+        $this->assertArrayHasKey('duracao_consulta_ms', $historico->detalhes);
+        $this->assertArrayHasKey('duracao_processamento_ms', $historico->detalhes);
+        $this->assertArrayHasKey('duracao_gravacao_ms', $historico->detalhes);
+        $this->assertArrayHasKey('duracao_total_ms', $historico->detalhes);
+
+        $this->assertGreaterThanOrEqual(0, $historico->duracao_consulta_ms);
+        $this->assertGreaterThanOrEqual(0, $historico->duracao_gravacao_ms);
+        $this->assertGreaterThanOrEqual(0, $historico->duracao_processamento_ms);
+
+        $this->assertIsString($historico->duracao_consulta_formatada);
+        $this->assertIsString($historico->duracao_gravacao_formatada);
+        $this->assertIsString($historico->duracao_processamento_formatada);
+    }
+
+    public function test_livewire_salva_configuracao_de_modo_e_tamanho_lote(): void
+    {
+        $coordenador = User::factory()->create(['ativo' => true]);
+        $coordenador->assignRole('coordenacao');
+
+        Livewire::actingAs($coordenador)
+            ->test(ConfiguracoesSistema::class, ['secao' => 'esus'])
+            ->set('esus_ativo', true)
+            ->set('esus_host', '10.0.0.100')
+            ->set('esus_porta', 5433)
+            ->set('esus_banco', 'esus')
+            ->set('esus_usuario', 'esus_leitura')
+            ->set('esus_modo_sincronizacao', 'INCREMENTAL')
+            ->set('esus_tamanho_lote', 1000)
+            ->call('salvarConfiguracaoEsus')
+            ->assertHasNoErrors()
+            ->assertDispatched('toast');
+
+        $config = ConfiguracaoEsusPec::atual();
+        $this->assertSame('INCREMENTAL', $config->modo_sincronizacao);
+        $this->assertSame(1000, $config->tamanho_lote);
+    }
+
+    public function test_forcar_carga_completa_executa_reconciliacao_integral(): void
+    {
+        $coordenador = User::factory()->create(['ativo' => true]);
+        $coordenador->assignRole('coordenacao');
+
+        ConfiguracaoEsusPec::atual()->update([
+            'ativo' => true,
+            'modo_sincronizacao' => 'INCREMENTAL',
+            'ultimo_checkpoint_em' => now()->subDay(),
+        ]);
+
+        Livewire::actingAs($coordenador)
+            ->test(ConfiguracoesSistema::class, ['secao' => 'esus'])
+            ->call('sincronizarEsusAgora', 'COMPLETA')
+            ->assertDispatched('toast');
+
+        $historico = HistoricoSincronizacaoEsus::latest('id')->first();
+        $this->assertNotNull($historico);
+        $this->assertSame('COMPLETA', $historico->detalhes['modo_executado']);
+    }
 }

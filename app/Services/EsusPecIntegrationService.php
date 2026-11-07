@@ -89,6 +89,8 @@ class EsusPecIntegrationService
                 'tipo_banco_detectado' => $diagnostico['tipo_banco'],
                 'tabela_origem_detectada' => $diagnostico['tabela_origem'],
                 'total_tabelas_descobertas' => $diagnostico['total_tabelas'],
+                'coluna_atualizacao_detectada' => $diagnostico['coluna_atualizacao'] ?? null,
+                'coluna_sequencial_detectada' => $diagnostico['coluna_sequencial'] ?? null,
                 'detalhes_schema' => $diagnostico,
                 'ultima_conexao_em' => now(),
             ]);
@@ -127,6 +129,9 @@ class EsusPecIntegrationService
      *     total_tabelas: int,
      *     tabelas_descobertas: array<int, string>,
      *     colunas_origem: array<int, string>,
+     *     coluna_atualizacao: ?string,
+     *     coluna_sequencial: ?string,
+     *     suporta_incremental: bool,
      *     diagnostico_texto: string
      * }
      */
@@ -189,6 +194,34 @@ class EsusPecIntegrationService
             $diagnosticoTexto = 'Banco conectado, porém não foram localizadas as tabelas oficiais do e-SUS PEC (tb_acomp_cidadaos_vinculados ou tb_cidadao).';
         }
 
+        // Diagnóstico de colunas temporais de atualização cadastral (sem presumir nomes fixos)
+        $colunaAtualizacao = null;
+        foreach (['dt_atualizacao', 'dt_modificacao', 'dt_alteracao', 'dt_ultima_atualizacao', 'dt_registro', 'dt_cadastro'] as $candData) {
+            if (in_array($candData, $colunasOrigem, true)) {
+                $colunaAtualizacao = $candData;
+                break;
+            }
+        }
+
+        // Diagnóstico de coluna de identificação sequencial única e estável para Keyset Pagination
+        $colunaSequencial = null;
+        foreach (['co_seq_acomp_cidadaos_vinc', 'co_seq_acomp_cidadaos_vinculados', 'co_fat_cidadao_pec', 'co_seq_fat_cidadao_pec', 'id', 'id_cidadao'] as $candSeq) {
+            if (in_array($candSeq, $colunasOrigem, true)) {
+                $colunaSequencial = $candSeq;
+                break;
+            }
+        }
+
+        $suportaIncremental = ($colunaAtualizacao !== null);
+
+        if ($compativelImportacao) {
+            if ($suportaIncremental) {
+                $diagnosticoTexto .= sprintf(' Coluna de atualização cadastral detectada: %s. Sincronização incremental ativa.', $colunaAtualizacao);
+            } else {
+                $diagnosticoTexto .= ' Tabela de DW sem coluna nativa de atualização temporal. Ativada Reconciliação Completa Otimizada via Keyset Pagination com projeção reduzida.';
+            }
+        }
+
         return [
             'tipo_banco' => $tipoBanco,
             'tabela_origem' => $tabelaOrigem,
@@ -197,6 +230,9 @@ class EsusPecIntegrationService
             'total_tabelas' => count($tabelas),
             'tabelas_descobertas' => array_values(array_slice($tabelas, 0, 50)),
             'colunas_origem' => $colunasOrigem,
+            'coluna_atualizacao' => $colunaAtualizacao,
+            'coluna_sequencial' => $colunaSequencial,
+            'suporta_incremental' => $suportaIncremental,
             'diagnostico_texto' => $diagnosticoTexto,
         ];
     }
@@ -240,9 +276,14 @@ class EsusPecIntegrationService
         string $tipoExecucao = 'MANUAL',
         ?PDO $pdoInjetado = null,
         ?int $historicoId = null,
-        ?callable $onProgresso = null
+        ?callable $onProgresso = null,
+        ?string $forcarModo = null
     ): HistoricoSincronizacaoEsus {
         $inicio = microtime(true);
+        $duracaoConsultaMs = 0;
+        $duracaoProcessamentoMs = 0;
+        $duracaoGravacaoMs = 0;
+
         $config = ConfiguracaoEsusPec::atual();
 
         $historico = null;
@@ -297,8 +338,9 @@ class EsusPecIntegrationService
             string $etapa,
             int $processados,
             int $total,
-            array $contadoresAtuais
-        ) use ($historico, $onProgresso): void {
+            array $contadoresAtuais,
+            string $modo = 'COMPLETA'
+        ) use ($historico, $onProgresso, &$duracaoConsultaMs, &$duracaoProcessamentoMs, &$duracaoGravacaoMs): void {
             $percentual = $total > 0 ? (int) min(100, round(($processados / $total) * 100)) : 0;
 
             $detalhes = array_merge($historico->detalhes ?? [], [
@@ -306,6 +348,7 @@ class EsusPecIntegrationService
                 'processados' => $processados,
                 'total_estimado' => $total,
                 'percentual' => $percentual,
+                'modo_executado' => $modo,
                 'registros_validos' => $contadoresAtuais['validos'],
                 'registros_invalidos' => $contadoresAtuais['invalidos'],
                 'sem_identificador' => $contadoresAtuais['sem_identificador'],
@@ -314,6 +357,9 @@ class EsusPecIntegrationService
                 'pacientes_sem_alteracoes' => $contadoresAtuais['sem_alteracoes'],
                 'duplicidades' => $contadoresAtuais['duplicidades'],
                 'falhas_gravacao' => $contadoresAtuais['falhas'],
+                'duracao_consulta_ms' => $duracaoConsultaMs,
+                'duracao_processamento_ms' => $duracaoProcessamentoMs,
+                'duracao_gravacao_ms' => $duracaoGravacaoMs,
             ]);
 
             $historico->update([
@@ -331,7 +377,11 @@ class EsusPecIntegrationService
                 'processados' => $processados,
                 'total' => $total,
                 'percentual' => $percentual,
+                'modo' => $modo,
                 'contadores' => $contadoresAtuais,
+                'duracao_consulta_ms' => $duracaoConsultaMs,
+                'duracao_processamento_ms' => $duracaoProcessamentoMs,
+                'duracao_gravacao_ms' => $duracaoGravacaoMs,
                 'status' => $historico->status,
             ], 300);
 
@@ -376,31 +426,182 @@ class EsusPecIntegrationService
             $tabelaOrigem = $diagnostico['tabela_origem'];
             $ibgePadrao = ConfiguracaoEstabelecimento::atual()->codigo_ibge_padrao ?: '270430';
 
-            // Contagem do total real de registros na origem
+            // Determina a modalidade real de sincronização: incremental com janela ou reconciliação completa
+            $colunaAtualizacao = $diagnostico['coluna_atualizacao'] ?? null;
+            $colunaSequencial = $diagnostico['coluna_sequencial'] ?? null;
+            $modoConfigurado = strtoupper((string) ($forcarModo ?: $config->modo_sincronizacao ?: 'AUTO'));
+
+            $modoExecucaoReal = 'RECONCILIACAO_COMPLETA';
+            $checkpointComJanela = null;
+
+            if ($colunaAtualizacao !== null) {
+                if ($modoConfigurado === 'COMPLETA') {
+                    $modoExecucaoReal = 'CARGA_COMPLETA';
+                } elseif ($config->ultimo_checkpoint_em !== null) {
+                    $modoExecucaoReal = 'INCREMENTAL';
+                    $janelaMinutos = (int) ($config->janela_seguranca_minutos ?: 1440);
+                    $checkpointComJanela = $config->ultimo_checkpoint_em->copy()->subMinutes($janelaMinutos);
+                } else {
+                    $modoExecucaoReal = 'CARGA_COMPLETA';
+                }
+            } else {
+                // Sem coluna nativa de atualização: mantém reconciliação completa otimizada, nunca dados fictícios
+                $modoExecucaoReal = 'RECONCILIACAO_COMPLETA';
+            }
+
+            // Projeção seletiva: seleciona estritamente as colunas necessárias existentes na origem (evita SELECT *)
+            $colunasDesejadas = [
+                'co_seq_acomp_cidadaos_vinc',
+                'co_seq_acomp_cidadaos_vinculados',
+                'co_fat_cidadao_pec',
+                'co_seq_fat_cidadao_pec',
+                'co_cidadao',
+                'co_seq_cidadao',
+                'co_unico_cidadao',
+                'co_seq_fat_cidadao_vinculado',
+                'id_cidadao',
+                'id',
+                'no_cidadao',
+                'nome',
+                'nm_cidadao',
+                'nome_cidadao',
+                'no_social_cidadao',
+                'nome_social',
+                'dt_nascimento_cidadao',
+                'dt_nascimento',
+                'data_nascimento',
+                'dt_nasc',
+                'no_sexo_cidadao',
+                'no_sexo',
+                'sg_sexo',
+                'co_sexo',
+                'sexo',
+                'nu_cpf_cidadao',
+                'nu_cpf',
+                'cpf',
+                'num_cpf',
+                'nu_cns_cidadao',
+                'nu_cns',
+                'cns',
+                'num_cns',
+                'no_mae_cidadao',
+                'no_mae',
+                'nome_mae',
+                'nm_mae',
+                'nu_telefone_celular',
+                'nu_telefone_contato',
+                'nu_telefone_residencial',
+                'celular',
+                'nu_telefone',
+                'telefone',
+                'telefone_secundario',
+                'telefone_recado',
+                'ds_logradouro_domicilio',
+                'ds_logradouro_tb_cidadao',
+                'ds_logradouro',
+                'ds_endereco',
+                'endereco',
+                'ds_logradouro_completo',
+                'nu_numero_domicilio',
+                'nu_numero_tb_cidadao',
+                'nu_numero',
+                'numero',
+                'ds_complemento_domicilio',
+                'ds_complemento_tb_cidadao',
+                'ds_complemento',
+                'complemento',
+                'no_bairro_domicilio',
+                'no_bairro_tb_cidadao',
+                'no_bairro',
+                'bairro',
+                'nm_bairro',
+                'co_ibge_domicilio',
+                'co_ibge_tb_cidadao',
+                'co_ibge',
+                'co_municipio_ibge',
+                'municipio_ibge',
+                'no_unidade_saude',
+                'no_ubs',
+                'no_equipe',
+                'ds_equipe',
+                'nu_cnes',
+                'nu_ine',
+                'ubs_referencia',
+                'no_profissional_acs',
+                'no_profissional',
+                'no_acs',
+                'nome_acs',
+            ];
+            if ($colunaAtualizacao) {
+                $colunasDesejadas[] = $colunaAtualizacao;
+            }
+            if ($colunaSequencial) {
+                $colunasDesejadas[] = $colunaSequencial;
+            }
+
+            $colunasExistentes = array_values(array_intersect(array_unique($colunasDesejadas), $diagnostico['colunas_origem']));
+            $selectSql = ! empty($colunasExistentes) ? implode(', ', $colunasExistentes) : '*';
+
+            $whereParts = [];
+            $params = [];
+
+            if ($modoExecucaoReal === 'INCREMENTAL' && $colunaAtualizacao && $checkpointComJanela) {
+                $whereParts[] = "{$colunaAtualizacao} >= :checkpoint_data";
+                $params[':checkpoint_data'] = $checkpointComJanela->format('Y-m-d H:i:s');
+            }
+
+            $whereBase = ! empty($whereParts) ? 'WHERE '.implode(' AND ', $whereParts) : '';
+
+            // Contagem do total real de registros a processar nesta execução
+            $tConsultaCountInicio = microtime(true);
             $totalEstimado = 0;
             try {
-                $countStmt = $pdo->query("SELECT COUNT(*) FROM {$tabelaOrigem};");
-                $totalEstimado = $countStmt ? (int) $countStmt->fetchColumn() : 0;
+                $sqlCount = "SELECT COUNT(*) FROM {$tabelaOrigem} {$whereBase};";
+                $stmtCount = $pdo->prepare($sqlCount);
+                $stmtCount->execute($params);
+                $totalEstimado = (int) $stmtCount->fetchColumn();
             } catch (Throwable) {
                 $totalEstimado = 0;
             }
+            $duracaoConsultaMs += (int) round((microtime(true) - $tConsultaCountInicio) * 1000);
 
-            $notificarProgresso('Consultando origem', 0, $totalEstimado, $contadores);
+            $notificarProgresso('Consultando origem', 0, $totalEstimado, $contadores, $modoExecucaoReal);
 
-            // Processamento em lotes otimizados
-            $limite = 500;
+            // Processamento em lotes configuráveis (padrão 500, ajustável até 1.000)
+            $limite = max(100, min(2000, (int) ($config->tamanho_lote ?: 500)));
+            $ultimoIdChave = 0;
             $offset = 0;
             $totalConsultado = 0;
 
             while (true) {
-                $stmt = $pdo->query("SELECT * FROM {$tabelaOrigem} LIMIT {$limite} OFFSET {$offset};");
-                $linhas = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+                $tConsultaLoteInicio = microtime(true);
+
+                $whereLoop = $whereParts;
+                $paramsLoop = $params;
+
+                if ($colunaSequencial) {
+                    $whereLoop[] = "{$colunaSequencial} > :ultimo_id_chave";
+                    $paramsLoop[':ultimo_id_chave'] = $ultimoIdChave;
+                    $whereSql = 'WHERE '.implode(' AND ', $whereLoop);
+                    $sql = "SELECT {$selectSql} FROM {$tabelaOrigem} {$whereSql} ORDER BY {$colunaSequencial} ASC LIMIT {$limite};";
+                } else {
+                    $whereSql = ! empty($whereLoop) ? 'WHERE '.implode(' AND ', $whereLoop) : '';
+                    $sql = "SELECT {$selectSql} FROM {$tabelaOrigem} {$whereSql} LIMIT {$limite} OFFSET {$offset};";
+                }
+
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute($paramsLoop);
+                $linhas = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+                $duracaoConsultaMs += (int) round((microtime(true) - $tConsultaLoteInicio) * 1000);
 
                 if (empty($linhas)) {
                     break;
                 }
 
-                $notificarProgresso('Validando registros', $totalConsultado, $totalEstimado, $contadores);
+                $tProcInicio = microtime(true);
+
+                $notificarProgresso('Validando registros', $totalConsultado, $totalEstimado, $contadores, $modoExecucaoReal);
 
                 $loteMapeado = [];
                 $idsChunk = [];
@@ -440,7 +641,7 @@ class EsusPecIntegrationService
                 }
 
                 if (! empty($loteMapeado)) {
-                    $notificarProgresso('Identificando pacientes existentes', $totalConsultado, $totalEstimado, $contadores);
+                    $notificarProgresso('Identificando pacientes existentes', $totalConsultado, $totalEstimado, $contadores, $modoExecucaoReal);
 
                     // Pré-carrega pacientes locais existentes em UMA consulta para alta performance
                     $pacientesLocais = Paciente::where(function ($query) use ($idsChunk, $cpfsChunk, $cnssChunk) {
@@ -472,9 +673,12 @@ class EsusPecIntegrationService
                         }
                     }
 
-                    $notificarProgresso('Importando novos', $totalConsultado, $totalEstimado, $contadores);
+                    $duracaoProcessamentoMs += (int) round((microtime(true) - $tProcInicio) * 1000);
+
+                    $notificarProgresso('Persistindo lote', $totalConsultado, $totalEstimado, $contadores, $modoExecucaoReal);
 
                     // Persistência transacional do lote no banco local do CER Digital
+                    $tGravInicio = microtime(true);
                     DB::transaction(function () use (&$loteMapeado, &$contadores, &$mapaId, &$mapaCpf, &$mapaCns) {
                         foreach ($loteMapeado as $dadosPaciente) {
                             $res = $this->processarRegistroPacienteComMapas($dadosPaciente, $mapaId, $mapaCpf, $mapaCns);
@@ -492,15 +696,32 @@ class EsusPecIntegrationService
                             }
                         }
                     });
+                    $duracaoGravacaoMs += (int) round((microtime(true) - $tGravInicio) * 1000);
+                } else {
+                    $duracaoProcessamentoMs += (int) round((microtime(true) - $tProcInicio) * 1000);
                 }
 
+                // Atualização do cursor para Keyset Pagination
+                if ($colunaSequencial) {
+                    $ultimaLinha = end($linhas);
+                    if (isset($ultimaLinha[$colunaSequencial])) {
+                        $ultimoIdChave = (int) $ultimaLinha[$colunaSequencial];
+                    }
+                }
                 $offset += $limite;
-                $notificarProgresso('Atualizando existentes', $totalConsultado, $totalEstimado, $contadores);
+
+                // Checkpoint por lote para recuperação em caso de falhas
+                if ($ultimoIdChave > 0) {
+                    $config->update(['ultimo_checkpoint_id' => $ultimoIdChave]);
+                }
+
+                $notificarProgresso('Processando lotes', $totalConsultado, $totalEstimado, $contadores, $modoExecucaoReal);
             }
 
-            $notificarProgresso('Finalizando', $totalConsultado, $totalEstimado, $contadores);
+            $notificarProgresso('Finalizando', $totalConsultado, $totalEstimado, $contadores, $modoExecucaoReal);
 
             $duracao = (int) round(microtime(true) - $inicio);
+            $duracaoTotalMs = (int) round((microtime(true) - $inicio) * 1000);
             $sucessoEfetivo = ($contadores['novos'] + $contadores['atualizados'] + $contadores['sem_alteracoes']) > 0;
 
             if ($contadores['falhas'] > 0 && ! $sucessoEfetivo) {
@@ -515,10 +736,14 @@ class EsusPecIntegrationService
                     $contadores['sem_identificador'],
                     $contadores['duplicidades']
                 );
+            } elseif ($totalConsultado === 0 && $modoExecucaoReal === 'INCREMENTAL') {
+                $statusFinal = 'SUCESSO';
+                $msgFinal = 'Sincronização incremental concluída: nenhum registro novo ou alterado no e-SUS PEC desde o último checkpoint.';
             } else {
                 $statusFinal = 'SUCESSO';
                 $msgFinal = sprintf(
-                    'Sincronização concluída com sucesso: %d novos pacientes, %d atualizados, %d sem alterações (%d consultados no e-SUS PEC).',
+                    'Sincronização concluída com sucesso (%s): %d novos pacientes, %d atualizados, %d sem alterações (%d consultados no e-SUS PEC).',
+                    $modoExecucaoReal,
                     $contadores['novos'],
                     $contadores['atualizados'],
                     $contadores['sem_alteracoes'],
@@ -532,6 +757,11 @@ class EsusPecIntegrationService
                 'tipo_banco' => $diagnostico['tipo_banco'],
                 'tabela' => $tabelaOrigem,
                 'versao_pec' => $diagnostico['versao_pec'],
+                'modo_executado' => $modoExecucaoReal,
+                'coluna_atualizacao' => $colunaAtualizacao,
+                'coluna_sequencial' => $colunaSequencial,
+                'paginacao' => $colunaSequencial ? 'KEYSET_PAGINATION' : 'OFFSET_LIMIT',
+                'tamanho_lote' => $limite,
                 'total_consultado' => $totalConsultado,
                 'registros_validos' => $contadores['validos'],
                 'registros_invalidos' => $contadores['invalidos'],
@@ -541,6 +771,11 @@ class EsusPecIntegrationService
                 'pacientes_sem_alteracoes' => $contadores['sem_alteracoes'],
                 'duplicidades' => $contadores['duplicidades'],
                 'falhas_gravacao' => $contadores['falhas'],
+                'duracao_consulta_ms' => $duracaoConsultaMs,
+                'duracao_processamento_ms' => $duracaoProcessamentoMs,
+                'duracao_gravacao_ms' => $duracaoGravacaoMs,
+                'duracao_total_ms' => $duracaoTotalMs,
+                'ultimo_id_processado' => $ultimoIdChave,
                 'mensagem_resumo' => $msgFinal,
             ];
 
@@ -557,10 +792,22 @@ class EsusPecIntegrationService
                 'detalhes' => $detalhesFinais,
             ]);
 
-            $config->update([
-                'ultima_sincronizacao_em' => now(),
-                'ultima_sincronizacao_status' => $statusFinal,
-            ]);
+            // Persiste checkpoint após confirmação de gravação
+            if ($statusFinal === 'SUCESSO') {
+                $config->update([
+                    'ultima_sincronizacao_em' => now(),
+                    'ultima_sincronizacao_status' => $statusFinal,
+                    'ultimo_checkpoint_em' => now(),
+                    'ultimo_checkpoint_id' => $ultimoIdChave ?: $config->ultimo_checkpoint_id,
+                    'coluna_atualizacao_detectada' => $colunaAtualizacao,
+                    'coluna_sequencial_detectada' => $colunaSequencial,
+                ]);
+            } else {
+                $config->update([
+                    'ultima_sincronizacao_em' => now(),
+                    'ultima_sincronizacao_status' => $statusFinal,
+                ]);
+            }
 
             Cache::put("esus_sync_progresso_{$historico->id}", [
                 'historico_id' => $historico->id,
@@ -568,7 +815,11 @@ class EsusPecIntegrationService
                 'processados' => $totalConsultado,
                 'total' => $totalConsultado,
                 'percentual' => 100,
+                'modo' => $modoExecucaoReal,
                 'contadores' => $contadores,
+                'duracao_consulta_ms' => $duracaoConsultaMs,
+                'duracao_processamento_ms' => $duracaoProcessamentoMs,
+                'duracao_gravacao_ms' => $duracaoGravacaoMs,
                 'status' => $statusFinal,
             ], 300);
 
@@ -585,6 +836,9 @@ class EsusPecIntegrationService
                 'detalhes' => array_merge($historico->detalhes ?? [], [
                     'etapa' => 'Erro na execução',
                     'falhas_gravacao' => $contadores['falhas'] + 1,
+                    'duracao_consulta_ms' => $duracaoConsultaMs,
+                    'duracao_processamento_ms' => $duracaoProcessamentoMs,
+                    'duracao_gravacao_ms' => $duracaoGravacaoMs,
                 ]),
             ]);
 

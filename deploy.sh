@@ -169,6 +169,7 @@ fi
 php artisan optimize:clear
 php artisan optimize
 php artisan view:cache
+php artisan queue:restart || true
 
 # ------------------------------------------------------------------------------
 # 8. Ajusta permissões de escrita do storage e cache

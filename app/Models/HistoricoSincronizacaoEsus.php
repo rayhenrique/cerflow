@@ -80,4 +80,54 @@ class HistoricoSincronizacaoEsus extends Model
     {
         return (int) ($this->detalhes['percentual'] ?? 0);
     }
+
+    public function getDuracaoConsultaMsAttribute(): int
+    {
+        return (int) ($this->detalhes['duracao_consulta_ms'] ?? 0);
+    }
+
+    public function getDuracaoProcessamentoMsAttribute(): int
+    {
+        return (int) ($this->detalhes['duracao_processamento_ms'] ?? 0);
+    }
+
+    public function getDuracaoGravacaoMsAttribute(): int
+    {
+        return (int) ($this->detalhes['duracao_gravacao_ms'] ?? 0);
+    }
+
+    public function getModoExecutadoAttribute(): string
+    {
+        return (string) ($this->detalhes['modo_executado'] ?? 'COMPLETA');
+    }
+
+    public function getDuracaoConsultaFormatadaAttribute(): string
+    {
+        $ms = $this->duracao_consulta_ms;
+        if ($ms === 0) {
+            return '0ms';
+        }
+
+        return $ms >= 1000 ? number_format($ms / 1000, 1, ',', '.').'s' : $ms.'ms';
+    }
+
+    public function getDuracaoGravacaoFormatadaAttribute(): string
+    {
+        $ms = $this->duracao_gravacao_ms;
+        if ($ms === 0) {
+            return '0ms';
+        }
+
+        return $ms >= 1000 ? number_format($ms / 1000, 1, ',', '.').'s' : $ms.'ms';
+    }
+
+    public function getDuracaoProcessamentoFormatadaAttribute(): string
+    {
+        $ms = $this->duracao_processamento_ms;
+        if ($ms === 0) {
+            return '0ms';
+        }
+
+        return $ms >= 1000 ? number_format($ms / 1000, 1, ',', '.').'s' : $ms.'ms';
+    }
 }

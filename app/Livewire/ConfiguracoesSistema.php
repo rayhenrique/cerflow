@@ -205,6 +205,20 @@ class ConfiguracoesSistema extends Component
 
     public ?string $esus_ultima_sincronizacao_status = null;
 
+    public string $esus_modo_sincronizacao = 'AUTO';
+
+    public int $esus_tamanho_lote = 500;
+
+    public int $esus_janela_seguranca_minutos = 1440;
+
+    public ?string $esus_ultimo_checkpoint_em = null;
+
+    public ?int $esus_ultimo_checkpoint_id = null;
+
+    public ?string $esus_coluna_atualizacao = null;
+
+    public ?string $esus_coluna_sequencial = null;
+
     // --- Progresso em Tempo Real da Sincronização e-SUS PEC ---
     public bool $sincronizandoEsus = false;
 
@@ -380,6 +394,13 @@ class ConfiguracoesSistema extends Component
         $this->esus_ultima_conexao = $config->ultima_conexao_em?->format('d/m/Y H:i:s');
         $this->esus_ultima_sincronizacao = $config->ultima_sincronizacao_em?->format('d/m/Y H:i:s');
         $this->esus_ultima_sincronizacao_status = $config->ultima_sincronizacao_status;
+        $this->esus_modo_sincronizacao = (string) ($config->modo_sincronizacao ?: 'AUTO');
+        $this->esus_tamanho_lote = (int) ($config->tamanho_lote ?: 500);
+        $this->esus_janela_seguranca_minutos = (int) ($config->janela_seguranca_minutos ?: 1440);
+        $this->esus_ultimo_checkpoint_em = $config->ultimo_checkpoint_em?->format('d/m/Y H:i:s');
+        $this->esus_ultimo_checkpoint_id = $config->ultimo_checkpoint_id;
+        $this->esus_coluna_atualizacao = $config->coluna_atualizacao_detectada;
+        $this->esus_coluna_sequencial = $config->coluna_sequencial_detectada;
 
         $emAndamento = HistoricoSincronizacaoEsus::where('status', 'EM_ANDAMENTO')->latest('iniciado_em')->first();
         if ($emAndamento) {
@@ -401,6 +422,8 @@ class ConfiguracoesSistema extends Component
             'esus_usuario' => ['required', 'string', 'max:100'],
             'esus_senha' => ['nullable', 'string', 'max:255'],
             'esus_endereco_web' => ['nullable', 'url', 'max:255'],
+            'esus_modo_sincronizacao' => ['required', 'string', 'in:AUTO,INCREMENTAL,COMPLETA'],
+            'esus_tamanho_lote' => ['required', 'integer', 'between:100,2000'],
         ]);
 
         $config = ConfiguracaoEsusPec::atual();
@@ -410,6 +433,8 @@ class ConfiguracoesSistema extends Component
         $config->banco = trim($dados['esus_banco']);
         $config->usuario = trim($dados['esus_usuario']);
         $config->endereco_web_pec = ! empty($dados['esus_endereco_web']) ? trim((string) $dados['esus_endereco_web']) : 'http://189.89.61.50:8181';
+        $config->modo_sincronizacao = $dados['esus_modo_sincronizacao'];
+        $config->tamanho_lote = (int) $dados['esus_tamanho_lote'];
 
         // Atualiza a senha apenas se informada
         if ($this->esus_senha !== '') {
@@ -472,7 +497,7 @@ class ConfiguracoesSistema extends Component
         }
     }
 
-    public function sincronizarEsusAgora(EsusPecIntegrationService $service): void
+    public function sincronizarEsusAgora(EsusPecIntegrationService $service, ?string $forcarModo = null): void
     {
         abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
 
@@ -482,6 +507,17 @@ class ConfiguracoesSistema extends Component
 
             return;
         }
+
+        // Blindagem contra execuções simultâneas
+        $emAndamento = HistoricoSincronizacaoEsus::where('status', 'EM_ANDAMENTO')->exists();
+        if ($emAndamento) {
+            $this->sincronizandoEsus = true;
+            $this->dispatch('toast', tipo: 'alerta', titulo: 'Sincronização em andamento', mensagem: 'Já existe uma sincronização sendo executada neste momento. Aguarde a conclusão.');
+
+            return;
+        }
+
+        $modoParaExecucao = $forcarModo ?: $config->modo_sincronizacao ?: 'AUTO';
 
         $historico = HistoricoSincronizacaoEsus::create([
             'iniciado_em' => now(),
@@ -495,6 +531,7 @@ class ConfiguracoesSistema extends Component
             'detalhes' => [
                 'etapa' => 'Consultando origem',
                 'percentual' => 0,
+                'modo_executado' => $modoParaExecucao,
             ],
         ]);
 
@@ -504,10 +541,10 @@ class ConfiguracoesSistema extends Component
         $this->progressoPercentual = 0;
 
         if (config('queue.default') === 'sync') {
-            $service->sincronizarPacientes('MANUAL', null, $historico->id);
+            $service->sincronizarPacientes('MANUAL', null, $historico->id, null, $forcarModo);
             $this->verificarProgressoSincronizacao();
         } else {
-            SincronizarEsusPecJob::dispatch('MANUAL', $historico->id);
+            SincronizarEsusPecJob::dispatch('MANUAL', $historico->id, $forcarModo);
             $this->dispatch('toast', tipo: 'info', titulo: 'Sincronização em andamento', mensagem: 'A importação foi iniciada. O progresso em tempo real é exibido abaixo.');
         }
     }

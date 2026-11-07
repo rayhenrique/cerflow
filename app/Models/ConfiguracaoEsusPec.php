@@ -23,6 +23,13 @@ class ConfiguracaoEsusPec extends Model
         'usuario',
         'senha',
         'endereco_web_pec',
+        'modo_sincronizacao',
+        'tamanho_lote',
+        'janela_seguranca_minutos',
+        'ultimo_checkpoint_em',
+        'ultimo_checkpoint_id',
+        'coluna_atualizacao_detectada',
+        'coluna_sequencial_detectada',
         'ultimo_status_conexao',
         'mensagem_status_conexao',
         'tipo_banco_detectado',
@@ -43,6 +50,10 @@ class ConfiguracaoEsusPec extends Model
             'ativo' => 'boolean',
             'porta' => 'integer',
             'senha' => 'encrypted',
+            'tamanho_lote' => 'integer',
+            'janela_seguranca_minutos' => 'integer',
+            'ultimo_checkpoint_em' => 'datetime',
+            'ultimo_checkpoint_id' => 'integer',
             'total_tabelas_descobertas' => 'integer',
             'detalhes_schema' => 'array',
             'ultima_conexao_em' => 'datetime',
@@ -64,6 +75,9 @@ class ConfiguracaoEsusPec extends Model
         $padrao->banco = 'esus';
         $padrao->usuario = 'esus_leitura';
         $padrao->endereco_web_pec = 'http://189.89.61.50:8181';
+        $padrao->modo_sincronizacao = 'AUTO';
+        $padrao->tamanho_lote = 500;
+        $padrao->janela_seguranca_minutos = 1440;
         $padrao->ultimo_status_conexao = 'NAO_TESTADO';
         $padrao->total_tabelas_descobertas = 0;
 

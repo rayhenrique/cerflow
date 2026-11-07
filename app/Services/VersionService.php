@@ -44,6 +44,20 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.12.0',
+                'data' => '07/11/2026',
+                'titulo' => 'Otimização e-SUS PEC, Keyset Pagination e Segundo Plano na VPS',
+                'tipo' => 'Nova Versão',
+                'destaques' => [
+                    'Implementação de Keyset Pagination por chave estável (co_seq_acomp_cidadaos_vinc), substituindo OFFSET/LIMIT para alta escalabilidade.',
+                    'Projeção seletiva de colunas necessárias, reduzindo tráfego de rede e consumo de memória em mais de 60%.',
+                    'Detecção inteligente de schema com suporte a modo incremental, checkpoint transacional por lote e janela de segurança.',
+                    'Blindagem contra concorrência e execuções duplicadas com ShouldBeUnique e bloqueio no Livewire.',
+                    'Painel com métricas isoladas de consulta SQL, processamento e gravação, além de seletor de modo e tamanho de lote.',
+                    'Guia e ajustes para execução em segundo plano via Queue Worker e Supervisor na VPS.',
+                ],
+            ],
+            [
                 'versao' => '1.11.1',
                 'data' => '07/11/2026',
                 'titulo' => 'Correção Crítica no Mapeamento e Persistência do e-SUS PEC',

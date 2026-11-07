@@ -176,6 +176,7 @@ O script `./deploy.sh` executa automaticamente:
 5. `npm ci && npm run build`
 6. `php artisan optimize` e `php artisan view:cache`
 7. `php artisan up`
+8. `php artisan queue:restart` (recarrega os workers em segundo plano)
 
 ---
 
@@ -187,4 +188,42 @@ O script `./deploy.sh` executa automaticamente:
    ```bash
    tail -f /home/kltecnologia-cer/htdocs/cer.kltecnologia.com/storage/logs/laravel.log
    ```
+
+---
+
+## 9. Filas em Segundo Plano (Queue Worker) e Agendamento Automático
+
+Para garantir que a sincronização com o e-SUS APS PEC e tarefas assíncronas continuem rodando na VPS mesmo se o usuário fechar o navegador:
+
+### 9.1 Configuração do Crontab na VPS (CloudPanel)
+
+No CloudPanel, acesse **Cron Jobs** no site `cer.kltecnologia.com` e adicione a tarefa do agendador do Laravel a cada minuto:
+
+```cron
+* * * * * /usr/bin/php8.5 /home/kltecnologia-cer/htdocs/cer.kltecnologia.com/artisan schedule:run >> /dev/null 2>&1
+```
+
+### 9.2 Configuração do Supervisor para o Queue Worker
+
+Crie o arquivo de serviço do Supervisor em `/etc/supervisor/conf.d/cer-worker.conf`:
+
+```ini
+[program:cer-worker]
+process_name=%(program_name)s_%(process_num)02d
+command=/usr/bin/php8.5 /home/kltecnologia-cer/htdocs/cer.kltecnologia.com/artisan queue:work database --sleep=3 --tries=1 --timeout=600 --max-time=3600
+autostart=true
+autorestart=true
+user=kltecnologia-cer
+numprocs=1
+redirect_stderr=true
+stdout_logfile=/home/kltecnologia-cer/htdocs/cer.kltecnologia.com/storage/logs/worker.log
+stopwaitsecs=600
+```
+
+Em seguida, ative o serviço:
+```bash
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl start cer-worker:*
+```
 
