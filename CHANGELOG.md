@@ -2,6 +2,20 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.9.0] - 2026-11-07
+
+### Adicionado
+- **Módulo Mapa Mensal da Agenda (`AgendaMensal` — `/agenda/mensal`):**
+  - Visão gerencial e panorâmica mensal da agenda com calendário responsivo de segunda a domingo.
+  - Cards executivos de acompanhamento: Volume de Agendamentos (excluindo cancelados), Atendimentos Realizados (com taxa de comparecimento), Faltas e Absenteísmo (com discriminação de justificadas e injustificadas) e Dias com Atendimento Ativo (com média diária de atendimentos).
+  - Navegação temporal dinâmica entre meses com botão de retorno imediato ao "Mês Atual" e sincronização na URL via query params (`?mes=X&ano=Y`).
+  - Filtros gerenciais reativos por Especialidade, Profissional e Turno (Manhã/Tarde) com botão para limpar filtros.
+  - Células diárias no calendário com contagem total de agendamentos, distribuição visual por situação (realizados, agendados e faltas) e indicador de intensidade de carga.
+  - Integração bidirecional com a Grade Semanal: botão "Abrir dia" em cada data carregando a semana específica (`/grade?data=YYYY-MM-DD`) e botão "+ Novo Agendamento" reaproveitando o fluxo e modal existente (`/grade?novo=1`).
+  - Sub-abas de navegação no topo permitindo alternar instantaneamente entre a Grade Operacional Diária e o Mapa Mensal.
+  - Novo item "Mapa Mensal" integrado ao menu lateral (desktop retrátil e mobile drawer).
+  - Conformidade estrita com a LGPD: dados nominais, CNS e anotações clínicas dos pacientes permanecem protegidos, acessíveis exclusivamente na visão operacional.
+
 ## [1.8.0] - 2026-11-07
 
 ### Adicionado

@@ -95,6 +95,15 @@
                                 </svg>
                                 <span>Grade Semanal</span>
                             </a>
+
+                            <a href="{{ route('agenda.mensal') }}"
+                               @click="mobileMenuOpen = false"
+                               class="group flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition {{ request()->routeIs('agenda.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
+                                <svg class="h-5 w-5 shrink-0 {{ request()->routeIs('agenda.*') ? 'text-teal-400' : 'text-slate-400 group-hover:text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm3-3h.008v.008H15V12zm0 3h.008v.008H15V15zm-6-3h.008v.008H9V12zm0 3h.008v.008H9V15z"/>
+                                </svg>
+                                <span>Mapa Mensal</span>
+                            </a>
                         @endif
 
                         @if(auth()->user()->hasAnyRole(['recepcao', 'terapeuta', 'coordenacao']))
@@ -305,6 +314,16 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
                             </svg>
                             <span x-show="!sidebarCollapsed" class="truncate">Grade Semanal</span>
+                        </a>
+
+                        <a href="{{ route('agenda.mensal') }}"
+                           title="Mapa Mensal da Agenda"
+                           :class="sidebarCollapsed ? 'justify-center px-2' : 'px-3'"
+                           class="group flex items-center gap-3 rounded-lg py-2.5 font-medium transition {{ request()->routeIs('agenda.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
+                            <svg class="h-5 w-5 shrink-0 {{ request()->routeIs('agenda.*') ? 'text-teal-400' : 'text-slate-400 group-hover:text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm3-3h.008v.008H15V12zm0 3h.008v.008H15V15zm-6-3h.008v.008H9V12zm0 3h.008v.008H9V15z"/>
+                            </svg>
+                            <span x-show="!sidebarCollapsed" class="truncate">Mapa Mensal</span>
                         </a>
                     @endif
 

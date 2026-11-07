@@ -44,6 +44,18 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.9.0',
+                'data' => '07/11/2026',
+                'titulo' => 'Novo Módulo — Mapa Mensal da Agenda e Gestão Panorâmica',
+                'tipo' => 'Nova Versão',
+                'destaques' => [
+                    'Novo Mapa Mensal da Agenda para visualização gerencial completa da escala, distribuição de atendimentos e ocupação do CER.',
+                    'Cards de indicadores com volume de agendamentos, presenças confirmadas, taxa de comparecimento, absenteísmo e média diária por dia ativo.',
+                    'Calendário dinâmico com navegação mensal, filtros por especialidade, profissional e turno, e botão para abrir qualquer dia diretamente na grade operacional.',
+                    'Preservação e conformidade total com a LGPD na visualização executiva.',
+                ],
+            ],
+            [
                 'versao' => '1.8.0',
                 'data' => '07/11/2026',
                 'titulo' => 'Identificação do Estabelecimento, Logo Oficial e Estabilização do Layout',

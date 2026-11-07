@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Livewire\AgendaMensal;
 use App\Livewire\AjudaSobre;
 use App\Livewire\ConfiguracoesSistema;
 use App\Livewire\DashboardInicial;
@@ -21,6 +22,10 @@ Route::middleware(['auth'])->group(function (): void {
     Route::get('/grade', GradeSemanal::class)
         ->middleware('role:recepcao|terapeuta|faturamento|coordenacao')
         ->name('grade.semanal');
+
+    Route::get('/agenda/mensal', AgendaMensal::class)
+        ->middleware('role:recepcao|terapeuta|faturamento|coordenacao')
+        ->name('agenda.mensal');
 
     Route::get('/recepcao', RecepcaoCheckin::class)
         ->middleware('role:recepcao|terapeuta|coordenacao')

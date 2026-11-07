@@ -26,6 +26,8 @@ class GradeSemanal extends Component
 
     public string $dataReferencia = '';
 
+    public ?string $semanaInicio = null;
+
     public bool $modalAberto = false;
 
     public ?int $paciente_id = null;
@@ -47,9 +49,34 @@ class GradeSemanal extends Component
 
     public string $observacao = '';
 
-    public function mount(): void
+    public function mount(?string $data = null): void
     {
         Gate::authorize('viewAny', Agendamento::class);
+
+        $dataInformada = $data ?? request()->query('data');
+        if (is_string($dataInformada) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dataInformada) === 1) {
+            try {
+                $parsed = CarbonImmutable::parse($dataInformada);
+                $mapa = [
+                    1 => 'SEGUNDA',
+                    2 => 'TERCA',
+                    3 => 'QUARTA',
+                    4 => 'QUINTA',
+                    5 => 'SEXTA',
+                ];
+                $this->diaSemana = $mapa[$parsed->dayOfWeekIso] ?? 'SEGUNDA';
+                $this->semanaInicio = $parsed->startOfWeek()->toDateString();
+                $this->dataReferencia = $parsed->toDateString();
+
+                if (request()->boolean('novo')) {
+                    $this->modalAberto = true;
+                }
+
+                return;
+            } catch (\Throwable) {
+                // Mantém o fluxo padrão caso a data seja inválida
+            }
+        }
 
         $hoje = CarbonImmutable::now();
         $mapa = [
@@ -60,7 +87,12 @@ class GradeSemanal extends Component
             5 => 'SEXTA',
         ];
         $this->diaSemana = $mapa[$hoje->dayOfWeekIso] ?? 'SEGUNDA';
+        $this->semanaInicio = $hoje->startOfWeek()->toDateString();
         $this->dataReferencia = $this->calcularDataDoDiaDaSemana($this->diaSemana);
+
+        if (request()->boolean('novo')) {
+            $this->modalAberto = true;
+        }
     }
 
     public function updatedDiaSemana(string $valor): void
@@ -183,7 +215,8 @@ class GradeSemanal extends Component
             'SEXTA' => 5,
         ];
         $isoTarget = $mapaIso[$diaSemana] ?? 1;
+        $base = $this->semanaInicio !== null ? CarbonImmutable::parse($this->semanaInicio) : CarbonImmutable::now()->startOfWeek();
 
-        return CarbonImmutable::now()->startOfWeek()->addDays($isoTarget - 1)->toDateString();
+        return $base->addDays($isoTarget - 1)->toDateString();
     }
 }
