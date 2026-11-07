@@ -36,7 +36,7 @@ class FaturamentoBpai extends Component
             403
         );
 
-        abort_unless(preg_match('/^\\d{7}$/', ConfiguracaoEstabelecimento::atual()->cnes) === 1, 422, 'Configure um CNES válido de 7 dígitos em Configurações > Identificação do Estabelecimento antes de exportar o BPA-i.');
+        abort_unless(preg_match('/^\d{7}$/', ConfiguracaoEstabelecimento::atual()->cnes) === 1, 422, 'Configure um CNES válido de 7 dígitos em Configurações > Identificação do Estabelecimento antes de exportar o BPA-i.');
 
         return $bpaiExportService->exportarStream(
             competencia: $this->competencia,
