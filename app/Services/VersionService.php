@@ -44,6 +44,15 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.7.1',
+                'data' => '07/11/2026',
+                'titulo' => 'Sincronização de Metadados de Dependências',
+                'tipo' => 'Manutenção Preventiva',
+                'destaques' => [
+                    'Sincronização interna do hash de integridade das dependências do sistema para eliminar avisos durante atualizações de servidor.',
+                ],
+            ],
+            [
                 'versao' => '1.7.0',
                 'data' => '07/11/2026',
                 'titulo' => 'Identidade CER Digital, Tradução Completa e Janela de Novidades Individual',

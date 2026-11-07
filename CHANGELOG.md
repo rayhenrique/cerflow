@@ -2,6 +2,11 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.7.1] - 2026-11-07
+
+### Manutenção
+- Sincronizado o `content-hash` do `composer.lock` com o `composer.json` através de `composer update --lock`, eliminando o aviso informativo durante o deploy em produção.
+
 ## [1.7.0] - 2026-11-07
 
 ### Adicionado
