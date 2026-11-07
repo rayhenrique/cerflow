@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Livewire\AjudaSobre;
 use App\Livewire\ModalNovidadesVersao;
 use App\Models\User;
 use App\Services\VersionService;
@@ -191,6 +192,8 @@ class ControleVersaoAjudaTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Central de Ajuda & Sobre o CER Digital', false);
+        $response->assertSee('v1.16.0');
+        $response->assertSee('v1.15.3');
         $response->assertSee('v1.11.1');
         $response->assertSee('v1.11.0');
         $response->assertSee('v1.10.0');
@@ -214,5 +217,28 @@ class ControleVersaoAjudaTest extends TestCase
         $response->assertSee('v1.1.0');
         $response->assertSee('v1.0.1');
         $response->assertSee('v1.0.0');
+    }
+
+    public function test_componente_ajuda_sobre_permite_navegar_no_manual_e_baixar_arquivo(): void
+    {
+        $user = User::factory()->create(['ativo' => true]);
+        $user->assignRole('terapeuta');
+
+        Livewire::actingAs($user)
+            ->test(AjudaSobre::class)
+            ->assertSet('abaAtiva', 'evolucao')
+            ->call('selecionarAba', 'ajuda')
+            ->assertSet('abaAtiva', 'ajuda')
+            ->assertSee('Manual Oficial do Usuário — CER Digital')
+            ->assertSee('Primeiros Passos, Login e PIN de Assinatura')
+            ->call('selecionarSecaoManual', 'terapeutas')
+            ->assertSet('secaoManual', 'terapeutas')
+            ->assertSee('Terapeutas e Prontuário Multiprofissional (PEP)')
+            ->assertSee('A Regra das 24 Horas')
+            ->call('selecionarSecaoManual', 'faturamento')
+            ->assertSet('secaoManual', 'faturamento')
+            ->assertSee('Faturamento SUS & Lote Magnético BPA-i (SIA/SUS)', false)
+            ->call('baixarManual')
+            ->assertFileDownloaded('Manual-do-Usuario-CER-Digital-v1.16.0.md');
     }
 }

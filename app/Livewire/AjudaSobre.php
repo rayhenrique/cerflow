@@ -10,6 +10,7 @@ use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 #[Layout('components.layouts.app')]
 #[Title('Ajuda & Sobre o Sistema — CER Digital')]
@@ -17,11 +18,32 @@ class AjudaSobre extends Component
 {
     public string $abaAtiva = 'evolucao';
 
+    public string $secaoManual = 'todos';
+
     public function selecionarAba(string $aba): void
     {
         if (in_array($aba, ['evolucao', 'ajuda'], true)) {
             $this->abaAtiva = $aba;
         }
+    }
+
+    public function selecionarSecaoManual(string $secao): void
+    {
+        if (in_array($secao, ['todos', 'acesso', 'recepcao', 'terapeutas', 'faturamento', 'coordenacao', 'checklists', 'faq', 'glossario'], true)) {
+            $this->secaoManual = $secao;
+        }
+    }
+
+    public function baixarManual(): ?BinaryFileResponse
+    {
+        $caminho = base_path('docs/MANUAL-DO-USUARIO.md');
+        if (file_exists($caminho)) {
+            return response()->download($caminho, 'Manual-do-Usuario-CER-Digital-v1.16.0.md', [
+                'Content-Type' => 'text/markdown; charset=UTF-8',
+            ]);
+        }
+
+        return null;
     }
 
     public function render(VersionService $versionService): View

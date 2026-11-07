@@ -44,6 +44,18 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.16.0',
+                'data' => '07/11/2026',
+                'titulo' => 'Manual Completo e Didático do Usuário para Todos os Colaboradores',
+                'tipo' => 'Documentação e Usabilidade',
+                'destaques' => [
+                    'Publicação do Manual Oficial do Usuário do CER Digital abrangendo todas as áreas (Recepção, Terapeutas/PEP, Faturamento SUS e Coordenação).',
+                    'Central de Ajuda interativa com navegação rápida por setor, checklists operacionais diários, perguntas frequentes e glossário SUS.',
+                    'Instruções detalhadas passo a passo para busca inteligente sob demanda, assinatura eletrônica com PIN, regra de 24h, termos de adendo e exportação BPA-i.',
+                    'Disponibilização do manual para leitura online e download em arquivo estruturado diretamente pelo sistema.',
+                ],
+            ],
+            [
                 'versao' => '1.15.3',
                 'data' => '07/11/2026',
                 'titulo' => 'Otimização de Alta Performance no Painel Inicial Operacional (Dashboard)',
