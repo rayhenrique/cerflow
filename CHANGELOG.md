@@ -2,6 +2,11 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.6.1] - 2026-11-07
+
+### Corrigido
+- Refatorado `DashboardInicial::render()` em métodos auxiliares tipados (`resolverPeriodoCompetencia`, `contarModalidadesPacientes`, `calcularMetricasMensais`, `calcularMetricasBpai`) e substituído `filter()` por `whereIn()`, eliminando avisos de inferência do PHP Language Server (`PHP0447` e `PHP6613`).
+
 ## [1.6.0] - 2026-11-07
 
 ### Adicionado

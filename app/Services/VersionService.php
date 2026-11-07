@@ -44,6 +44,15 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.6.1',
+                'data' => '07/11/2026',
+                'titulo' => 'Otimização dos Cálculos do Painel Inicial (Dashboard)',
+                'tipo' => 'Melhoria de Desempenho',
+                'destaques' => [
+                    'Organização e otimização interna das consultas de estatísticas do Dashboard para carregamento ainda mais rápido.',
+                ],
+            ],
+            [
                 'versao' => '1.6.0',
                 'data' => '07/11/2026',
                 'titulo' => 'Menu Lateral Retrátil (Recolher/Expandir) e Novos Ícones Visuais em Todo o Menu',
