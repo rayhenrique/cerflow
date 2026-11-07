@@ -179,17 +179,7 @@ class ControleVersaoAjudaTest extends TestCase
         $this->assertSame($versaoAtual, $releaseAtual['versao']);
         $this->assertNotEmpty($releaseAtual['titulo']);
         $this->assertNotEmpty($releaseAtual['destaques']);
-
-        // Testa consistência do fallback de VersionService caso o arquivo não exista
-        $serviceComFallback = new class extends VersionService
-        {
-            public function testar_fallback(): string
-            {
-                return $this->releaseAtual()['versao'];
-            }
-        };
-
-        $this->assertSame($releaseAtual['versao'], $serviceComFallback->testarFallback());
+        $this->assertSame($releaseAtual['versao'], $versionService->historicoVersoes()[0]['versao']);
     }
 
     public function test_modulo_ajuda_e_sobre_exibe_identidade_cer_digital_e_todas_as_versoes(): void
