@@ -13,6 +13,38 @@ TARGET_REF="${1:-main}"
 echo "🚀 Iniciando deploy do CER Digital (Ref: ${TARGET_REF})..."
 
 # ------------------------------------------------------------------------------
+# Funções Auxiliares de Segurança e Integridade
+# ------------------------------------------------------------------------------
+
+# Calcula o checksum SHA-256 do arquivo informado
+calcular_checksum_env() {
+    local target="${1:-.env}"
+    if [ ! -f "${target}" ]; then
+        echo ""
+        return
+    fi
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "${target}" | awk '{print $1}'
+    elif command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "${target}" | awk '{print $1}'
+    elif command -v openssl >/dev/null 2>&1; then
+        openssl dgst -sha256 "${target}" | awk '{print $NF}'
+    else
+        cksum "${target}" | awk '{print $1}'
+    fi
+}
+
+# Valida se a variável APP_KEY existe e não está vazia no .env (sem exibir seu valor)
+validar_app_key() {
+    local key_val
+    key_val="$(grep -E '^APP_KEY=' .env 2>/dev/null | head -n 1 | cut -d '=' -f2- | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^["'"'"']//' -e 's/["'"'"']$//' || true)"
+    if [ -z "${key_val}" ]; then
+        return 1
+    fi
+    return 0
+}
+
+# ------------------------------------------------------------------------------
 # 1. Hardening e Validações de Segurança Pré-Deploy
 # ------------------------------------------------------------------------------
 echo "🔒 Verificando pré-requisitos de segurança do ambiente..."
@@ -25,31 +57,46 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
-# 1.2 Valida se APP_KEY está configurada e não vazia (sem exibir seu valor)
-APP_KEY_VALUE="$(grep -E '^APP_KEY=' .env 2>/dev/null | head -n 1 | cut -d '=' -f2- | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^["'"'"']//' -e 's/["'"'"']$//' || true)"
+# 1.2 Interrompe imediatamente se o .env estiver sendo rastreado pelo Git
+if git ls-files --error-unmatch .env >/dev/null 2>&1; then
+    echo "❌ ERRO CRÍTICO DE SEGURANÇA: O arquivo .env está sendo rastreado pelo Git!"
+    echo "O deploy foi interrompido para evitar vazamento ou sobrescrita acidental de credenciais."
+    echo "Remova-o do índice imediatamente com 'git rm --cached .env' antes de continuar."
+    exit 1
+fi
 
-if [ -z "${APP_KEY_VALUE}" ]; then
+# 1.3 Valida se APP_KEY está configurada e não vazia (sem exibir seu valor)
+if ! validar_app_key; then
     echo "❌ ERRO CRÍTICO: Variável APP_KEY ausente ou vazia no arquivo .env!"
     echo "O deploy foi interrompido para proteger a integridade criptográfica da aplicação."
     echo "Configure uma chave válida no .env antes de executar o deploy."
     exit 1
 fi
 
-unset APP_KEY_VALUE
+# 1.4 Registra checksum SHA-256 do .env original e cria backup seguro com permissão restrita (600)
+ENV_GUARD_FILE=".env.deploy_guard.bak"
+ENV_ORIGINAL_CHECKSUM="$(calcular_checksum_env .env)"
+cp -p .env "${ENV_GUARD_FILE}"
+chmod 600 "${ENV_GUARD_FILE}" 2>/dev/null || true
 
-# 1.3 Confirma que o .env permanece ignorado pelo Git
-if git ls-files --error-unmatch .env >/dev/null 2>&1; then
-    echo "⚠️ ALERTA DE SEGURANÇA: O arquivo .env está sendo rastreado pelo Git!"
-    echo "Remova-o do índice imediatamente com 'git rm --cached .env' para evitar vazamento."
-fi
+# 1.5 Função e trap de recuperação em caso de falha durante a execução
+restaurar_env_em_caso_de_erro() {
+    if [ -f "${ENV_GUARD_FILE}" ]; then
+        local cur_chk
+        cur_chk="$(calcular_checksum_env .env)"
+        if [ ! -f .env ] || [ "${cur_chk}" != "${ENV_ORIGINAL_CHECKSUM}" ]; then
+            echo "⚠️ RECUPERAÇÃO: Restaurando .env original a partir do backup de segurança..."
+            cp -fp "${ENV_GUARD_FILE}" .env
+            chmod 600 .env 2>/dev/null || true
+        fi
+    fi
+    rm -f "${ENV_GUARD_FILE}" 2>/dev/null || true
+    php artisan up || true
+}
 
-echo "✅ Pré-requisitos de segurança validados (.env e APP_KEY ativos)."
+trap 'restaurar_env_em_caso_de_erro' ERR
 
-# Cria salvaguarda temporária do .env contra remoção acidental durante operações Git
-cp -p .env .env.deploy_guard.bak 2>/dev/null || true
-
-# Garante recuperação da aplicação e da salvaguarda em caso de falha durante a execução
-trap 'if [ ! -f .env ] && [ -f .env.deploy_guard.bak ]; then mv -f .env.deploy_guard.bak .env; fi; rm -f .env.deploy_guard.bak 2>/dev/null || true; php artisan up || true' ERR
+echo "✅ Pré-requisitos de segurança validados (.env e APP_KEY ativos, checksum SHA-256 registrado)."
 
 # ------------------------------------------------------------------------------
 # 2. Ativa modo de manutenção
@@ -72,17 +119,27 @@ else
     git reset --hard "origin/${TARGET_REF}"
 fi
 
-# Confirma que operações Git não removeram ou corromperam o .env
-if [ ! -f .env ]; then
-    if [ -f .env.deploy_guard.bak ]; then
-        echo "⚠️ AVISO: .env ausente após sincronização Git. Restaurando salvaguarda..."
-        mv -f .env.deploy_guard.bak .env
-    else
-        echo "❌ ERRO CRÍTICO: .env desapareceu após sincronização Git!"
+# 3.1 Verifica se o .env foi removido ou alterado (comparando checksum SHA-256)
+CURRENT_ENV_CHECKSUM="$(calcular_checksum_env .env)"
+if [ ! -f .env ] || [ "${CURRENT_ENV_CHECKSUM}" != "${ENV_ORIGINAL_CHECKSUM}" ]; then
+    echo "⚠️ ALERTA: O arquivo .env foi removido ou alterado durante a sincronização Git!"
+    echo "Restaurando cópia original do backup seguro..."
+    cp -fp "${ENV_GUARD_FILE}" .env
+    chmod 600 .env 2>/dev/null || true
+    echo "✅ Arquivo .env restaurado com sucesso (integridade SHA-256 restabelecida)."
+fi
+
+# 3.2 Valida novamente a APP_KEY após a sincronização / restauração
+if ! validar_app_key; then
+    echo "❌ ERRO CRÍTICO: APP_KEY ausente ou vazia no .env após a sincronização Git!"
+    echo "Tentando restaurar forçadamente a partir do backup de segurança..."
+    cp -fp "${ENV_GUARD_FILE}" .env
+    chmod 600 .env 2>/dev/null || true
+    if ! validar_app_key; then
+        echo "❌ ERRO FATAL: Falha irrecuperável na validação da APP_KEY!"
         exit 1
     fi
 fi
-rm -f .env.deploy_guard.bak 2>/dev/null || true
 
 chmod +x deploy.sh
 
@@ -122,5 +179,10 @@ chmod -R ug+rwx storage bootstrap/cache
 # 9. Desativa modo de manutenção
 # ------------------------------------------------------------------------------
 php artisan up
+
+# ------------------------------------------------------------------------------
+# 10. Conclusão segura: remove o backup do .env somente após o sucesso total
+# ------------------------------------------------------------------------------
+rm -f "${ENV_GUARD_FILE}" 2>/dev/null || true
 
 echo "✅ Deploy concluído com sucesso! Versão ativa: $(cat VERSION 2>/dev/null || echo "${TARGET_REF}")"
