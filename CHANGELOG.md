@@ -2,6 +2,11 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.3.1] - 2026-11-06
+
+### Alterado
+- Simplificada toda a linguagem do **Modal de Novidades da Versão** e da **Central de Ajuda & Sobre** (`VersionService` e `ajuda-sobre.blade.php`) para um vocabulário acessível, amigável e voltado ao usuário comum (recepção, terapeutas, faturamento e coordenação), sem termos técnicos complexos.
+
 ## [1.3.0] - 2026-11-06
 
 ### Adicionado

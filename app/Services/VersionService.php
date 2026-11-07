@@ -7,7 +7,7 @@ namespace App\Services;
 class VersionService
 {
     /**
-     * Retorna a versão SemVer atual lida do arquivo VERSION na raiz do projeto.
+     * Retorna a versão atual lida do arquivo VERSION na raiz do projeto.
      */
     public function versaoAtual(): string
     {
@@ -19,7 +19,7 @@ class VersionService
             }
         }
 
-        return '1.1.0';
+        return '1.3.1';
     }
 
     /**
@@ -35,7 +35,8 @@ class VersionService
     }
 
     /**
-     * Retorna a linha do tempo completa de evolução das versões do CER Flow.
+     * Retorna a linha do tempo completa de evolução das versões do CER Flow
+     * em linguagem simples e acessível para todos os colaboradores da unidade.
      *
      * @return array<int, array{versao: string, data: string, titulo: string, tipo: string, destaques: array<int, string>}>
      */
@@ -43,103 +44,107 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.3.1',
+                'data' => '06/11/2026',
+                'titulo' => 'Textos de Ajuda e Novidades Mais Simples e Fáceis de Entender',
+                'tipo' => 'Melhoria de Uso',
+                'destaques' => [
+                    'Todos os avisos de novidades e textos de ajuda foram reescritos em uma linguagem simples e direta para o dia a dia da unidade.',
+                    'Explicações práticas de como usar a Agenda, Recepção, Prontuário, Faturamento e Configurações sem termos técnicos complicados.',
+                ],
+            ],
+            [
                 'versao' => '1.3.0',
                 'data' => '06/11/2026',
-                'titulo' => 'Submenu de Configurações na Sidebar, CRUD Completo em Modais e Sistema Global de Toasts',
-                'tipo' => 'Minor Release',
+                'titulo' => 'Novo Menu de Configurações, Janelas de Cadastro Rápido e Avisos na Tela',
+                'tipo' => 'Nova Funcionalidade',
                 'destaques' => [
-                    'Menu lateral expansível em Configurações com rotas dedicadas (/configuracoes/pacientes, /salas, /profissionais, /sigtap, /auditoria, /perfil).',
-                    'CRUD completo (Criar, Buscar, Editar, Ativar/Inativar e Excluir) baseado em Modais em todos os submódulos, com validação de integridade referencial.',
-                    'Sistema global de notificações Toast (Sucesso, Erro, Alerta e Informação) integrado em toda a plataforma (Grade, Recepção, PEP e Configurações).',
-                    'Inspeção detalhada de payloads JSON na Trilha de Auditoria LGPD via modal dedicado.',
+                    'O menu de Configurações na lateral agora abre opções separadas para Pacientes, Salas, Equipe, Procedimentos, Histórico de Acessos e Meu Perfil.',
+                    'Agora você pode cadastrar, pesquisar, editar, ativar/inativar e excluir registros usando janelas rápidas sem sair da tela.',
+                    'Novos avisos coloridos no canto da tela confirmam na hora quando uma ação deu certo ou quando precisa da sua atenção.',
+                    'Proteção automática para evitar excluir por engano uma sala ou profissional que já tenha atendimentos registrados.',
                 ],
             ],
             [
                 'versao' => '1.2.0',
                 'data' => '06/11/2026',
-                'titulo' => 'Novo Módulo de Configurações, Parâmetros SUS & Cadastros Base (/configuracoes)',
-                'tipo' => 'Minor Release',
+                'titulo' => 'Área de Configurações e Cadastros da Unidade',
+                'tipo' => 'Nova Funcionalidade',
                 'destaques' => [
-                    'Gestão completa de Salas e Espaços Físicos da grade (Consultórios, Sensorial, AVD, Pediatria, Anexos) com ativação/inativação rápida.',
-                    'Cadastro integrado de Usuários, Perfis RBAC (Spatie) e Profissionais de Saúde com CBO, Conselho, CNS (15 dígitos) e PIN de assinatura SHA-256.',
-                    'Cadastro de Pacientes SUS com validação algorítmica de CNS, código IBGE, CID-10 e Modalidades de Reabilitação.',
-                    'Parametrização da tabela de procedimentos SIGTAP x CBO, consulta à Trilha de Auditoria LGPD/CFM e autoatendimento de Senha/PIN.',
+                    'Criação da área de Configurações para cadastrar e organizar as Salas de Atendimento e Ginásios da unidade.',
+                    'Cadastro completo de Pacientes (com conferência automática do número do Cartão SUS) e da Equipe de Profissionais.',
+                    'Opção para cada colaborador atualizar facilmente sua própria senha de entrada e seu PIN de assinatura clínica.',
                 ],
             ],
             [
                 'versao' => '1.1.4',
                 'data' => '06/11/2026',
-                'titulo' => 'Blindagem do Script deploy.sh contra Conflitos de Permissão (chmod) no Linux',
-                'tipo' => 'Patch Release',
+                'titulo' => 'Atualização Mais Rápida e Segura do Sistema no Servidor',
+                'tipo' => 'Correção e Estabilidade',
                 'destaques' => [
-                    'Configuração automática de core.fileMode false e git reset --hard origin/main no deploy.sh para evitar bloqueio de merge após chmod.',
-                    'Adicionado trap automático para retirar o sistema de manutenção (php artisan up) mesmo em caso de interrupção.',
+                    'Melhoria no processo de atualização automática do sistema para evitar travamentos quando uma nova versão é publicada.',
+                    'Retorno automático do sistema ao ar caso ocorra qualquer interrupção durante a manutenção.',
                 ],
             ],
             [
                 'versao' => '1.1.3',
                 'data' => '06/11/2026',
-                'titulo' => 'Correção de Assets Estáticos do Livewire 4 no Nginx/CloudPanel e Fechamento Instantâneo do Modal',
-                'tipo' => 'Patch Release',
+                'titulo' => 'Correção no Fechamento da Janela de Novidades ao Entrar',
+                'tipo' => 'Correção Rápida',
                 'destaques' => [
-                    'Publicação estática de public/vendor/livewire (livewire.min.js) evitando erro 404 na regra de arquivos .js do Nginx no CloudPanel.',
-                    'Consumo atômico da sessão (session()->pull) no Modal de Novidades da Versão e fechamento instantâneo via Alpine.js + tecla ESC.',
-                    'Remoção de instância duplicada do Alpine.js em resources/js/app.js em favor do bundle nativo do Livewire 4.',
+                    'Corrigido o problema em que a janela de novidades não fechava ao clicar no botão "Entendi, continuar".',
+                    'Agora você também pode fechar os avisos apertando a tecla ESC do teclado ou clicando fora da janela.',
                 ],
             ],
             [
                 'versao' => '1.1.2',
                 'data' => '06/11/2026',
-                'titulo' => 'Padronização PSR-12 dos Componentes de Versão e Revisão do Guia de Deploy CloudPanel',
-                'tipo' => 'Patch Release',
+                'titulo' => 'Ajustes Visuais na Central de Ajuda',
+                'tipo' => 'Melhoria Interna',
                 'destaques' => [
-                    'Padronização PSR-12 nos componentes Livewire de controle de versão (ModalNovidadesVersao e AjudaSobre).',
-                    'Sincronização das referências de tag SemVer no guia de deploy para CloudPanel (cer.kltecnologia.com).',
+                    'Pequenos ajustes de organização nas telas de Ajuda e no aviso de novidades da versão.',
                 ],
             ],
             [
                 'versao' => '1.1.1',
                 'data' => '06/11/2026',
-                'titulo' => 'Documentação de Produção CloudPanel (cer.kltecnologia.com) e Licenciamento Proprietário KL Tecnologia',
-                'tipo' => 'Patch Release',
+                'titulo' => 'Identificação Oficial KL Tecnologia e Manual de Instalação',
+                'tipo' => 'Melhoria Institucional',
                 'destaques' => [
-                    'Adicionado guia completo deploy.md parametrizado para o ambiente CloudPanel na Hostinger (cer.kltecnologia.com / PHP 8.5 / MySQL cer).',
-                    'Atualização institucional do README.md detalhando os 5 módulos operacionais do CER Flow.',
-                    'Definição formal de propriedade intelectual e licença proprietária exclusiva da KL Tecnologia (kltecnologia.com).',
+                    'Inclusão das informações oficiais de suporte e propriedade da KL Tecnologia (kltecnologia.com).',
+                    'Organização do guia de instalação do servidor de produção da unidade.',
                 ],
             ],
             [
                 'versao' => '1.1.0',
                 'data' => '06/11/2026',
-                'titulo' => 'Módulo de Ajuda & Sobre e Comunicado Automático de Versão no Login',
-                'tipo' => 'Minor Release',
+                'titulo' => 'Central de Ajuda e Aviso de Novidades no Login',
+                'tipo' => 'Nova Funcionalidade',
                 'destaques' => [
-                    'Modal automático de Novidades da Versão exibido a cada login com os destaques da release ativa.',
-                    'Novo módulo Ajuda & Sobre com manual operacional rápido por perfil (Recepção, Terapeuta, Faturamento e Coordenação).',
-                    'Linha do tempo interativa com o histórico completo de evolução das versões (SemVer) e especificações técnicas do ambiente.',
+                    'Sempre que você entra no sistema, uma janela mostra de forma resumida o que mudou na versão mais recente.',
+                    'Nova página de "Ajuda & Sobre" no menu lateral com um guia rápido de como funciona cada setor do CER.',
+                    'Linha do tempo mostrando todas as melhorias feitas no sistema desde o primeiro dia.',
                 ],
             ],
             [
                 'versao' => '1.0.1',
                 'data' => '06/11/2026',
-                'titulo' => 'Automação de Deploy para VPS Hostinger (CloudPanel)',
-                'tipo' => 'Patch Release',
+                'titulo' => 'Preparação do Sistema para Funcionar na Internet',
+                'tipo' => 'Melhoria de Estrutura',
                 'destaques' => [
-                    'Adicionado script deploy.sh com suporte a deploy contínuo por branch ou tag SemVer.',
-                    'Automação de modo de manutenção, migrations, limpeza de cache do Spatie Permission e build Vite.',
-                    'Documentação completa de provisionamento CloudPanel + MySQL 8.0+ no README.md.',
+                    'Configuração para que o sistema funcione com rapidez e segurança no endereço oficial da unidade na internet.',
                 ],
             ],
             [
                 'versao' => '1.0.0',
                 'data' => '06/11/2026',
-                'titulo' => 'Lançamento Inicial do MVP CER Flow (Grade, Recepção, PEP Multi e BPA-i)',
-                'tipo' => 'Major Release',
+                'titulo' => 'Lançamento Inicial do Sistema CER Flow',
+                'tipo' => 'Lançamento Principal',
                 'destaques' => [
-                    'Grade Semanal reativa em slots de 30 minutos por sala e profissional, com suporte a Atendimento Compartilhado e horário cativo.',
-                    'Painel de Recepção com check-in em 1 clique e alerta visual automático de absenteísmo (3 faltas consecutivas ou 5 no mês).',
-                    'Prontuário Eletrônico Multiprofissional (PEP) com assinatura eletrônica via PIN (SHA-256), trava legal de 24 horas e Termos de Adendo.',
-                    'Pré-auditoria em memória e exportação magnética posicional do BPA-i (Header 01#BPA# + linhas Tipo 03 de 350 colunas) padrão DATASUS.',
+                    'Grade Semanal: agenda visual organizada de 30 em 30 minutos por sala e profissional, permitindo atendimento individual ou em conjunto.',
+                    'Recepção e Check-in: confirmação de presença dos pacientes com 1 clique e aviso automático quando o paciente tem muitas faltas.',
+                    'Prontuário Eletrônico: registro das evoluções do paciente com assinatura por senha curta (PIN) e proteção após 24 horas.',
+                    'Faturamento SUS (BPA-i): conferência automática de dados pendentes e geração do arquivo mensal para envio ao SUS.',
                 ],
             ],
         ];

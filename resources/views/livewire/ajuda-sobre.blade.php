@@ -9,52 +9,48 @@
                 </span>
             </div>
             <p class="mt-1 text-xs text-slate-500">
-                Documentação operacional SUS, regras de negócio do CER e linha do tempo de evolução das versões
+                Guia prático para o dia a dia da unidade e histórico de todas as melhorias feitas no sistema
             </p>
         </div>
 
         <div class="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-1 text-xs">
             <button type="button"
                     wire:click="selecionarAba('evolucao')"
-                    class="rounded-md px-3.5 py-1.5 font-semibold transition {{ $abaAtiva === 'evolucao' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900' }}">
-                Evolução das Versões (Changelog)
+                    class="rounded-md px-3.5 py-1.5 font-semibold transition cursor-pointer {{ $abaAtiva === 'evolucao' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900' }}">
+                Novidades de Cada Versão
             </button>
             <button type="button"
                     wire:click="selecionarAba('ajuda')"
-                    class="rounded-md px-3.5 py-1.5 font-semibold transition {{ $abaAtiva === 'ajuda' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900' }}">
-                Manual Operacional & Regras SUS
+                    class="rounded-md px-3.5 py-1.5 font-semibold transition cursor-pointer {{ $abaAtiva === 'ajuda' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900' }}">
+                Como Usar o Sistema
             </button>
         </div>
     </div>
 
-    <!-- Ficha Técnica do Ambiente -->
-    <div class="grid grid-cols-2 gap-4 sm:grid-cols-5">
+    <!-- Resumo Rápido da Unidade -->
+    <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-            <span class="text-[11px] text-slate-400 block">Versão Ativa</span>
+            <span class="text-[11px] text-slate-400 block">Versão Atual do Sistema</span>
             <span class="mt-1 font-mono text-sm font-bold text-teal-700 block">v{{ $versaoAtual }}</span>
         </div>
         <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-            <span class="text-[11px] text-slate-400 block">Framework</span>
-            <span class="mt-1 font-mono text-sm font-semibold text-slate-800 block">Laravel {{ $infoAmbiente['laravel'] }}</span>
-        </div>
-        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-            <span class="text-[11px] text-slate-400 block">Runtime PHP</span>
-            <span class="mt-1 font-mono text-sm font-semibold text-slate-800 block">PHP {{ $infoAmbiente['php'] }}</span>
-        </div>
-        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-            <span class="text-[11px] text-slate-400 block">Fuso Horário / Locale</span>
-            <span class="mt-1 font-mono text-sm font-semibold text-slate-800 block">{{ $infoAmbiente['timezone'] }} ({{ $infoAmbiente['locale'] }})</span>
-        </div>
-        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-            <span class="text-[11px] text-slate-400 block">CNES Unidade</span>
+            <span class="text-[11px] text-slate-400 block">Código CNES da Unidade</span>
             <span class="mt-1 font-mono text-sm font-semibold text-slate-800 block">{{ $infoAmbiente['cnes'] }}</span>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+            <span class="text-[11px] text-slate-400 block">Horário do Sistema</span>
+            <span class="mt-1 text-sm font-semibold text-slate-800 block">Horário de Maceió / Brasília</span>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+            <span class="text-[11px] text-slate-400 block">Desenvolvido por</span>
+            <span class="mt-1 text-sm font-semibold text-slate-800 block">KL Tecnologia</span>
         </div>
     </div>
 
     @if($abaAtiva === 'evolucao')
         <!-- Linha do Tempo de Evolução das Versões -->
         <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
-            <h3 class="text-sm font-bold text-slate-900 mb-6">Histórico de Lançamentos e Evolução de Versões (SemVer)</h3>
+            <h3 class="text-sm font-bold text-slate-900 mb-6">O que mudou em cada atualização do sistema</h3>
 
             <div class="relative border-l-2 border-teal-500 ml-3 space-y-8 pl-6">
                 @foreach($historicoVersoes as $indice => $item)
@@ -68,12 +64,12 @@
                             <span class="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
                                 {{ $item['tipo'] }}
                             </span>
-                            <span class="text-xs text-slate-400 font-mono">
-                                Lançado em {{ $item['data'] }}
+                            <span class="text-xs text-slate-400">
+                                Atualizado em {{ $item['data'] }}
                             </span>
                             @if($indice === 0)
                                 <span class="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
-                                    Versão Atual em Execução
+                                    Versão que você está usando agora
                                 </span>
                             @endif
                         </div>
@@ -93,66 +89,65 @@
             </div>
         </div>
     @else
-        <!-- Manual Operacional por Perfil e Regras de Domínio SUS -->
+        <!-- Guia Prático por Setor em Linguagem Simples -->
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-3 text-xs">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                    <h3 class="text-sm font-bold text-slate-900">1. Recepção & Grade Semanal</h3>
-                    <span class="rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] text-slate-600">recepcao / coordenacao</span>
+                    <h3 class="text-sm font-bold text-slate-900">1. Recepção e Agenda da Semana</h3>
+                    <span class="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">Recepção e Coordenação</span>
                 </div>
                 <p class="text-slate-600 leading-relaxed">
-                    Gerencia a alocação de usuários em slots de 30 minutos por sala e realiza o check-in diário em 1 clique (<code class="font-mono">PRESENTE</code>, <code class="font-mono">FALTA_INJUSTIFICADA</code>, <code class="font-mono">FALTA_JUSTIFICADA</code>).
+                    Organiza os horários de atendimento de 30 em 30 minutos para cada sala e permite confirmar rapidamente quando o paciente chega na unidade.
                 </p>
                 <ul class="space-y-1.5 text-slate-700">
-                    <li><strong>RN01 (Anti-Conflito):</strong> Bloqueia agendamentos duplicados de sala ou paciente, exceto quando marcado como <code class="font-mono">COMPARTILHADO</code>.</li>
-                    <li><strong>RN02 (Validação Cadastral):</strong> Exige Cartão Nacional de Saúde (CNS) válido de 15 dígitos (Módulo 11) e data de nascimento.</li>
-                    <li><strong>RF2.5 (Absenteísmo):</strong> Sinaliza automaticamente pacientes com 3 faltas consecutivas ou 5 alternadas no mês vigente.</li>
+                    <li><strong>Sem choque de horário:</strong> O sistema avisa se a sala ou o paciente já estiverem ocupados naquele horário (a menos que seja um atendimento em conjunto com dois profissionais).</li>
+                    <li><strong>Cartão SUS conferido na hora:</strong> Ao cadastrar um paciente, o sistema confere se os 15 números do Cartão SUS são válidos.</li>
+                    <li><strong>Aviso de Faltas:</strong> Se o paciente faltar 3 vezes seguidas ou 5 vezes no mesmo mês, aparece um alerta vermelho para a recepção avisar a coordenação.</li>
                 </ul>
             </div>
 
             <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-3 text-xs">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                    <h3 class="text-sm font-bold text-slate-900">2. Prontuário Eletrônico (PEP Multi)</h3>
-                    <span class="rounded bg-teal-50 px-2 py-0.5 font-mono text-[10px] text-teal-700">terapeuta / coordenacao</span>
+                    <h3 class="text-sm font-bold text-slate-900">2. Prontuário do Paciente</h3>
+                    <span class="rounded bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700">Terapeutas e Coordenação</span>
                 </div>
                 <p class="text-slate-600 leading-relaxed">
-                    Linha do tempo clínica integrada entre Fisioterapia, Fonoaudiologia, Terapia Ocupacional e Psicologia, com isolamento estrito de sigilo (LGPD / CFM).
+                    Reúne em um só lugar o histórico de evoluções de Fisioterapia, Fonoaudiologia, Terapia Ocupacional, Psicologia e demais áreas, com sigilo protegido.
                 </p>
                 <ul class="space-y-1.5 text-slate-700">
-                    <li><strong>RF3.4 (Assinatura SHA-256):</strong> Cada evolução exige confirmação do PIN individual do profissional, gravando hash criptográfico de 64 caracteres.</li>
-                    <li><strong>RN03 (Trava Legal de 24h):</strong> Passadas 24 horas da assinatura, a evolução torna-se imutável, admitindo apenas <strong>Termos de Adendo</strong> retificadores.</li>
-                    <li><strong>RN04 (Co-Atendimento):</strong> Atendimentos compartilhados desmembram a produção individualmente por profissional, CBO e procedimento SIGTAP.</li>
+                    <li><strong>Assinatura com PIN:</strong> Para finalizar uma evolução, o profissional digita sua senha curta (PIN), garantindo que só ele pôde assinar aquele atendimento.</li>
+                    <li><strong>Proteção após 24 horas:</strong> Depois de 24 horas, o texto assinado não pode mais ser apagado. Se precisar corrigir ou acrescentar algo, basta clicar em <strong>Adicionar Adendo (Observação Complementar)</strong>.</li>
+                    <li><strong>Atendimento em Conjunto:</strong> Quando dois profissionais atendem juntos, cada um assina sua parte normalmente.</li>
                 </ul>
             </div>
 
             <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-3 text-xs">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                    <h3 class="text-sm font-bold text-slate-900">3. Faturamento & Exportação BPA-i (SIA/SUS)</h3>
-                    <span class="rounded bg-indigo-50 px-2 py-0.5 font-mono text-[10px] text-indigo-700">faturamento / coordenacao</span>
+                    <h3 class="text-sm font-bold text-slate-900">3. Faturamento Mensal do SUS (BPA-i)</h3>
+                    <span class="rounded bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">Faturamento e Coordenação</span>
                 </div>
                 <p class="text-slate-600 leading-relaxed">
-                    Audita preventivamente os atendimentos assinados na competência (<code class="font-mono">AAAAMM</code>) antes de gerar a remessa magnética oficial.
+                    Confere todos os atendimentos realizados no mês antes de gerar o arquivo final para prestação de contas ao SUS.
                 </p>
                 <ul class="space-y-1.5 text-slate-700">
-                    <li><strong>RF4.2 (Pré-Auditoria em Memória):</strong> Retém registros com CNS inválido, CBO incompatível com o procedimento SIGTAP de 10 dígitos ou idade fora da faixa.</li>
-                    <li><strong>RF4.3 (Layout Posicional DATASUS):</strong> Gera o arquivo <code class="font-mono">BPA_I_AAAAMM.txt</code> com Header <code class="font-mono">01#BPA#</code> (130 colunas) e linhas Tipo <code class="font-mono">03</code> (350 colunas).</li>
+                    <li><strong>Conferência antes de exportar:</strong> O sistema separa automaticamente o que está pronto para enviar e avisa se algum atendimento tiver dados incompletos.</li>
+                    <li><strong>Arquivo pronto para o SUS:</strong> Com um clique, baixa o arquivo de texto do mês no formato exigido pelo Ministério da Saúde.</li>
                 </ul>
             </div>
 
             <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-3 text-xs">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                    <h3 class="text-sm font-bold text-slate-900">4. Segurança, LGPD e Trilha de Auditoria</h3>
-                    <span class="rounded bg-amber-50 px-2 py-0.5 font-mono text-[10px] text-amber-800">coordenacao</span>
+                    <h3 class="text-sm font-bold text-slate-900">4. Configurações e Meu Perfil</h3>
+                    <span class="rounded bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">Todos os Colaboradores</span>
                 </div>
                 <p class="text-slate-600 leading-relaxed">
-                    Todas as operações sensíveis são rastreadas de forma imutável na tabela <code class="font-mono">logs_auditoria</code>.
+                    No menu lateral em <strong>Configurações</strong>, você encontra os cadastros da unidade de acordo com a sua função.
                 </p>
                 <ul class="space-y-1.5 text-slate-700">
-                    <li><strong>RNF1 (Isolamento de Perfis):</strong> Recepção e Faturamento são bloqueados por Policy de visualizar anotações clínicas do PEP.</li>
-                    <li><strong>RNF2 (Rastreabilidade):</strong> Registra automaticamente eventos <code class="font-mono">ACESSO_PEP</code>, <code class="font-mono">ASSINATURA_EVOLUCAO</code> e <code class="font-mono">EXPORTACAO_BPA</code> com IP e usuário.</li>
+                    <li><strong>Meu Perfil & PIN:</strong> Qualquer colaborador pode trocar sua senha de acesso ou escolher um novo PIN de assinatura.</li>
+                    <li><strong>Cadastros da Unidade:</strong> A Recepção e a Coordenação podem cadastrar e atualizar Pacientes, Salas, Profissionais e Procedimentos.</li>
                 </ul>
             </div>
         </div>
     @endif
 </div>
-
