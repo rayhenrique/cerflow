@@ -96,15 +96,21 @@ class ConfiguracoesSistema extends Component
 
     public string $pac_municipio_ibge = '270430';
 
-    public string $pac_cid_principal = '';
+    public string $pac_ubs_referencia = '';
 
-    public string $pac_cid_secundario = '';
+    public string $pac_nome_acs = '';
 
     public string $pac_telefone_contato = '';
+
+    public string $pac_telefone_secundario = '';
 
     public string $pac_endereco = '';
 
     public string $pac_bairro = '';
+
+    public string $pac_cid_principal = '';
+
+    public string $pac_cid_secundario = '';
 
     /** @var array<int, string> */
     public array $pac_modalidades = [];
@@ -391,11 +397,14 @@ class ConfiguracoesSistema extends Component
             'pac_cpf',
             'pac_data_nascimento',
             'pac_nome_mae',
-            'pac_cid_principal',
-            'pac_cid_secundario',
+            'pac_ubs_referencia',
+            'pac_nome_acs',
             'pac_telefone_contato',
+            'pac_telefone_secundario',
             'pac_endereco',
             'pac_bairro',
+            'pac_cid_principal',
+            'pac_cid_secundario',
             'pac_modalidades',
         ]);
         $this->pac_sexo = 'M';
@@ -412,17 +421,20 @@ class ConfiguracoesSistema extends Component
 
         $this->pacienteEditandoId = $pac->id;
         $this->pac_nome = $pac->nome;
-        $this->pac_cns = $pac->cns;
+        $this->pac_cns = (string) ($pac->cns ?? '');
         $this->pac_cpf = (string) ($pac->cpf ?? '');
         $this->pac_data_nascimento = $pac->data_nascimento->format('Y-m-d');
         $this->pac_sexo = $pac->sexo;
-        $this->pac_nome_mae = $pac->nome_mae;
-        $this->pac_municipio_ibge = $pac->municipio_ibge;
-        $this->pac_cid_principal = $pac->cid_principal;
-        $this->pac_cid_secundario = (string) ($pac->cid_secundario ?? '');
+        $this->pac_nome_mae = (string) ($pac->nome_mae ?? '');
+        $this->pac_municipio_ibge = (string) ($pac->municipio_ibge ?? ConfiguracaoEstabelecimento::atual()->codigo_ibge_padrao);
+        $this->pac_ubs_referencia = (string) ($pac->ubs_referencia ?? '');
+        $this->pac_nome_acs = (string) ($pac->nome_acs ?? '');
         $this->pac_telefone_contato = (string) ($pac->telefone_contato ?? '');
+        $this->pac_telefone_secundario = (string) ($pac->telefone_secundario ?? '');
         $this->pac_endereco = (string) ($pac->endereco ?? '');
         $this->pac_bairro = (string) ($pac->bairro ?? '');
+        $this->pac_cid_principal = (string) ($pac->cid_principal ?? '');
+        $this->pac_cid_secundario = (string) ($pac->cid_secundario ?? '');
         $this->pac_modalidades = is_array($pac->modalidades_reabilitacao) ? $pac->modalidades_reabilitacao : [];
 
         $this->modalPacienteAberto = true;
@@ -438,14 +450,24 @@ class ConfiguracoesSistema extends Component
     {
         abort_unless(auth()->user()?->hasAnyRole(['recepcao', 'coordenacao']) === true, 403);
 
-        $this->pac_cns = preg_replace('/\D/', '', $this->pac_cns) ?? '';
-        $this->pac_cpf = preg_replace('/\D/', '', $this->pac_cpf) ?? '';
-        $this->pac_municipio_ibge = preg_replace('/\D/', '', $this->pac_municipio_ibge) ?? '';
+        $this->pac_cns = preg_replace('/\D/', '', $this->pac_cns ?? '') ?? '';
+        $this->pac_cpf = preg_replace('/\D/', '', $this->pac_cpf ?? '') ?? '';
+        $this->pac_municipio_ibge = preg_replace('/\D/', '', $this->pac_municipio_ibge ?? '') ?? '';
 
-        $this->validate([
+        $rules = [
             'pac_nome' => ['required', 'string', 'max:255'],
+            'pac_data_nascimento' => ['required', 'date', 'before_or_equal:today'],
+            'pac_sexo' => ['required', Rule::in(['M', 'F'])],
+            'pac_municipio_ibge' => ['required', 'string', 'digits:6'],
+            'pac_nome_mae' => ['nullable', 'string', 'max:255'],
+            'pac_ubs_referencia' => ['nullable', 'string', 'max:255'],
+            'pac_nome_acs' => ['nullable', 'string', 'max:255'],
+            'pac_telefone_contato' => ['nullable', 'string', 'max:20'],
+            'pac_telefone_secundario' => ['nullable', 'string', 'max:20'],
+            'pac_endereco' => ['nullable', 'string', 'max:255'],
+            'pac_bairro' => ['nullable', 'string', 'max:100'],
             'pac_cns' => [
-                'required',
+                'nullable',
                 'string',
                 'digits:15',
                 new CnsValido,
@@ -457,36 +479,72 @@ class ConfiguracoesSistema extends Component
                 'digits:11',
                 Rule::unique('pacientes', 'cpf')->ignore($this->pacienteEditandoId),
             ],
-            'pac_data_nascimento' => ['required', 'date', 'before_or_equal:today'],
-            'pac_sexo' => ['required', Rule::in(['M', 'F'])],
-            'pac_nome_mae' => ['required', 'string', 'max:255'],
-            'pac_municipio_ibge' => ['required', 'string', 'digits:6'],
-            'pac_cid_principal' => ['required', 'string', 'max:10'],
-            'pac_cid_secundario' => ['nullable', 'string', 'max:10'],
-            'pac_telefone_contato' => ['nullable', 'string', 'max:20'],
-            'pac_endereco' => ['nullable', 'string', 'max:255'],
-            'pac_bairro' => ['nullable', 'string', 'max:100'],
-            'pac_modalidades' => ['nullable', 'array'],
-        ]);
+        ];
+
+        // Se campos clínicos forem fornecidos (ex.: por coordenação ou testes legados)
+        if ($this->pac_cid_principal !== '') {
+            $rules['pac_cid_principal'] = ['nullable', 'string', 'max:10'];
+        }
+        if ($this->pac_cid_secundario !== '') {
+            $rules['pac_cid_secundario'] = ['nullable', 'string', 'max:10'];
+        }
+        if ($this->pac_modalidades !== []) {
+            $rules['pac_modalidades'] = ['nullable', 'array'];
+        }
+
+        $this->validate($rules);
+
+        // Regra de desduplicação do e-SUS/SUS:
+        // Se CPF e CNS não forem informados, validar duplicidade por Nome + Data de Nascimento
+        if ($this->pac_cpf === '' && $this->pac_cns === '') {
+            $duplicado = Paciente::query()
+                ->when($this->pacienteEditandoId !== null, fn ($q) => $q->where('id', '!=', $this->pacienteEditandoId))
+                ->where('nome', trim($this->pac_nome))
+                ->whereDate('data_nascimento', $this->pac_data_nascimento)
+                ->exists();
+
+            if ($duplicado) {
+                $this->addError('pac_nome', 'Já existe um paciente cadastrado com este mesmo nome e data de nascimento no sistema.');
+
+                return;
+            }
+        }
 
         $editando = $this->pacienteEditandoId !== null;
+        $pacienteExistente = $editando ? Paciente::find($this->pacienteEditandoId) : null;
+
+        $cidPrincipal = $this->pac_cid_principal !== ''
+            ? strtoupper(trim($this->pac_cid_principal))
+            : ($pacienteExistente?->cid_principal);
+
+        $cidSecundario = $this->pac_cid_secundario !== ''
+            ? strtoupper(trim($this->pac_cid_secundario))
+            : ($pacienteExistente?->cid_secundario);
+
+        $modalidades = $this->pac_modalidades !== []
+            ? $this->pac_modalidades
+            : ($pacienteExistente?->modalidades_reabilitacao);
 
         Paciente::updateOrCreate(
             ['id' => $this->pacienteEditandoId],
             [
                 'nome' => trim($this->pac_nome),
-                'cns' => $this->pac_cns,
+                'cns' => $this->pac_cns !== '' ? $this->pac_cns : null,
                 'cpf' => $this->pac_cpf !== '' ? $this->pac_cpf : null,
                 'data_nascimento' => $this->pac_data_nascimento,
                 'sexo' => $this->pac_sexo,
-                'nome_mae' => trim($this->pac_nome_mae),
+                'nome_mae' => $this->pac_nome_mae !== '' ? trim($this->pac_nome_mae) : null,
                 'municipio_ibge' => $this->pac_municipio_ibge,
-                'cid_principal' => strtoupper(trim($this->pac_cid_principal)),
-                'cid_secundario' => $this->pac_cid_secundario !== '' ? strtoupper(trim($this->pac_cid_secundario)) : null,
+                'ubs_referencia' => $this->pac_ubs_referencia !== '' ? trim($this->pac_ubs_referencia) : null,
+                'nome_acs' => $this->pac_nome_acs !== '' ? trim($this->pac_nome_acs) : null,
                 'telefone_contato' => $this->pac_telefone_contato !== '' ? trim($this->pac_telefone_contato) : null,
+                'telefone_secundario' => $this->pac_telefone_secundario !== '' ? trim($this->pac_telefone_secundario) : null,
                 'endereco' => $this->pac_endereco !== '' ? trim($this->pac_endereco) : null,
                 'bairro' => $this->pac_bairro !== '' ? trim($this->pac_bairro) : null,
-                'modalidades_reabilitacao' => $this->pac_modalidades,
+                'cid_principal' => $cidPrincipal,
+                'cid_secundario' => $cidSecundario,
+                'modalidades_reabilitacao' => $modalidades,
+                'origem_cadastro' => $pacienteExistente?->origem_cadastro ?? 'MANUAL',
                 'ativo' => true,
             ]
         );
@@ -499,17 +557,20 @@ class ConfiguracoesSistema extends Component
             'pac_cpf',
             'pac_data_nascimento',
             'pac_nome_mae',
-            'pac_cid_principal',
-            'pac_cid_secundario',
+            'pac_ubs_referencia',
+            'pac_nome_acs',
             'pac_telefone_contato',
+            'pac_telefone_secundario',
             'pac_endereco',
             'pac_bairro',
+            'pac_cid_principal',
+            'pac_cid_secundario',
             'pac_modalidades',
         ]);
 
         $mensagem = $editando
             ? 'Os dados cadastrais do paciente foram atualizados com sucesso.'
-            : 'Paciente cadastrado com sucesso e pronto para agendamento.';
+            : 'Paciente cadastrado com sucesso e pronto para atendimento.';
 
         session()->flash('sucesso_config', $mensagem);
         $this->dispatch('toast', tipo: 'sucesso', titulo: $editando ? 'Paciente atualizado' : 'Paciente cadastrado', mensagem: $mensagem);
@@ -1134,6 +1195,28 @@ class ConfiguracoesSistema extends Component
             }
         }
 
+        $listaUbs = [];
+        if ($podePacientes) {
+            $ubsDoBanco = Paciente::query()
+                ->whereNotNull('ubs_referencia')
+                ->where('ubs_referencia', '!=', '')
+                ->distinct()
+                ->pluck('ubs_referencia')
+                ->toArray();
+
+            $padroes = [
+                'UBS Centro / PSF Central',
+                'UBS Dr. José Ferreira',
+                'UBS Santa Luzia',
+                'UBS Bela Vista',
+                'UBS São José',
+                'USF Esperança',
+                'UBS Zona Rural',
+            ];
+
+            $listaUbs = array_values(array_unique(array_filter(array_merge($padroes, $ubsDoBanco))));
+        }
+
         return view('livewire.configuracoes-sistema', [
             'abasPermitidas' => $this->abasPermitidas(),
             'salas' => $salas,
@@ -1142,6 +1225,7 @@ class ConfiguracoesSistema extends Component
             'procedimentosSigtap' => $procedimentosSigtap,
             'logsAuditoria' => $logsAuditoria,
             'logInspecionado' => $logInspecionado,
+            'listaUbs' => $listaUbs,
         ]);
     }
 }

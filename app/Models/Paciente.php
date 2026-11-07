@@ -24,13 +24,18 @@ class Paciente extends Model
         'sexo',
         'nome_mae',
         'municipio_ibge',
+        'ubs_referencia',
+        'nome_acs',
         'endereco',
         'bairro',
         'telefone_contato',
+        'telefone_secundario',
         'cid_principal',
         'cid_secundario',
         'modalidades_reabilitacao',
         'ativo',
+        'origem_cadastro',
+        'id_externo_esus',
     ];
 
     protected function casts(): array
@@ -60,5 +65,15 @@ class Paciente extends Model
     public function scopeAtivos(Builder $query): Builder
     {
         return $query->where('ativo', true);
+    }
+
+    public function temCns(): bool
+    {
+        return ! empty($this->cns);
+    }
+
+    public function temDiagnosticoClinico(): bool
+    {
+        return ! empty($this->cid_principal);
     }
 }

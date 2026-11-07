@@ -50,7 +50,7 @@
                                     </span>
                                 @endif
                             </div>
-                            <span class="text-[11px] font-mono text-slate-500 block">CNS: {{ $ag->paciente?->cns }} • CID: {{ $ag->paciente?->cid_principal }}</span>
+                            <span class="text-[11px] font-mono text-slate-500 block">CNS: {{ $ag->paciente?->cns ?? 'Pendente' }} • CID: {{ $ag->paciente?->cid_principal ?? 'Pendente' }}</span>
                         </td>
                         <td class="px-4 py-3 min-w-[160px]">
                             <span class="font-medium text-slate-800 block">{{ $ag->sala?->nome }}</span>

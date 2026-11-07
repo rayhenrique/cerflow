@@ -25,18 +25,38 @@
             </div>
             <div>
                 <span class="text-slate-400 block">CNS (15 dígitos)</span>
-                <span class="font-mono font-semibold text-teal-400">{{ $pacienteSelecionado->cns }}</span>
+                @if ($pacienteSelecionado->cns)
+                    <span class="font-mono font-semibold text-teal-400">{{ $pacienteSelecionado->cns }}</span>
+                @else
+                    <span class="text-slate-400 italic">Não informado</span>
+                @endif
             </div>
             <div>
-                <span class="text-slate-400 block">Nascimento / CID-10</span>
-                <span class="font-semibold">{{ $pacienteSelecionado->data_nascimento?->format('d/m/Y') }} • CID {{ $pacienteSelecionado->cid_principal }}</span>
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400 block">Nascimento / CID-10</span>
+                </div>
+                <span class="font-semibold">
+                    {{ $pacienteSelecionado->data_nascimento?->format('d/m/Y') }} • 
+                    @if ($pacienteSelecionado->cid_principal)
+                        CID {{ $pacienteSelecionado->cid_principal }}
+                    @else
+                        <span class="text-amber-400 font-normal italic">CID Pendente</span>
+                    @endif
+                </span>
             </div>
             <div>
-                <span class="text-slate-400 block">Modalidades de Reabilitação</span>
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400 block">Modalidades</span>
+                    <button type="button" wire:click="abrirModalDiagnostico" class="text-[11px] text-teal-400 hover:text-teal-300 font-semibold underline cursor-pointer">
+                        Editar Diagnóstico
+                    </button>
+                </div>
                 <div class="mt-1 flex flex-wrap gap-1">
-                    @foreach($pacienteSelecionado->modalidades_reabilitacao ?? [] as $mod)
+                    @forelse($pacienteSelecionado->modalidades_reabilitacao ?? [] as $mod)
                         <span class="rounded bg-slate-800 px-2 py-0.5 text-[10px] font-mono text-teal-300 border border-slate-700">{{ $mod }}</span>
-                    @endforeach
+                    @empty
+                        <span class="text-slate-400 italic">Nenhuma atribuída</span>
+                    @endforelse
                 </div>
             </div>
         </div>
@@ -238,6 +258,63 @@
                         Assinar Adendo
                     </button>
                 </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- MODAL DE DIAGNÓSTICO CLÍNICO E MODALIDADES DE REABILITAÇÃO --}}
+    @if ($modalDiagnosticoAberto)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 overflow-y-auto">
+            <div class="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-8">
+                <div class="bg-slate-900 px-6 py-4 text-white flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-bold">Diagnóstico Clínico & Reabilitação</h3>
+                        <p class="text-xs text-slate-400">Atribuição clínica pelo profissional de saúde autorizado</p>
+                    </div>
+                    <button type="button" wire:click="fecharModalDiagnostico" class="text-slate-400 hover:text-white cursor-pointer">✕</button>
+                </div>
+
+                <form wire:submit="salvarDiagnostico" class="p-6 space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">CID-10 Principal *</label>
+                            <input type="text" wire:model="diag_cid_principal" maxlength="10" placeholder="Ex.: F840, G800"
+                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm uppercase font-mono focus:border-teal-600 focus:outline-none">
+                            @error('diag_cid_principal') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">CID-10 Secundário</label>
+                            <input type="text" wire:model="diag_cid_secundario" maxlength="10" placeholder="Opcional"
+                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm uppercase font-mono focus:border-teal-600 focus:outline-none">
+                            @error('diag_cid_secundario') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-2">Modalidades de Reabilitação do CER</label>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            @foreach (['FISICA' => 'Física', 'INTELECTUAL' => 'Intelectual', 'AUDITIVA' => 'Auditiva', 'VISUAL' => 'Visual'] as $valor => $rotulo)
+                                <label class="flex items-center gap-2 rounded-lg border border-slate-200 p-2.5 cursor-pointer hover:bg-slate-50">
+                                    <input type="checkbox" wire:model="diag_modalidades" value="{{ $valor }}" class="rounded text-teal-600">
+                                    <span class="font-medium text-slate-800">{{ $rotulo }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                        @error('diag_modalidades') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                        <button type="button" wire:click="fecharModalDiagnostico"
+                            class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                            class="rounded-lg bg-teal-600 px-5 py-2 text-xs font-bold text-white hover:bg-teal-700 transition cursor-pointer">
+                            Salvar Avaliação Clínica
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     @endif

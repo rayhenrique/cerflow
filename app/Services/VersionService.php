@@ -44,6 +44,19 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.10.0',
+                'data' => '07/11/2026',
+                'titulo' => 'Reformulação do Cadastro de Pacientes & Separação de Dados Clínicos',
+                'tipo' => 'Nova Versão',
+                'destaques' => [
+                    'Novo cadastro de pacientes em 3 seções: Identificação do Cidadão, Vínculo com a Atenção Primária e Contatos/Endereço.',
+                    'A recepção agora pode cadastrar pacientes sem exigir CID-10 ou modalidades de reabilitação.',
+                    'Vínculo com a Atenção Primária com UBS de referência, Agente Comunitário de Saúde (ACS) e código IBGE padrão.',
+                    'Preparação do modelo de dados para integração com o e-SUS APS PEC e regras de desduplicação.',
+                    'Gestão de diagnóstico clínico e modalidades transferida para o Prontuário Eletrônico do Paciente (PEP Multi).',
+                ],
+            ],
+            [
                 'versao' => '1.9.0',
                 'data' => '07/11/2026',
                 'titulo' => 'Novo Módulo — Mapa Mensal da Agenda e Gestão Panorâmica',

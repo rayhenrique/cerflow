@@ -45,6 +45,16 @@ class ProntuarioPaciente extends Component
 
     public string $pin_adendo = '';
 
+    // --- Avaliação & Diagnóstico Clínico (CID-10 e Modalidades) ---
+    public bool $modalDiagnosticoAberto = false;
+
+    public string $diag_cid_principal = '';
+
+    public string $diag_cid_secundario = '';
+
+    /** @var array<int, string> */
+    public array $diag_modalidades = [];
+
     public function mount(?int $paciente = null): void
     {
         Gate::authorize('viewAny', EvolucaoClinica::class);
@@ -151,6 +161,48 @@ class ProntuarioPaciente extends Component
         $mensagem = 'Termo de adendo retificador vinculado à evolução clínica.';
         session()->flash('sucesso_pep', $mensagem);
         $this->dispatch('toast', tipo: 'sucesso', titulo: 'Adendo registrado', mensagem: $mensagem);
+    }
+
+    public function abrirModalDiagnostico(): void
+    {
+        $paciente = Paciente::findOrFail($this->pacienteId);
+        Gate::authorize('updateClinicalData', $paciente);
+
+        $this->resetValidation();
+        $this->diag_cid_principal = (string) ($paciente->cid_principal ?? '');
+        $this->diag_cid_secundario = (string) ($paciente->cid_secundario ?? '');
+        $this->diag_modalidades = is_array($paciente->modalidades_reabilitacao) ? $paciente->modalidades_reabilitacao : [];
+        $this->modalDiagnosticoAberto = true;
+    }
+
+    public function fecharModalDiagnostico(): void
+    {
+        $this->modalDiagnosticoAberto = false;
+        $this->resetValidation();
+    }
+
+    public function salvarDiagnostico(): void
+    {
+        $paciente = Paciente::findOrFail($this->pacienteId);
+        Gate::authorize('updateClinicalData', $paciente);
+
+        $this->validate([
+            'diag_cid_principal' => ['required', 'string', 'max:10'],
+            'diag_cid_secundario' => ['nullable', 'string', 'max:10'],
+            'diag_modalidades' => ['nullable', 'array'],
+            'diag_modalidades.*' => ['string', 'in:FISICA,INTELECTUAL,AUDITIVA,VISUAL'],
+        ]);
+
+        $paciente->update([
+            'cid_principal' => strtoupper(trim($this->diag_cid_principal)),
+            'cid_secundario' => $this->diag_cid_secundario !== '' ? strtoupper(trim($this->diag_cid_secundario)) : null,
+            'modalidades_reabilitacao' => $this->diag_modalidades !== [] ? $this->diag_modalidades : null,
+        ]);
+
+        $this->modalDiagnosticoAberto = false;
+        $mensagem = 'Diagnóstico clínico (CID-10) e modalidades de reabilitação atualizados com sucesso.';
+        session()->flash('sucesso_pep', $mensagem);
+        $this->dispatch('toast', tipo: 'sucesso', titulo: 'Diagnóstico atualizado', mensagem: $mensagem);
     }
 
     public function render(): View

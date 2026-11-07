@@ -144,7 +144,7 @@
                         <select wire:model="paciente_id" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2">
                             <option value="">Selecione o usuário do CER...</option>
                             @foreach($pacientes as $pac)
-                                <option value="{{ $pac->id }}">{{ $pac->nome }} — CNS: {{ $pac->cns }}</option>
+                                <option value="{{ $pac->id }}">{{ $pac->nome }} — CNS: {{ $pac->cns ?? 'Pendente' }}</option>
                             @endforeach
                         </select>
                         @error('paciente_id') <span class="text-red-600 mt-1 block">{{ $message }}</span> @enderror

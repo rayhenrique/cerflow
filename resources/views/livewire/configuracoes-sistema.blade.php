@@ -163,10 +163,15 @@
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-xs font-bold uppercase text-slate-500">
                         <tr>
-                            <th class="px-5 py-3 text-left">Paciente / Mãe</th>
+                            <th class="px-5 py-3 text-left">Paciente / Nascimento</th>
                             <th class="px-5 py-3 text-left">CNS / CPF</th>
-                            <th class="px-5 py-3 text-center">CID-10</th>
-                            <th class="px-5 py-3 text-left">Modalidades</th>
+                            @if (auth()->user()?->hasAnyRole(['coordenacao', 'terapeuta']))
+                                <th class="px-5 py-3 text-center">CID-10</th>
+                                <th class="px-5 py-3 text-left">Modalidades</th>
+                            @else
+                                <th class="px-5 py-3 text-left">Vínculo APS / UBS</th>
+                                <th class="px-5 py-3 text-left">Contato / Telefone</th>
+                            @endif
                             <th class="px-5 py-3 text-center">Status</th>
                             <th class="px-5 py-3 text-right">Ações CRUD</th>
                         </tr>
@@ -177,30 +182,59 @@
                                 <td class="px-5 py-3.5">
                                     <div class="font-bold text-slate-800">{{ $pac->nome }}</div>
                                     <div class="text-xs text-slate-400">
-                                        Nasc: {{ $pac->data_nascimento->format('d/m/Y') }} ({{ $pac->sexo }}) • Mãe: {{ $pac->nome_mae }}
+                                        Nasc: {{ $pac->data_nascimento?->format('d/m/Y') }} ({{ $pac->sexo }})
+                                        @if ($pac->nome_mae)
+                                            • Mãe: {{ $pac->nome_mae }}
+                                        @endif
                                     </div>
                                 </td>
                                 <td class="px-5 py-3.5 font-mono text-xs text-slate-700">
-                                    <div>CNS: <span class="font-bold">{{ $pac->cns }}</span></div>
+                                    <div>
+                                        CNS:
+                                        @if ($pac->cns)
+                                            <span class="font-bold text-teal-700">{{ $pac->cns }}</span>
+                                        @else
+                                            <span class="text-slate-400 font-normal italic">Não informado</span>
+                                        @endif
+                                    </div>
                                     @if ($pac->cpf)
                                         <div class="text-slate-400">CPF: {{ $pac->cpf }}</div>
                                     @endif
                                 </td>
-                                <td class="px-5 py-3.5 text-center">
-                                    <span class="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-mono text-xs font-bold">{{ $pac->cid_principal }}</span>
-                                    @if ($pac->cid_secundario)
-                                        <span class="block text-[10px] text-slate-400 mt-0.5">+ {{ $pac->cid_secundario }}</span>
-                                    @endif
-                                </td>
-                                <td class="px-5 py-3.5">
-                                    <div class="flex flex-wrap gap-1">
-                                        @forelse ($pac->modalidades_reabilitacao ?? [] as $mod)
-                                            <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">{{ $mod }}</span>
-                                        @empty
-                                            <span class="text-xs text-slate-400">—</span>
-                                        @endforelse
-                                    </div>
-                                </td>
+                                @if (auth()->user()?->hasAnyRole(['coordenacao', 'terapeuta']))
+                                    <td class="px-5 py-3.5 text-center">
+                                        @if ($pac->cid_principal)
+                                            <span class="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-mono text-xs font-bold">{{ $pac->cid_principal }}</span>
+                                            @if ($pac->cid_secundario)
+                                                <span class="block text-[10px] text-slate-400 mt-0.5">+ {{ $pac->cid_secundario }}</span>
+                                            @endif
+                                        @else
+                                            <span class="text-xs text-slate-400 italic">Pendente</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-5 py-3.5">
+                                        <div class="flex flex-wrap gap-1">
+                                            @forelse ($pac->modalidades_reabilitacao ?? [] as $mod)
+                                                <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">{{ $mod }}</span>
+                                            @empty
+                                                <span class="text-xs text-slate-400">—</span>
+                                            @endforelse
+                                        </div>
+                                    </td>
+                                @else
+                                    <td class="px-5 py-3.5 text-xs text-slate-600">
+                                        <div class="font-medium text-slate-800">{{ $pac->ubs_referencia ?: 'Não informada' }}</div>
+                                        @if ($pac->nome_acs)
+                                            <div class="text-[11px] text-slate-400">ACS: {{ $pac->nome_acs }}</div>
+                                        @endif
+                                    </td>
+                                    <td class="px-5 py-3.5 text-xs text-slate-600">
+                                        <div>{{ $pac->telefone_contato ?: 'Sem telefone' }}</div>
+                                        @if ($pac->telefone_secundario)
+                                            <div class="text-[11px] text-slate-400">Recado: {{ $pac->telefone_secundario }}</div>
+                                        @endif
+                                    </td>
+                                @endif
                                 <td class="px-5 py-3.5 text-center">
                                     <span class="px-2 py-0.5 rounded-full text-[11px] font-bold {{ $pac->ativo ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700' }}">
                                         {{ $pac->ativo ? 'Ativo' : 'Inativo' }}
@@ -619,126 +653,166 @@
     @endif
 
     {{-- ===================================================================== --}}
-    {{-- MODAL 1: CRIAR / EDITAR PACIENTE                                      --}}
+    {{-- MODAL 1: CRIAR / EDITAR PACIENTE (REFORMULADO — PADRÃO SUS / CER)     --}}
     {{-- ===================================================================== --}}
     @if ($modalPacienteAberto)
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 overflow-y-auto">
-            <div class="w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-8">
-                <div class="bg-slate-900 px-6 py-4 text-white flex items-center justify-between">
+            <div class="w-full max-w-3xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-8">
+                <!-- Cabeçalho do Modal no estilo do design de referência -->
+                <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
                     <div>
-                        <h3 class="text-base font-bold">
-                            {{ $pacienteEditandoId ? 'Editar Cadastro de Paciente' : 'Novo Cadastro de Paciente (CER)' }}
+                        <h3 class="text-base sm:text-lg font-bold text-slate-900">
+                            {{ $pacienteEditandoId ? 'Editar Cadastro de Paciente' : 'Cadastrar Novo Paciente' }}
                         </h3>
-                        <p class="text-xs text-slate-400">Validação oficial do Cartão Nacional de Saúde (Módulo 11 DATASUS)</p>
+                        <p class="text-xs text-slate-500 mt-0.5">Preencha os dados do paciente com validação de CPF e vinculação à UBS</p>
                     </div>
-                    <button type="button" wire:click="fecharModalPaciente" class="text-slate-400 hover:text-white cursor-pointer">✕</button>
+                    <button type="button" wire:click="fecharModalPaciente"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer">
+                        ← VOLTAR À LISTA
+                    </button>
                 </div>
 
-                <form wire:submit="salvarPaciente" class="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="sm:col-span-2">
-                            <label class="block text-xs font-bold text-slate-700 mb-1">Nome Completo do Paciente *</label>
-                            <input type="text" wire:model="pac_nome" placeholder="Nome completo sem abreviações"
+                <form wire:submit="salvarPaciente" class="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+                    {{-- SEÇÃO 1: IDENTIFICAÇÃO DO CIDADÃO --}}
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-2 pb-1 border-b border-slate-100">
+                            <span class="w-5 h-5 rounded-full bg-teal-600 text-white text-xs font-bold flex items-center justify-center">1</span>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-800">Identificação do Cidadão</h4>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Nome Completo *</label>
+                            <input type="text" wire:model="pac_nome" placeholder="Ex: Maria José da Silva"
                                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
-                            @error('pac_nome') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                            @error('pac_nome') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1">CPF (11 Dígitos)</label>
+                                <input type="text" wire:model="pac_cpf" maxlength="14" placeholder="000.000.000-00 (opcional)"
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-teal-600 focus:outline-none">
+                                @error('pac_cpf') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Cartão Nacional de Saúde (CNS)</label>
+                                <input type="text" wire:model="pac_cns" maxlength="15" placeholder="Ex: 700000000000000 (15 dígitos)"
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-teal-600 focus:outline-none">
+                                @error('pac_cns') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Data de Nascimento *</label>
+                                <input type="date" wire:model="pac_data_nascimento"
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                                @error('pac_data_nascimento') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Sexo *</label>
+                                <select wire:model="pac_sexo"
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                                    <option value="M">Masculino</option>
+                                    <option value="F">Feminino</option>
+                                </select>
+                                @error('pac_sexo') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
+                            </div>
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">CNS (15 dígitos — Módulo 11) *</label>
-                            <input type="text" wire:model="pac_cns" maxlength="15" placeholder="700000000000005"
-                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-teal-600 focus:outline-none">
-                            @error('pac_cns') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">CPF (11 dígitos — opcional)</label>
-                            <input type="text" wire:model="pac_cpf" maxlength="14" placeholder="Apenas números"
-                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-teal-600 focus:outline-none">
-                            @error('pac_cpf') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">Data de Nascimento *</label>
-                            <input type="date" wire:model="pac_data_nascimento"
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Nome da Mãe</label>
+                            <input type="text" wire:model="pac_nome_mae" placeholder="Nome completo da mãe (opcional)"
                                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
-                            @error('pac_data_nascimento') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                            @error('pac_nome_mae') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+
+                    {{-- SEÇÃO 2: VÍNCULO COM A ATENÇÃO PRIMÁRIA --}}
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-2 pb-1 border-b border-slate-100">
+                            <span class="w-5 h-5 rounded-full bg-teal-600 text-white text-xs font-bold flex items-center justify-center">2</span>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-800">Vínculo com a Atenção Primária</h4>
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">Sexo *</label>
-                            <select wire:model="pac_sexo"
-                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
-                                <option value="M">Masculino (M)</option>
-                                <option value="F">Feminino (F)</option>
-                            </select>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1">UBS de Referência</label>
+                                <input list="ubs-list" wire:model="pac_ubs_referencia" placeholder="Selecione a UBS (opcional)"
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                                <datalist id="ubs-list">
+                                    @foreach ($listaUbs as $ubs)
+                                        <option value="{{ $ubs }}"></option>
+                                    @endforeach
+                                </datalist>
+                                @error('pac_ubs_referencia') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Agente Comunitário de Saúde (ACS)</label>
+                                <input type="text" wire:model="pac_nome_acs" placeholder="Ex: ACS Maria Pereira"
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                                @error('pac_nome_acs') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
+                            </div>
                         </div>
 
-                        <div class="sm:col-span-2">
-                            <label class="block text-xs font-bold text-slate-700 mb-1">Nome da Mãe *</label>
-                            <input type="text" wire:model="pac_nome_mae"
-                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
-                            @error('pac_nome_mae') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">CID-10 Principal *</label>
-                            <input type="text" wire:model="pac_cid_principal" maxlength="6" placeholder="Ex.: F840, G800"
-                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm uppercase font-mono focus:border-teal-600 focus:outline-none">
-                            @error('pac_cid_principal') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">CID-10 Secundário</label>
-                            <input type="text" wire:model="pac_cid_secundario" maxlength="6" placeholder="Opcional"
-                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm uppercase font-mono focus:border-teal-600 focus:outline-none">
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">Município IBGE (6 dígitos) *</label>
+                        <div class="sm:w-1/2">
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Município IBGE (6 dígitos) *</label>
                             <input type="text" wire:model="pac_municipio_ibge" maxlength="6"
                                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-teal-600 focus:outline-none">
-                            @error('pac_municipio_ibge') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                            @error('pac_municipio_ibge') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+
+                    {{-- SEÇÃO 3: CONTATOS E ENDEREÇO --}}
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-2 pb-1 border-b border-slate-100">
+                            <span class="w-5 h-5 rounded-full bg-teal-600 text-white text-xs font-bold flex items-center justify-center">3</span>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-800">Contatos e Endereço</h4>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Telefone Principal (WhatsApp / Celular)</label>
+                                <input type="text" wire:model="pac_telefone_contato" placeholder="(00) 00000-0000"
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                                @error('pac_telefone_contato') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Telefone Secundário / Recado</label>
+                                <input type="text" wire:model="pac_telefone_secundario" placeholder="(00) 00000-0000"
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                                @error('pac_telefone_secundario') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
+                            </div>
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">Telefone / WhatsApp</label>
-                            <input type="text" wire:model="pac_telefone_contato" placeholder="(82) 99999-0000"
-                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Endereço Residencial Completo</label>
+                            <textarea wire:model="pac_endereco" rows="2" placeholder="Rua, número, complemento e ponto de referência..."
+                                class="w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:border-teal-600 focus:outline-none"></textarea>
+                            @error('pac_endereco') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">Endereço</label>
-                            <input type="text" wire:model="pac_endereco" placeholder="Rua, número, complemento"
-                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">Bairro</label>
+                        <div class="sm:w-1/2">
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Bairro</label>
                             <input type="text" wire:model="pac_bairro" placeholder="Bairro"
                                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                            @error('pac_bairro') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
                         </div>
                     </div>
 
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Modalidades de Reabilitação</label>
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                            @foreach (['FISICA' => 'Física', 'INTELECTUAL' => 'Intelectual', 'AUDITIVA' => 'Auditiva', 'VISUAL' => 'Visual'] as $valor => $rotulo)
-                                <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 cursor-pointer hover:bg-slate-50">
-                                    <input type="checkbox" wire:model="pac_modalidades" value="{{ $valor }}" class="rounded text-teal-600">
-                                    <span class="font-medium text-slate-700">{{ $rotulo }}</span>
-                                </label>
-                            @endforeach
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                    <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                         <button type="button" wire:click="fecharModalPaciente"
-                            class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer">
+                            class="rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider hover:bg-slate-50 cursor-pointer">
                             Cancelar
                         </button>
                         <button type="submit"
-                            class="rounded-lg bg-teal-600 px-5 py-2 text-xs font-bold text-white hover:bg-teal-700 transition cursor-pointer">
-                            {{ $pacienteEditandoId ? 'Salvar Alterações' : 'Cadastrar Paciente' }}
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-6 py-2.5 text-xs font-bold text-white uppercase tracking-wider hover:bg-teal-700 transition cursor-pointer">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                            {{ $pacienteEditandoId ? 'Salvar Alterações' : 'Salvar Cadastro' }}
                         </button>
                     </div>
                 </form>

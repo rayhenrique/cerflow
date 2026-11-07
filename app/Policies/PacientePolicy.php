@@ -37,6 +37,19 @@ class PacientePolicy
         return $user->hasAnyRole(['terapeuta', 'coordenacao']);
     }
 
+    /**
+     * Visualização e edição de diagnóstico clínico (CID-10 e modalidades) reservada à equipe clínica.
+     */
+    public function viewClinicalData(User $user, Paciente $paciente): bool
+    {
+        return $user->hasAnyRole(['terapeuta', 'coordenacao']);
+    }
+
+    public function updateClinicalData(User $user, Paciente $paciente): bool
+    {
+        return $user->hasAnyRole(['terapeuta', 'coordenacao']);
+    }
+
     public function delete(User $user, Paciente $paciente): bool
     {
         return $user->hasRole('coordenacao');

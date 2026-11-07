@@ -2,6 +2,20 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.10.0] - 2026-11-07
+
+### Adicionado
+- **Reformulação do Cadastro de Pacientes e Separação de Dados Clínicos:**
+  - Novo formulário administrativo organizado em 3 seções com identidade visual atualizada: Identificação do Cidadão, Vínculo com a Atenção Primária e Contatos e Endereço.
+  - Separação estrita entre dados administrativos e clínicos: a recepção cadastra pacientes sem necessidade de preencher CID-10 ou modalidades de reabilitação.
+  - Campos opcionais no cadastro inicial: CNS, CPF e Nome da Mãe com validações sanitizadas quando informados (validação DATASUS Módulo 11 para CNS e 11 dígitos para CPF).
+  - Vínculo com a Atenção Primária à Saúde (APS): seleção de UBS de referência, identificação do Agente Comunitário de Saúde (ACS) e código IBGE padrão do município.
+  - Preparação para integração com o e-SUS APS PEC com campos de rastreabilidade (`origem_cadastro` e `id_externo_esus`).
+  - Regra de desduplicação SUS: verificação por CPF e CNS; quando ausentes, bloqueio de duplicidade por Nome Completo e Data de Nascimento.
+  - Gestão clínica transferida para o Prontuário Multiprofissional (`ProntuarioPaciente`), permitindo que terapeutas e coordenação definam diagnósticos e modalidades durante o atendimento.
+  - Sigilo e conformidade RBAC: colunas de diagnóstico clínico ocultadas para a recepção na listagem geral.
+  - Preservação total de dados clínicos pré-existentes durante atualizações de dados de contato ou endereço.
+
 ## [1.9.0] - 2026-11-07
 
 ### Adicionado

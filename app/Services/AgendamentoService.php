@@ -40,9 +40,21 @@ class AgendamentoService
 
         /** @var ?Paciente $paciente */
         $paciente = Paciente::find($dados['paciente_id'] ?? null);
-        if ($paciente === null || $paciente->data_nascimento === null || ! CnsValido::validar((string) $paciente->cns)) {
+        if ($paciente === null) {
             throw ValidationException::withMessages([
-                'paciente_id' => 'O paciente selecionado não possui CNS válido ou data de nascimento cadastrada (RN02).',
+                'paciente_id' => 'O paciente selecionado não foi encontrado no sistema.',
+            ]);
+        }
+
+        if ($paciente->data_nascimento === null) {
+            throw ValidationException::withMessages([
+                'paciente_id' => 'O paciente selecionado não possui data de nascimento cadastrada (RN02).',
+            ]);
+        }
+
+        if (empty($paciente->cns) || ! CnsValido::validar((string) $paciente->cns)) {
+            throw ValidationException::withMessages([
+                'paciente_id' => 'O paciente selecionado não possui CNS válido cadastrado (RN02). É obrigatório registrar o CNS no cadastro do paciente antes de realizar o agendamento no SUS.',
             ]);
         }
 
