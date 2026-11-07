@@ -263,6 +263,19 @@ class EsusPecIntegrationService
             }
         }
 
+        $tabelasAuxiliares = [
+            'tb_unidade_saude' => in_array('tb_unidade_saude', $tabelas, true),
+            'tb_dim_unidade_saude' => in_array('tb_dim_unidade_saude', $tabelas, true),
+            'tb_equipe' => in_array('tb_equipe', $tabelas, true),
+            'tb_dim_equipe' => in_array('tb_dim_equipe', $tabelas, true),
+            'tb_dim_profissional' => in_array('tb_dim_profissional', $tabelas, true),
+            'tb_dim_cbo' => in_array('tb_dim_cbo', $tabelas, true),
+            'tb_dim_tempo' => in_array('tb_dim_tempo', $tabelas, true),
+            'tb_fat_cad_individual' => in_array('tb_fat_cad_individual', $tabelas, true),
+            'tb_fat_visita_domiciliar' => in_array('tb_fat_visita_domiciliar', $tabelas, true),
+            'tb_cidadao' => in_array('tb_cidadao', $tabelas, true),
+        ];
+
         return [
             'tipo_banco' => $tipoBanco,
             'tabela_origem' => $tabelaOrigem,
@@ -270,6 +283,7 @@ class EsusPecIntegrationService
             'versao_pec' => $versaoPec,
             'total_tabelas' => count($tabelas),
             'tabelas_descobertas' => array_values(array_slice($tabelas, 0, 50)),
+            'tabelas_auxiliares' => $tabelasAuxiliares,
             'colunas_origem' => $colunasOrigem,
             'coluna_atualizacao' => $colunaAtualizacao,
             'coluna_sequencial' => $colunaSequencial,
@@ -308,6 +322,223 @@ class EsusPecIntegrationService
         }
 
         return [];
+    }
+
+    /**
+     * Carrega dicionários em memória de UBSs e Equipes a partir das tabelas dimensionais ou operacionais do PEC.
+     *
+     * @param  array<string, mixed>  $diagnostico
+     * @return array{
+     *     ubs: array<string, string>,
+     *     equipes: array<string, array{no_equipe: ?string, nu_cnes: ?string, no_unidade_saude: ?string}>
+     * }
+     */
+    public function carregarDicionariosUbsEquipes(PDO $pdo, array $diagnostico): array
+    {
+        $mapaUbs = [];
+        $mapaEquipes = [];
+
+        $aux = $diagnostico['tabelas_auxiliares'] ?? [];
+
+        // 1. Dicionário de Unidades de Saúde (dimensão DW)
+        if (! empty($aux['tb_dim_unidade_saude'])) {
+            try {
+                $stmt = $pdo->query('
+                    SELECT nu_cnes, no_unidade_saude
+                    FROM tb_dim_unidade_saude
+                    WHERE nu_cnes IS NOT NULL AND TRIM(nu_cnes) != \'\'
+                ');
+                if ($stmt) {
+                    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                        $cnes = trim((string) ($row['nu_cnes'] ?? ''));
+                        $nome = trim((string) ($row['no_unidade_saude'] ?? ''));
+                        if ($cnes !== '' && $nome !== '') {
+                            $mapaUbs[$cnes] = $nome;
+                        }
+                    }
+                }
+            } catch (Throwable) {
+                // Silencioso
+            }
+        }
+
+        // Dicionário de Unidades de Saúde (operacional e-SUS)
+        if (! empty($aux['tb_unidade_saude'])) {
+            try {
+                $stmt = $pdo->query('
+                    SELECT nu_cnes, no_unidade_saude
+                    FROM tb_unidade_saude
+                    WHERE nu_cnes IS NOT NULL AND TRIM(nu_cnes) != \'\'
+                ');
+                if ($stmt) {
+                    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                        $cnes = trim((string) ($row['nu_cnes'] ?? ''));
+                        $nome = trim((string) ($row['no_unidade_saude'] ?? ''));
+                        if ($cnes !== '' && $nome !== '' && ! isset($mapaUbs[$cnes])) {
+                            $mapaUbs[$cnes] = $nome;
+                        }
+                    }
+                }
+            } catch (Throwable) {
+                // Silencioso
+            }
+        }
+
+        // 2. Dicionário de Equipes e seu relacionamento com a Unidade de Saúde (tb_equipe + tb_unidade_saude)
+        if (! empty($aux['tb_equipe']) && ! empty($aux['tb_unidade_saude'])) {
+            try {
+                $stmt = $pdo->query('
+                    SELECT e.nu_ine, e.no_equipe, u.nu_cnes, u.no_unidade_saude
+                    FROM tb_equipe e
+                    LEFT JOIN tb_unidade_saude u ON u.co_seq_unidade_saude = e.co_unidade_saude
+                    WHERE e.nu_ine IS NOT NULL AND TRIM(e.nu_ine) != \'\'
+                ');
+                if ($stmt) {
+                    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                        $ine = trim((string) ($row['nu_ine'] ?? ''));
+                        if ($ine !== '') {
+                            $cnes = trim((string) ($row['nu_cnes'] ?? ''));
+                            $nomeUbs = trim((string) ($row['no_unidade_saude'] ?? ''));
+                            if ($cnes !== '' && $nomeUbs !== '' && ! isset($mapaUbs[$cnes])) {
+                                $mapaUbs[$cnes] = $nomeUbs;
+                            }
+                            $mapaEquipes[$ine] = [
+                                'no_equipe' => trim((string) ($row['no_equipe'] ?? '')) ?: null,
+                                'nu_cnes' => $cnes ?: null,
+                                'no_unidade_saude' => $nomeUbs ?: null,
+                            ];
+                        }
+                    }
+                }
+            } catch (Throwable) {
+                // Silencioso
+            }
+        } elseif (! empty($aux['tb_dim_equipe'])) {
+            try {
+                $stmt = $pdo->query('
+                    SELECT nu_ine, no_equipe
+                    FROM tb_dim_equipe
+                    WHERE nu_ine IS NOT NULL AND TRIM(nu_ine) != \'\'
+                ');
+                if ($stmt) {
+                    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                        $ine = trim((string) ($row['nu_ine'] ?? ''));
+                        if ($ine !== '') {
+                            $mapaEquipes[$ine] = [
+                                'no_equipe' => trim((string) ($row['no_equipe'] ?? '')) ?: null,
+                                'nu_cnes' => null,
+                                'no_unidade_saude' => null,
+                            ];
+                        }
+                    }
+                }
+            } catch (Throwable) {
+                // Silencioso
+            }
+        }
+
+        return [
+            'ubs' => $mapaUbs,
+            'equipes' => $mapaEquipes,
+        ];
+    }
+
+    /**
+     * Resolve o ACS individual para uma lista de IDs de cidadãos (co_fat_cidadao_pec).
+     * Consulta primeiramente tb_fat_cad_individual (MICI) e, para os que restarem, tb_fat_visita_domiciliar.
+     * Exige estritamente CBO de ACS ('515105', '322255').
+     *
+     * @param  array<int, int|string>  $coFatCidadaoIds
+     * @param  array<string, mixed>  $diagnostico
+     * @return array<int, string> [co_fat_cidadao_pec => nome_profissional_acs]
+     */
+    public function resolverAcsParaLote(PDO $pdo, array $coFatCidadaoIds, array $diagnostico): array
+    {
+        $coFatCidadaoIds = array_values(array_unique(array_filter(array_map('intval', $coFatCidadaoIds))));
+        if (empty($coFatCidadaoIds)) {
+            return [];
+        }
+
+        $mapaAcs = [];
+        $aux = $diagnostico['tabelas_auxiliares'] ?? [];
+
+        $placeholders = implode(',', array_fill(0, count($coFatCidadaoIds), '?'));
+
+        // 1. Consulta tb_fat_cad_individual (Cadastro Individual - MICI)
+        if (! empty($aux['tb_fat_cad_individual']) && ! empty($aux['tb_dim_profissional']) && ! empty($aux['tb_dim_cbo'])) {
+            try {
+                $temTempo = ! empty($aux['tb_dim_tempo']);
+                $orderClausula = $temTempo ? 'ORDER BY dt.dt_registro DESC' : 'ORDER BY fci.co_fat_cidadao_pec';
+                $joinTempo = $temTempo ? 'JOIN tb_dim_tempo dt ON dt.co_seq_dim_tempo = fci.co_dim_tempo' : '';
+
+                $sql = "
+                    SELECT fci.co_fat_cidadao_pec, prof.no_profissional
+                    FROM tb_fat_cad_individual fci
+                    {$joinTempo}
+                    JOIN tb_dim_cbo cbo ON cbo.co_seq_dim_cbo = fci.co_dim_cbo
+                    JOIN tb_dim_profissional prof ON prof.co_seq_dim_profissional = fci.co_dim_profissional
+                    WHERE fci.co_fat_cidadao_pec IN ({$placeholders})
+                      AND REPLACE(REPLACE(cbo.nu_cbo, '-', ''), ' ', '') IN ('515105', '322255')
+                      AND (fci.st_ficha_inativa = 0 OR fci.st_ficha_inativa IS NULL)
+                      AND (fci.st_recusa_cadastro = 0 OR fci.st_recusa_cadastro IS NULL)
+                      AND prof.no_profissional IS NOT NULL AND TRIM(prof.no_profissional) != ''
+                    {$orderClausula}
+                ";
+
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute($coFatCidadaoIds);
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $cidId = (int) $row['co_fat_cidadao_pec'];
+                    if (! isset($mapaAcs[$cidId])) {
+                        $nomeProf = trim((string) $row['no_profissional']);
+                        if ($nomeProf !== '') {
+                            $mapaAcs[$cidId] = $nomeProf;
+                        }
+                    }
+                }
+            } catch (Throwable) {
+                // Silencioso se houver variação de colunas
+            }
+        }
+
+        // 2. Para cidadãos ainda sem ACS identificado, consulta tb_fat_visita_domiciliar
+        $idsRestantes = array_values(array_diff($coFatCidadaoIds, array_keys($mapaAcs)));
+        if (! empty($idsRestantes) && ! empty($aux['tb_fat_visita_domiciliar']) && ! empty($aux['tb_dim_profissional']) && ! empty($aux['tb_dim_cbo'])) {
+            try {
+                $placeholdersRestantes = implode(',', array_fill(0, count($idsRestantes), '?'));
+                $temTempo = ! empty($aux['tb_dim_tempo']);
+                $orderClausula = $temTempo ? 'ORDER BY dt.dt_registro DESC' : 'ORDER BY v.co_fat_cidadao_pec';
+                $joinTempo = $temTempo ? 'JOIN tb_dim_tempo dt ON dt.co_seq_dim_tempo = v.co_dim_tempo' : '';
+
+                $sql = "
+                    SELECT v.co_fat_cidadao_pec, prof.no_profissional
+                    FROM tb_fat_visita_domiciliar v
+                    {$joinTempo}
+                    JOIN tb_dim_cbo cbo ON cbo.co_seq_dim_cbo = v.co_dim_cbo
+                    JOIN tb_dim_profissional prof ON prof.co_seq_dim_profissional = v.co_dim_profissional
+                    WHERE v.co_fat_cidadao_pec IN ({$placeholdersRestantes})
+                      AND REPLACE(REPLACE(cbo.nu_cbo, '-', ''), ' ', '') IN ('515105', '322255')
+                      AND prof.no_profissional IS NOT NULL AND TRIM(prof.no_profissional) != ''
+                    {$orderClausula}
+                ";
+
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute($idsRestantes);
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $cidId = (int) $row['co_fat_cidadao_pec'];
+                    if (! isset($mapaAcs[$cidId])) {
+                        $nomeProf = trim((string) $row['no_profissional']);
+                        if ($nomeProf !== '') {
+                            $mapaAcs[$cidId] = $nomeProf;
+                        }
+                    }
+                }
+            } catch (Throwable) {
+                // Silencioso se houver variação
+            }
+        }
+
+        return $mapaAcs;
     }
 
     /**
@@ -498,6 +729,11 @@ class EsusPecIntegrationService
                 $duracaoConsultaMs, $duracaoProcessamentoMs, $duracaoGravacaoMs, $onProgresso
             );
 
+            // Dicionários em memória de UBSs e Equipes para resolução de vínculos relacionais
+            $dicionarios = $this->carregarDicionariosUbsEquipes($pdo, $diagnostico);
+            $mapaUbs = $dicionarios['ubs'];
+            $mapaEquipes = $dicionarios['equipes'];
+
             // Processamento em lotes configuráveis (padrão 2.000 via CLI ou 500 via web)
             $limite = $tamanhoLote !== null
                 ? max(1, min(5000, $tamanhoLote))
@@ -546,7 +782,25 @@ class EsusPecIntegrationService
                 $numeroLote++;
                 $totalConsultado += count($linhas);
 
-                $resLote = $this->processarLoteDeRegistros($linhas, $ibgePadrao, $contadores, $dryRun);
+                // Extração dos identificadores de cidadão para resolução em lote do ACS
+                $idsCidadaosLote = [];
+                foreach ($linhas as $linha) {
+                    $idCid = $linha['co_fat_cidadao_pec'] ?? ($linha['co_seq_fat_cidadao_pec'] ?? null);
+                    if ($idCid) {
+                        $idsCidadaosLote[] = (int) $idCid;
+                    }
+                }
+                $mapaAcsLote = $this->resolverAcsParaLote($pdo, $idsCidadaosLote, $diagnostico);
+
+                $resLote = $this->processarLoteDeRegistros(
+                    $linhas,
+                    $ibgePadrao,
+                    $contadores,
+                    $dryRun,
+                    $mapaUbs,
+                    $mapaEquipes,
+                    $mapaAcsLote
+                );
 
                 $duracaoProcessamentoMs += $resLote['duracaoProcessamentoMs'];
                 $duracaoGravacaoMs += $resLote['duracaoGravacaoMs'];
@@ -858,6 +1112,14 @@ class EsusPecIntegrationService
             'ds_equipe',
             'nu_cnes',
             'nu_ine',
+            'nu_cnes_vinc_equipe',
+            'nu_cnes_vinc_unidade',
+            'no_unidade_vinc',
+            'nu_ine_vinc_equipe',
+            'no_equipe_vinc_equipe',
+            'nu_micro_area_domicilio',
+            'nu_micro_area_tb_cidadao',
+            'nu_micro_area',
             'ubs_referencia',
             'no_profissional_acs',
             'no_profissional',
@@ -968,7 +1230,10 @@ class EsusPecIntegrationService
         array $linhas,
         string $ibgePadrao,
         array &$contadores,
-        bool $dryRun
+        bool $dryRun,
+        array $mapaUbs = [],
+        array $mapaEquipes = [],
+        array $mapaAcs = []
     ): array {
         $tProcInicio = microtime(true);
         $duracaoGravacaoMs = 0;
@@ -988,7 +1253,7 @@ class EsusPecIntegrationService
         $cnssChunk = [];
 
         foreach ($linhas as $linha) {
-            $dados = $this->mapearCidadaoParaPaciente($linha, $ibgePadrao);
+            $dados = $this->mapearCidadaoParaPaciente($linha, $ibgePadrao, $mapaUbs, $mapaEquipes, $mapaAcs);
 
             if (empty($dados['nome']) || mb_strlen($dados['nome']) < 2 || empty($dados['data_nascimento'])) {
                 $contadores['invalidos']++;
@@ -1193,10 +1458,18 @@ class EsusPecIntegrationService
      * Mapeia dinamicamente os nomes de colunas do DW PEC para os campos do CER Digital.
      *
      * @param  array<string, mixed>  $linha
+     * @param  array<string, string>  $mapaUbs
+     * @param  array<string, array{no_equipe: ?string, nu_cnes: ?string, no_unidade_saude: ?string}>  $mapaEquipes
+     * @param  array<int, string>  $mapaAcs
      * @return array<string, mixed>
      */
-    public function mapearCidadaoParaPaciente(array $linha, string $ibgePadrao): array
-    {
+    public function mapearCidadaoParaPaciente(
+        array $linha,
+        string $ibgePadrao,
+        array $mapaUbs = [],
+        array $mapaEquipes = [],
+        array $mapaAcs = []
+    ): array {
         $resolver = function (array $possiveis) use ($linha): ?string {
             foreach ($possiveis as $campo) {
                 if (isset($linha[$campo]) && trim((string) $linha[$campo]) !== '') {
@@ -1290,9 +1563,42 @@ class EsusPecIntegrationService
         $ibgeLimpo = preg_replace('/\D/', '', $ibge) ?: $ibgePadrao;
         $ibgeLimpo = substr($ibgeLimpo, 0, 6);
 
-        // Vínculo APS (UBS e ACS)
-        $ubs = $resolver(['no_unidade_saude', 'no_ubs', 'no_equipe', 'ds_equipe', 'nu_cnes', 'nu_ine', 'ubs_referencia']);
-        $acs = $resolver(['no_profissional_acs', 'no_profissional', 'no_acs', 'nome_acs']);
+        // Vínculo APS — Unidade Básica de Saúde (UBS) de Referência
+        $cnesVinculado = $resolver(['nu_cnes_vinc_equipe', 'nu_cnes_vinc_unidade', 'nu_cnes']);
+        $ineVinculado = $resolver(['nu_ine_vinc_equipe', 'nu_ine']);
+
+        $ubs = null;
+        // Prioridade 1: Nome oficial da UBS obtido pelo mapa de CNES
+        if ($cnesVinculado !== null && isset($mapaUbs[$cnesVinculado])) {
+            $ubs = $mapaUbs[$cnesVinculado];
+        }
+        // Prioridade 2: Nome oficial da UBS obtido pelo vínculo da equipe
+        if ($ubs === null && $ineVinculado !== null && isset($mapaEquipes[$ineVinculado]['no_unidade_saude'])) {
+            $ubs = $mapaEquipes[$ineVinculado]['no_unidade_saude'];
+        }
+        // Prioridade 3: Nome textual de unidade de saúde diretamente na linha
+        if ($ubs === null) {
+            $ubs = $resolver(['no_unidade_vinc', 'no_unidade_saude', 'no_ubs', 'ubs_referencia']);
+        }
+        // Prioridade 4: Se não encontrou nome textual mas possui CNES, registra identificação formal
+        if ($ubs === null && $cnesVinculado !== null && trim($cnesVinculado) !== '') {
+            $ubs = 'UBS CNES '.trim($cnesVinculado);
+        }
+
+        // Vínculo APS — Agente Comunitário de Saúde (ACS)
+        $acs = null;
+        $cidIdNum = $idExterno ? (int) $idExterno : 0;
+        // Prioridade 1: ACS individual resolvido por CBO nas fichas de cadastro individual ou visita
+        if ($cidIdNum > 0 && isset($mapaAcs[$cidIdNum])) {
+            $acs = $mapaAcs[$cidIdNum];
+        }
+        // Prioridade 2: Coluna de ACS diretamente presente na linha do DW (se existir e não for vazia)
+        if ($acs === null) {
+            $acsDireto = $resolver(['no_profissional_acs', 'no_acs', 'nome_acs']);
+            if ($acsDireto !== null && mb_strlen($acsDireto) >= 3) {
+                $acs = $acsDireto;
+            }
+        }
 
         return [
             'id_externo_esus' => $idExterno,
@@ -1643,6 +1949,600 @@ class EsusPecIntegrationService
         $paciente->update($camposParaAtualizar);
 
         return $houveAlteracaoCadastral;
+    }
+
+    /**
+     * Executa a complementação exclusiva dos vínculos de UBS e ACS para pacientes existentes no CER Digital.
+     *
+     * Diretrizes estritas:
+     * - Atualiza apenas ubs_referencia e nome_acs se estiverem nulos/vazios no CER Digital.
+     * - Nunca sobrescreve valores preenchidos manualmente pelo usuário.
+     * - Nunca altera CPF, CNS, nome, data de nascimento, endereço, telefone ou dados clínicos.
+     * - Nunca cria novos pacientes (garantia: novos_pacientes = 0).
+     * - Nunca exclui registros.
+     * - Utiliza transações locais por lote e Keyset Pagination na leitura do e-SUS.
+     *
+     * @param  callable|null  $onLoteConcluido  fn(int $lote, array $metricas, array $acumulados, int $totalConsultado, int $totalEstimado)
+     */
+    public function complementarVinculosPacientes(
+        ?PDO $pdoInjetado = null,
+        ?int $tamanhoLote = null,
+        ?int $maxRegistros = null,
+        bool $dryRun = false,
+        bool $reiniciar = false,
+        ?callable $onLoteConcluido = null
+    ): HistoricoSincronizacaoEsus {
+        $inicio = microtime(true);
+        $duracaoConsultaMs = 0;
+        $duracaoGravacaoMs = 0;
+
+        $lock = $this->assegurarLockConcorrencia(null);
+
+        try {
+            $config = ConfiguracaoEsusPec::atual();
+
+            $historico = HistoricoSincronizacaoEsus::create([
+                'iniciado_em' => now(),
+                'tipo_execucao' => 'CLI',
+                'status' => 'EM_ANDAMENTO',
+                'total_consultado' => 0,
+                'novos_pacientes' => 0,
+                'pacientes_atualizados' => 0,
+                'registros_ignorados' => 0,
+                'duplicidades_identificadas' => 0,
+                'detalhes' => [
+                    'etapa' => 'Iniciando complementação de vínculos',
+                    'modo_executado' => 'APENAS_VINCULOS',
+                    'percentual' => 0,
+                    'dry_run' => $dryRun,
+                ],
+            ]);
+
+            $pdo = $pdoInjetado ?? $this->criarConexaoPdo($config);
+            $diagnostico = $this->descobrirSchema($pdo);
+
+            if (! $diagnostico['compativel_importacao'] || empty($diagnostico['tabela_origem'])) {
+                throw new RuntimeException('Tabela de DW do e-SUS PEC (tb_acomp_cidadaos_vinculados) não encontrada.');
+            }
+
+            $tabelaOrigem = $diagnostico['tabela_origem'];
+            $colunaSequencial = $diagnostico['coluna_sequencial'] ?? null;
+            $ibgePadrao = ConfiguracaoEstabelecimento::atual()->codigo_ibge_padrao ?: '270430';
+
+            // 1. Carrega dicionários de UBSs e Equipes em memória
+            $dicionarios = $this->carregarDicionariosUbsEquipes($pdo, $diagnostico);
+            $mapaUbs = $dicionarios['ubs'];
+            $mapaEquipes = $dicionarios['equipes'];
+
+            // Keyset Pagination: retoma somente se houve interrupção prévia não concluída
+            $retomar = ! $reiniciar
+                && $config->ultimo_checkpoint_id
+                && in_array($config->ultima_sincronizacao_status, ['PARCIAL', 'INTERROMPIDO', 'ERRO', 'EM_ANDAMENTO'], true);
+
+            $ultimoIdChave = $retomar ? (int) $config->ultimo_checkpoint_id : 0;
+
+            $selectSql = $this->montarProjecaoColunas($diagnostico['colunas_origem'], null, $colunaSequencial);
+
+            // Contagem estimada
+            $sqlCount = $colunaSequencial && $ultimoIdChave > 0
+                ? "SELECT COUNT(*) FROM {$tabelaOrigem} WHERE {$colunaSequencial} > {$ultimoIdChave};"
+                : "SELECT COUNT(*) FROM {$tabelaOrigem};";
+            $stmtCount = $pdo->query($sqlCount);
+            $totalEstimado = $stmtCount ? (int) $stmtCount->fetchColumn() : 0;
+
+            $limite = $tamanhoLote !== null ? max(1, min(5000, $tamanhoLote)) : 2000;
+            $offset = 0;
+            $totalConsultado = 0;
+            $numeroLote = 0;
+
+            $contadores = [
+                'consultados' => 0,
+                'localizados_local' => 0,
+                'ubs_complementadas' => 0,
+                'acs_complementados' => 0,
+                'pacientes_atualizados' => 0,
+                'sem_alteracoes' => 0,
+                'nao_cadastrados_local' => 0,
+            ];
+
+            while (true) {
+                if ($maxRegistros !== null && $totalConsultado >= $maxRegistros) {
+                    break;
+                }
+
+                $registrosRestantes = ($maxRegistros !== null) ? ($maxRegistros - $totalConsultado) : $limite;
+                $limiteAtual = min($limite, $registrosRestantes);
+                if ($limiteAtual <= 0) {
+                    break;
+                }
+
+                $tConsultaLoteInicio = microtime(true);
+
+                if ($colunaSequencial) {
+                    $sql = "SELECT {$selectSql} FROM {$tabelaOrigem} WHERE {$colunaSequencial} > :ultimo_id ORDER BY {$colunaSequencial} ASC LIMIT {$limiteAtual};";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute([':ultimo_id' => $ultimoIdChave]);
+                } else {
+                    $sql = "SELECT {$selectSql} FROM {$tabelaOrigem} LIMIT {$limiteAtual} OFFSET {$offset};";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute();
+                }
+
+                $linhas = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                $duracaoConsultaMs += (int) round((microtime(true) - $tConsultaLoteInicio) * 1000);
+
+                if (empty($linhas)) {
+                    break;
+                }
+
+                $numeroLote++;
+                $totalConsultado += count($linhas);
+                $contadores['consultados'] += count($linhas);
+
+                // Atualiza chave de paginação
+                if ($colunaSequencial) {
+                    $ultimaLinha = end($linhas);
+                    if (isset($ultimaLinha[$colunaSequencial])) {
+                        $ultimoIdChave = (int) $ultimaLinha[$colunaSequencial];
+                    }
+                }
+                $offset += $limiteAtual;
+
+                // Extrai co_fat_cidadao_pec para resolver ACS do lote
+                $idsCidadaosLote = [];
+                foreach ($linhas as $linha) {
+                    $idCid = $linha['co_fat_cidadao_pec'] ?? ($linha['co_seq_fat_cidadao_pec'] ?? null);
+                    if ($idCid) {
+                        $idsCidadaosLote[] = (int) $idCid;
+                    }
+                }
+
+                // Resolve ACS do lote em consulta única filtrada por CBO
+                $mapaAcsLote = $this->resolverAcsParaLote($pdo, $idsCidadaosLote, $diagnostico);
+
+                // Processa complementação no banco local
+                $tGravLoteInicio = microtime(true);
+                $metricasLote = $this->processarLoteComplementacao(
+                    $linhas,
+                    $ibgePadrao,
+                    $mapaUbs,
+                    $mapaEquipes,
+                    $mapaAcsLote,
+                    $dryRun
+                );
+                $duracaoGravacaoMs += (int) round((microtime(true) - $tGravLoteInicio) * 1000);
+
+                $contadores['localizados_local'] += $metricasLote['localizados_local'];
+                $contadores['ubs_complementadas'] += $metricasLote['ubs_complementadas'];
+                $contadores['acs_complementados'] += $metricasLote['acs_complementados'];
+                $contadores['pacientes_atualizados'] += $metricasLote['pacientes_atualizados'];
+                $contadores['sem_alteracoes'] += $metricasLote['sem_alteracoes'];
+                $contadores['nao_cadastrados_local'] += $metricasLote['nao_cadastrados_local'];
+
+                $duracaoLote = round(microtime(true) - $tConsultaLoteInicio, 2);
+                $metricasLote['duracao_segundos'] = $duracaoLote;
+                $metricasLote['ultimo_id_chave'] = $ultimoIdChave;
+
+                if (! $dryRun && $ultimoIdChave > 0) {
+                    $config->update(['ultimo_checkpoint_id' => $ultimoIdChave]);
+                }
+
+                if ($onLoteConcluido !== null) {
+                    $onLoteConcluido($numeroLote, $metricasLote, $contadores, $totalConsultado, $totalEstimado);
+                }
+            }
+
+            $duracaoTotal = (int) round(microtime(true) - $inicio);
+            $statusFinal = $dryRun ? 'DRY_RUN' : 'SUCESSO';
+
+            $detalhesFinais = [
+                'etapa' => 'Concluído',
+                'modo_executado' => 'APENAS_VINCULOS',
+                'dry_run' => $dryRun,
+                'total_consultado' => $totalConsultado,
+                'localizados_local' => $contadores['localizados_local'],
+                'ubs_complementadas' => $contadores['ubs_complementadas'],
+                'acs_complementados' => $contadores['acs_complementados'],
+                'pacientes_atualizados' => $contadores['pacientes_atualizados'],
+                'pacientes_sem_alteracoes' => $contadores['sem_alteracoes'],
+                'nao_cadastrados_local' => $contadores['nao_cadastrados_local'],
+                'duracao_consulta_ms' => $duracaoConsultaMs,
+                'duracao_gravacao_ms' => $duracaoGravacaoMs,
+                'ultimo_id_processado' => $ultimoIdChave,
+            ];
+
+            $historico->update([
+                'status' => $statusFinal,
+                'finalizado_em' => now(),
+                'duracao_segundos' => $duracaoTotal,
+                'total_consultado' => $totalConsultado,
+                'novos_pacientes' => 0, // GARANTIA ABSOLUTA: 0 novos pacientes em modo complementação
+                'pacientes_atualizados' => $contadores['pacientes_atualizados'],
+                'registros_ignorados' => $contadores['nao_cadastrados_local'],
+                'detalhes' => $detalhesFinais,
+            ]);
+
+            if (! $dryRun) {
+                $config->update([
+                    'ultima_sincronizacao_em' => now(),
+                    'ultima_sincronizacao_status' => $statusFinal,
+                    'ultimo_checkpoint_em' => now(),
+                    'ultimo_checkpoint_id' => $ultimoIdChave ?: $config->ultimo_checkpoint_id,
+                ]);
+            }
+
+            return $historico;
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * Processa a complementação de um lote no banco local.
+     *
+     * @param  array<int, array<string, mixed>>  $linhas
+     * @param  array<string, string>  $mapaUbs
+     * @param  array<string, array{no_equipe: ?string, nu_cnes: ?string, no_unidade_saude: ?string}>  $mapaEquipes
+     * @param  array<int, string>  $mapaAcs
+     * @return array{
+     *     consultados: int,
+     *     localizados_local: int,
+     *     ubs_complementadas: int,
+     *     acs_complementados: int,
+     *     pacientes_atualizados: int,
+     *     sem_alteracoes: int,
+     *     nao_cadastrados_local: int,
+     *     duracao_segundos?: float,
+     *     ultimo_id_chave?: int
+     * }
+     */
+    protected function processarLoteComplementacao(
+        array $linhas,
+        string $ibgePadrao,
+        array $mapaUbs,
+        array $mapaEquipes,
+        array $mapaAcs,
+        bool $dryRun
+    ): array {
+        $metricas = [
+            'consultados' => count($linhas),
+            'localizados_local' => 0,
+            'ubs_complementadas' => 0,
+            'acs_complementados' => 0,
+            'pacientes_atualizados' => 0,
+            'sem_alteracoes' => 0,
+            'nao_cadastrados_local' => 0,
+        ];
+
+        $mapeados = [];
+        $idsExternos = [];
+        $cpfs = [];
+        $cnss = [];
+
+        foreach ($linhas as $linha) {
+            $dados = $this->mapearCidadaoParaPaciente($linha, $ibgePadrao, $mapaUbs, $mapaEquipes, $mapaAcs);
+            if (empty($dados['id_externo_esus']) && empty($dados['cpf']) && empty($dados['cns'])) {
+                $metricas['nao_cadastrados_local']++;
+
+                continue;
+            }
+
+            $mapeados[] = $dados;
+            if (! empty($dados['id_externo_esus'])) {
+                $idsExternos[] = $dados['id_externo_esus'];
+            }
+            if (! empty($dados['cpf'])) {
+                $cpfs[] = $dados['cpf'];
+            }
+            if (! empty($dados['cns'])) {
+                $cnss[] = $dados['cns'];
+            }
+        }
+
+        if (empty($mapeados)) {
+            return $metricas;
+        }
+
+        // Busca pacientes locais existentes no CER Digital
+        $pacientesLocais = Paciente::where(function ($query) use ($idsExternos, $cpfs, $cnss) {
+            if (! empty($idsExternos)) {
+                $query->orWhereIn('id_externo_esus', $idsExternos);
+            }
+            if (! empty($cpfs)) {
+                $query->orWhereIn('cpf', $cpfs);
+            }
+            if (! empty($cnss)) {
+                $query->orWhereIn('cns', $cnss);
+            }
+        })->get();
+
+        $mapaId = [];
+        $mapaCpf = [];
+        $mapaCns = [];
+        foreach ($pacientesLocais as $pac) {
+            if (! empty($pac->id_externo_esus)) {
+                $mapaId[$pac->id_externo_esus] = $pac;
+            }
+            if (! empty($pac->cpf)) {
+                $mapaCpf[$pac->cpf] = $pac;
+            }
+            if (! empty($pac->cns)) {
+                $mapaCns[$pac->cns] = $pac;
+            }
+        }
+
+        $callbackGravacao = function () use ($mapeados, $mapaId, $mapaCpf, $mapaCns, &$metricas, $dryRun): void {
+            foreach ($mapeados as $dados) {
+                $idExt = $dados['id_externo_esus'] ?? null;
+                $cpf = $dados['cpf'] ?? null;
+                $cns = $dados['cns'] ?? null;
+
+                $paciente = ($idExt && isset($mapaId[$idExt]))
+                    ? $mapaId[$idExt]
+                    : (($cpf && isset($mapaCpf[$cpf]))
+                        ? $mapaCpf[$cpf]
+                        : (($cns && isset($mapaCns[$cns])) ? $mapaCns[$cns] : null));
+
+                if (! $paciente) {
+                    // Em modo apenas-vínculos, NUNCA cria novo paciente!
+                    $metricas['nao_cadastrados_local']++;
+
+                    continue;
+                }
+
+                $metricas['localizados_local']++;
+                $camposParaAtualizar = [];
+                $houveAlteracao = false;
+
+                // Complementa UBS somente se estiver vazia no registro local
+                if (empty($paciente->ubs_referencia) && ! empty($dados['ubs_referencia'])) {
+                    $camposParaAtualizar['ubs_referencia'] = $dados['ubs_referencia'];
+                    $metricas['ubs_complementadas']++;
+                    $houveAlteracao = true;
+                }
+
+                // Complementa ACS somente se estiver vazio no registro local
+                if (empty($paciente->nome_acs) && ! empty($dados['nome_acs'])) {
+                    $camposParaAtualizar['nome_acs'] = $dados['nome_acs'];
+                    $metricas['acs_complementados']++;
+                    $houveAlteracao = true;
+                }
+
+                if ($houveAlteracao) {
+                    $metricas['pacientes_atualizados']++;
+                    if (! $dryRun) {
+                        $camposParaAtualizar['data_ultima_sincronizacao_esus'] = now();
+                        $paciente->update($camposParaAtualizar);
+                    }
+                } else {
+                    $metricas['sem_alteracoes']++;
+                }
+            }
+        };
+
+        if ($dryRun) {
+            $callbackGravacao();
+        } else {
+            DB::transaction($callbackGravacao);
+        }
+
+        return $metricas;
+    }
+
+    /**
+     * Executa diagnóstico de somente-leitura da estrutura e vínculos no PostgreSQL do e-SUS PEC.
+     *
+     * @return array<string, mixed>
+     */
+    public function executarDiagnosticoVps(?PDO $pdoInjetado = null): array
+    {
+        $config = ConfiguracaoEsusPec::atual();
+        $inicio = microtime(true);
+        $pdo = $pdoInjetado ?? $this->criarConexaoPdo($config);
+        $latencia = round((microtime(true) - $inicio) * 1000, 2);
+
+        $diagnosticoSchema = $this->descobrirSchema($pdo);
+        $aux = $diagnosticoSchema['tabelas_auxiliares'] ?? [];
+
+        $tabelasVerificar = [
+            'tb_acomp_cidadaos_vinculados',
+            'tb_cidadao',
+            'tb_unidade_saude',
+            'tb_dim_unidade_saude',
+            'tb_equipe',
+            'tb_dim_equipe',
+            'tb_dim_profissional',
+            'tb_dim_cbo',
+            'tb_dim_tempo',
+            'tb_fat_cad_individual',
+            'tb_fat_visita_domiciliar',
+        ];
+
+        $tabelasStatus = [];
+        foreach ($tabelasVerificar as $tab) {
+            $existe = ! empty($aux[$tab]) || in_array($tab, $diagnosticoSchema['tabelas_descobertas'], true);
+            $total = null;
+            if ($existe) {
+                try {
+                    $stmt = $pdo->query("SELECT COUNT(*) FROM {$tab};");
+                    $total = $stmt ? (int) $stmt->fetchColumn() : null;
+                } catch (Throwable) {
+                    $total = null;
+                }
+            }
+            $tabelasStatus[$tab] = [
+                'existe' => $existe,
+                'total_registros' => $total,
+            ];
+        }
+
+        $colunasDw = $diagnosticoSchema['colunas_origem'] ?? [];
+        $colunasVinculosInteresse = [
+            'nu_cnes_vinc_equipe',
+            'nu_cnes_vinc_unidade',
+            'nu_cnes',
+            'no_unidade_vinc',
+            'no_unidade_saude',
+            'nu_ine_vinc_equipe',
+            'nu_ine',
+            'no_equipe_vinc_equipe',
+            'no_equipe',
+            'nu_micro_area_domicilio',
+            'nu_micro_area_tb_cidadao',
+            'no_profissional_acs',
+            'no_acs',
+        ];
+
+        $statusColunas = [];
+        foreach ($colunasVinculosInteresse as $col) {
+            $statusColunas[$col] = in_array($col, $colunasDw, true);
+        }
+
+        // Métricas de vínculos agregadas (ZERO PII de cidadãos)
+        $totalCidadaosDw = $tabelasStatus['tb_acomp_cidadaos_vinculados']['total_registros'] ?? 0;
+        $comCnes = 0;
+        $comIne = 0;
+        $comNomeUbs = 0;
+        $comAcsDireto = 0;
+        $topUnidades = [];
+        $topEquipes = [];
+
+        if (! empty($diagnosticoSchema['tabela_origem'])) {
+            $tab = $diagnosticoSchema['tabela_origem'];
+
+            if (! empty($statusColunas['nu_cnes_vinc_equipe'])) {
+                try {
+                    $stmt = $pdo->query("SELECT COUNT(*) FROM {$tab} WHERE nu_cnes_vinc_equipe IS NOT NULL AND TRIM(nu_cnes_vinc_equipe) != '';");
+                    $comCnes = $stmt ? (int) $stmt->fetchColumn() : 0;
+                } catch (Throwable) {
+                }
+            } elseif (! empty($statusColunas['nu_cnes'])) {
+                try {
+                    $stmt = $pdo->query("SELECT COUNT(*) FROM {$tab} WHERE nu_cnes IS NOT NULL AND TRIM(nu_cnes) != '';");
+                    $comCnes = $stmt ? (int) $stmt->fetchColumn() : 0;
+                } catch (Throwable) {
+                }
+            }
+
+            if (! empty($statusColunas['nu_ine_vinc_equipe'])) {
+                try {
+                    $stmt = $pdo->query("SELECT COUNT(*) FROM {$tab} WHERE nu_ine_vinc_equipe IS NOT NULL AND TRIM(nu_ine_vinc_equipe) != '';");
+                    $comIne = $stmt ? (int) $stmt->fetchColumn() : 0;
+                } catch (Throwable) {
+                }
+            } elseif (! empty($statusColunas['nu_ine'])) {
+                try {
+                    $stmt = $pdo->query("SELECT COUNT(*) FROM {$tab} WHERE nu_ine IS NOT NULL AND TRIM(nu_ine) != '';");
+                    $comIne = $stmt ? (int) $stmt->fetchColumn() : 0;
+                } catch (Throwable) {
+                }
+            }
+
+            if (! empty($statusColunas['no_unidade_vinc'])) {
+                try {
+                    $stmt = $pdo->query("SELECT COUNT(*) FROM {$tab} WHERE no_unidade_vinc IS NOT NULL AND TRIM(no_unidade_vinc) != '';");
+                    $comNomeUbs = $stmt ? (int) $stmt->fetchColumn() : 0;
+                } catch (Throwable) {
+                }
+            } elseif (! empty($statusColunas['no_unidade_saude'])) {
+                try {
+                    $stmt = $pdo->query("SELECT COUNT(*) FROM {$tab} WHERE no_unidade_saude IS NOT NULL AND TRIM(no_unidade_saude) != '';");
+                    $comNomeUbs = $stmt ? (int) $stmt->fetchColumn() : 0;
+                } catch (Throwable) {
+                }
+            }
+
+            if (! empty($statusColunas['no_profissional_acs'])) {
+                try {
+                    $stmt = $pdo->query("SELECT COUNT(*) FROM {$tab} WHERE no_profissional_acs IS NOT NULL AND TRIM(no_profissional_acs) != '';");
+                    $comAcsDireto = $stmt ? (int) $stmt->fetchColumn() : 0;
+                } catch (Throwable) {
+                }
+            }
+
+            // Top 5 Unidades por CNES
+            $colCnes = ! empty($statusColunas['nu_cnes_vinc_equipe']) ? 'nu_cnes_vinc_equipe' : (! empty($statusColunas['nu_cnes']) ? 'nu_cnes' : null);
+            if ($colCnes) {
+                try {
+                    $sql = "SELECT {$colCnes} as cnes, COUNT(*) as total FROM {$tab} WHERE {$colCnes} IS NOT NULL AND TRIM({$colCnes}) != '' GROUP BY {$colCnes} ORDER BY total DESC LIMIT 5;";
+                    $stmt = $pdo->query($sql);
+                    if ($stmt) {
+                        $topUnidades = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                    }
+                } catch (Throwable) {
+                }
+            }
+
+            // Top 5 Equipes por INE
+            $colIne = ! empty($statusColunas['nu_ine_vinc_equipe']) ? 'nu_ine_vinc_equipe' : (! empty($statusColunas['nu_ine']) ? 'nu_ine' : null);
+            $colNoEq = ! empty($statusColunas['no_equipe_vinc_equipe']) ? 'no_equipe_vinc_equipe' : (! empty($statusColunas['no_equipe']) ? 'no_equipe' : null);
+            if ($colIne) {
+                try {
+                    $selectEq = $colNoEq ? "{$colIne} as ine, {$colNoEq} as nome_equipe" : "{$colIne} as ine, '' as nome_equipe";
+                    $groupEq = $colNoEq ? "{$colIne}, {$colNoEq}" : "{$colIne}";
+                    $sql = "SELECT {$selectEq}, COUNT(*) as total FROM {$tab} WHERE {$colIne} IS NOT NULL AND TRIM({$colIne}) != '' GROUP BY {$groupEq} ORDER BY total DESC LIMIT 5;";
+                    $stmt = $pdo->query($sql);
+                    if ($stmt) {
+                        $topEquipes = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                    }
+                } catch (Throwable) {
+                }
+            }
+        }
+
+        // Cruzamento dos nomes das UBSs do Top 5
+        $dicionarios = $this->carregarDicionariosUbsEquipes($pdo, $diagnosticoSchema);
+        $mapaUbs = $dicionarios['ubs'];
+        foreach ($topUnidades as &$u) {
+            $c = (string) ($u['cnes'] ?? '');
+            $u['nome_unidade'] = $mapaUbs[$c] ?? 'Nome não mapeado';
+        }
+        unset($u);
+
+        // Contagem de profissionais ACS no PEC
+        $totalAcsPec = 0;
+        if (! empty($aux['tb_dim_profissional']) && ! empty($aux['tb_dim_cbo'])) {
+            try {
+                $stmt = $pdo->query("
+                    SELECT COUNT(DISTINCT p.co_seq_dim_profissional)
+                    FROM tb_dim_profissional p
+                    JOIN tb_dim_cbo c ON c.co_seq_dim_cbo = p.co_dim_cbo
+                    WHERE REPLACE(REPLACE(c.nu_cbo, '-', ''), ' ', '') IN ('515105', '322255')
+                ");
+                $totalAcsPec = $stmt ? (int) $stmt->fetchColumn() : 0;
+            } catch (Throwable) {
+            }
+        }
+
+        // Situação atual no CER Digital
+        $totalPacientesLocal = Paciente::count();
+        $comUbsLocal = Paciente::whereNotNull('ubs_referencia')->where('ubs_referencia', '!=', '')->count();
+        $comAcsLocal = Paciente::whereNotNull('nome_acs')->where('nome_acs', '!=', '')->count();
+
+        return [
+            'sucesso' => true,
+            'latencia_ms' => $latencia,
+            'diagnostico_schema' => $diagnosticoSchema,
+            'tabelas_status' => $tabelasStatus,
+            'colunas_vinculos' => $statusColunas,
+            'metricas_vinculos' => [
+                'total_cidadaos_dw' => $totalCidadaosDw,
+                'com_cnes_vinculado' => $comCnes,
+                'com_ine_vinculado' => $comIne,
+                'com_nome_unidade_direto' => $comNomeUbs,
+                'com_acs_direto' => $comAcsDireto,
+                'total_acs_cadastrados_pec' => $totalAcsPec,
+                'top_unidades' => $topUnidades,
+                'top_equipes' => $topEquipes,
+            ],
+            'pacientes_cer' => [
+                'total_locais' => $totalPacientesLocal,
+                'com_ubs_preenchida' => $comUbsLocal,
+                'sem_ubs_preenchida' => max(0, $totalPacientesLocal - $comUbsLocal),
+                'com_acs_preenchido' => $comAcsLocal,
+                'sem_acs_preenchido' => max(0, $totalPacientesLocal - $comAcsLocal),
+            ],
+        ];
     }
 
     /**
