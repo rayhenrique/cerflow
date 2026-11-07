@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Livewire\ModalNovidadesVersao;
 use App\Models\User;
+use App\Services\VersionService;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -40,10 +41,11 @@ class ControleVersaoAjudaTest extends TestCase
         $this->assertTrue(session()->get('exibir_modal_versao'));
 
         // Ao acessar a tela após login, o modal de novidades da versão deve estar aberto e exibir a versão atual:
+        $versaoAtiva = app(VersionService::class)->versaoAtual();
         $paginaGrade = $this->actingAs($user)->get('/grade');
         $paginaGrade->assertOk();
         $paginaGrade->assertSee('Novidades da Versão');
-        $paginaGrade->assertSee('v1.1.0');
+        $paginaGrade->assertSee('v'.$versaoAtiva);
 
         // Ao fechar o modal pelo componente Livewire, limpa a flag da sessão atual:
         Livewire::actingAs($user)
@@ -64,6 +66,7 @@ class ControleVersaoAjudaTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Central de Ajuda & Sobre o CER Flow', false);
+        $response->assertSee('v1.1.1');
         $response->assertSee('v1.1.0');
         $response->assertSee('v1.0.1');
         $response->assertSee('v1.0.0');

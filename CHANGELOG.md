@@ -2,6 +2,12 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.1.1] - 2026-11-06
+
+### Adicionado
+- Guia dedicado de implantação `deploy.md` parametrizado para a VPS Hostinger com CloudPanel (`cer.kltecnologia.com`, usuário `kltecnologia-cer`, PHP 8.5 e banco MySQL `cer`).
+- Atualização institucional do `README.md` e definição de licença proprietária exclusiva da **KL Tecnologia** ([kltecnologia.com](https://kltecnologia.com)).
+
 ## [1.1.0] - 2026-11-06
 
 ### Adicionado

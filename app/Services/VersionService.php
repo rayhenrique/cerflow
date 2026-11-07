@@ -43,6 +43,17 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.1.1',
+                'data' => '06/11/2026',
+                'titulo' => 'Documentação de Produção CloudPanel (cer.kltecnologia.com) e Licenciamento Proprietário KL Tecnologia',
+                'tipo' => 'Patch Release',
+                'destaques' => [
+                    'Adicionado guia completo deploy.md parametrizado para o ambiente CloudPanel na Hostinger (cer.kltecnologia.com / PHP 8.5 / MySQL cer).',
+                    'Atualização institucional do README.md detalhando os 5 módulos operacionais do CER Flow.',
+                    'Definição formal de propriedade intelectual e licença proprietária exclusiva da KL Tecnologia (kltecnologia.com).',
+                ],
+            ],
+            [
                 'versao' => '1.1.0',
                 'data' => '06/11/2026',
                 'titulo' => 'Módulo de Ajuda & Sobre e Comunicado Automático de Versão no Login',
