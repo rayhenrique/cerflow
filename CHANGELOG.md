@@ -2,6 +2,11 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.1.4] - 2026-11-06
+
+### Corrigido
+- Blindado o script `deploy.sh` com `git config core.fileMode false`, `git reset --hard origin/${TARGET_REF}` e permissão `+x` nativa no índice do Git para evitar conflitos de merge por alterações de `chmod` no Linux.
+
 ## [1.1.3] - 2026-11-06
 
 ### Corrigido

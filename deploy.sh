@@ -5,27 +5,33 @@ set -euo pipefail
 # CER Flow — Script de Deploy Automatizado (Hostinger VPS / CloudPanel)
 # Uso:
 #   ./deploy.sh              -> Atualiza pela branch main
-#   ./deploy.sh v1.0.1       -> Faz deploy de uma tag específica (Release)
+#   ./deploy.sh v1.1.4       -> Faz deploy de uma tag específica (Release)
 # ==============================================================================
 
 TARGET_REF="${1:-main}"
 
 echo "🚀 Iniciando deploy do CER Flow (Ref: ${TARGET_REF})..."
 
+# Garante que se o script falhar no meio, a aplicação volte do modo de manutenção
+trap 'php artisan up || true' ERR
+
 # 1. Ativa modo de manutenção
 php artisan down --retry=15 || true
 
-# 2. Atualiza código-fonte via Git
+# 2. Ignora diferenças de permissão (chmod) no Git e sincroniza com o repositório remoto
+git config core.fileMode false
 git fetch --all --tags --prune
 
 if [[ "${TARGET_REF}" == v* ]]; then
-    echo "📌 Fazendo checkout da tag ${TARGET_REF}..."
+    echo "📌 Fazendo checkout forçado da tag ${TARGET_REF}..."
     git checkout -f "tags/${TARGET_REF}"
 else
-    echo "📌 Atualizando branch ${TARGET_REF}..."
-    git checkout "${TARGET_REF}"
-    git pull origin "${TARGET_REF}"
+    echo "📌 Sincronizando branch ${TARGET_REF} com origin/${TARGET_REF}..."
+    git checkout -f "${TARGET_REF}"
+    git reset --hard "origin/${TARGET_REF}"
 fi
+
+chmod +x deploy.sh
 
 # 3. Instala dependências PHP de produção
 composer install --no-interaction --no-dev --prefer-dist --optimize-autoloader
@@ -53,4 +59,3 @@ chmod -R ug+rwx storage bootstrap/cache
 php artisan up
 
 echo "✅ Deploy concluído com sucesso! Versão ativa: $(cat VERSION 2>/dev/null || echo "${TARGET_REF}")"
-

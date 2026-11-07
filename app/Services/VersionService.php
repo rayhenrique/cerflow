@@ -43,6 +43,16 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.1.4',
+                'data' => '06/11/2026',
+                'titulo' => 'Blindagem do Script deploy.sh contra Conflitos de Permissão (chmod) no Linux',
+                'tipo' => 'Patch Release',
+                'destaques' => [
+                    'Configuração automática de core.fileMode false e git reset --hard origin/main no deploy.sh para evitar bloqueio de merge após chmod.',
+                    'Adicionado trap automático para retirar o sistema de manutenção (php artisan up) mesmo em caso de interrupção.',
+                ],
+            ],
+            [
                 'versao' => '1.1.3',
                 'data' => '06/11/2026',
                 'titulo' => 'Correção de Assets Estáticos do Livewire 4 no Nginx/CloudPanel e Fechamento Instantâneo do Modal',
