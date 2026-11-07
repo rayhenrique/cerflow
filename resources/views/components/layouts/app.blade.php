@@ -157,13 +157,6 @@
                                 @endif
 
                                 @if(auth()->user()->hasRole('coordenacao'))
-                                    <a href="{{ route('configuracoes.secao', ['secao' => 'estabelecimento']) }}"
-                                   title="Identificação do Estabelecimento"
-                                   :class="sidebarCollapsed ? 'justify-center px-2 py-2' : 'px-3 py-1.5'"
-                                   class="flex items-center gap-2.5 rounded-lg font-medium transition {{ $secaoConfigAtual === 'estabelecimento' ? 'bg-slate-800 text-teal-400 font-semibold' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white' }}">
-                                    <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 4.5h18v15H3zM7.5 9h9M7.5 12h9M7.5 15h5"/></svg>
-                                    <span x-show="!sidebarCollapsed" class="truncate">Identificação do Estabelecimento</span>
-                                </a>
 
                                 <a href="{{ route('configuracoes.secao', ['secao' => 'estabelecimento']) }}"
                                    @click="mobileMenuOpen = false"
