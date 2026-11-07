@@ -68,6 +68,13 @@
                 <nav class="flex-1 overflow-y-auto space-y-1 px-3 py-4 text-sm" x-data="{ menuConfigMobile: true }">
                     @auth
                         @if(auth()->user()->hasAnyRole(['recepcao', 'terapeuta', 'faturamento', 'coordenacao']))
+                            <a href="{{ route('dashboard') }}"
+                               @click="mobileMenuOpen = false"
+                               class="group flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition {{ request()->routeIs('dashboard') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
+                                <span class="h-2 w-2 rounded-full {{ request()->routeIs('dashboard') ? 'bg-teal-400' : 'bg-slate-600' }}"></span>
+                                Dashboard Inicial
+                            </a>
+
                             <a href="{{ route('grade.semanal') }}"
                                @click="mobileMenuOpen = false"
                                class="group flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition {{ request()->routeIs('grade.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
@@ -221,6 +228,12 @@
             <nav class="flex-1 overflow-y-auto space-y-1 px-3 py-4 text-sm" x-data="{ menuConfigAberto: {{ $emConfiguracoes ? 'true' : 'true' }} }">
                 @auth
                     @if(auth()->user()->hasAnyRole(['recepcao', 'terapeuta', 'faturamento', 'coordenacao']))
+                        <a href="{{ route('dashboard') }}"
+                           class="group flex items-center gap-3 rounded-lg px-3 py-2 font-medium transition {{ request()->routeIs('dashboard') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
+                            <span class="h-2 w-2 rounded-full {{ request()->routeIs('dashboard') ? 'bg-teal-400' : 'bg-slate-600' }}"></span>
+                            Dashboard Inicial
+                        </a>
+
                         <a href="{{ route('grade.semanal') }}"
                            class="group flex items-center gap-3 rounded-lg px-3 py-2 font-medium transition {{ request()->routeIs('grade.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
                             <span class="h-2 w-2 rounded-full {{ request()->routeIs('grade.*') ? 'bg-teal-400' : 'bg-slate-600' }}"></span>

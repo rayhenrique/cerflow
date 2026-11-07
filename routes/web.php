@@ -4,15 +4,20 @@ declare(strict_types=1);
 
 use App\Livewire\AjudaSobre;
 use App\Livewire\ConfiguracoesSistema;
+use App\Livewire\DashboardInicial;
 use App\Livewire\FaturamentoBpai;
 use App\Livewire\GradeSemanal;
 use App\Livewire\ProntuarioPaciente;
 use App\Livewire\RecepcaoCheckin;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/grade');
+Route::redirect('/', '/dashboard');
 
 Route::middleware(['auth'])->group(function (): void {
+    Route::get('/dashboard', DashboardInicial::class)
+        ->middleware('role:recepcao|terapeuta|faturamento|coordenacao')
+        ->name('dashboard');
+
     Route::get('/grade', GradeSemanal::class)
         ->middleware('role:recepcao|terapeuta|faturamento|coordenacao')
         ->name('grade.semanal');

@@ -2,6 +2,14 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.5.0] - 2026-11-07
+
+### Adicionado
+- **Dashboard Inicial Operacional (`DashboardInicial` — `/dashboard`):**
+  - KPIs em tempo real de Pacientes Ativos, Agenda de Hoje (presentes, aguardando e faltas), Evoluções Assinadas no Mês e Produção BPA-i da Competência.
+  - Distribuição visual de pacientes pelas 4 modalidades de reabilitação do CER (`FISICA`, `INTELECTUAL`, `AUDITIVA`, `VISUAL`).
+  - Painel de Assiduidade & Absenteísmo no mês, ranking de ocupação por Sala Terapêutica e tabela rápida da agenda do dia com atalhos operacionais.
+
 ## [1.4.0] - 2026-11-06
 
 ### Adicionado

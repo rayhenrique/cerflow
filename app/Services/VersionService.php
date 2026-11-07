@@ -44,6 +44,18 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.5.0',
+                'data' => '07/11/2026',
+                'titulo' => 'Novo Painel Inicial (Dashboard) com Estatísticas do CER em Tempo Real',
+                'tipo' => 'Nova Funcionalidade',
+                'destaques' => [
+                    'Tela inicial com números atualizados da unidade: total de pacientes ativos, atendimentos agendados para hoje, presenças e faltas.',
+                    'Gráfico de distribuição dos pacientes pelas 4 áreas do CER (Reabilitação Física, Intelectual/TEA, Auditiva e Visual).',
+                    'Resumo mensal de comparecimento, faltas justificadas/injustificadas, ocupação das salas e situação do faturamento SUS (BPA-i).',
+                    'Botões de acesso rápido para abrir a Grade Semanal, o Check-in da Recepção, o Prontuário e o Faturamento.',
+                ],
+            ],
+            [
                 'versao' => '1.4.0',
                 'data' => '06/11/2026',
                 'titulo' => 'Sistema 100% Adaptado para Celulares, Tablets e Computadores',
