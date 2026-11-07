@@ -126,7 +126,9 @@ class GradeSemanal extends Component
 
         $this->modalAberto = false;
         $this->reset(['paciente_id', 'profissionaisSelecionados', 'observacao']);
-        session()->flash('sucesso', 'Agendamento registrado com sucesso na grade.');
+        $mensagem = 'Agendamento registrado com sucesso na grade.';
+        session()->flash('sucesso', $mensagem);
+        $this->dispatch('toast', tipo: 'sucesso', titulo: 'Horário agendado', mensagem: $mensagem);
     }
 
     /**

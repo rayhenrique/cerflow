@@ -11,7 +11,13 @@
 <body class="h-full font-sans text-slate-900 antialiased" x-data="{ mobileMenuOpen: false }">
     @php
         $versaoSistema = app(\App\Services\VersionService::class)->versaoAtual();
+        $emConfiguracoes = request()->routeIs('configuracoes.*');
+        $secaoConfigAtual = request()->route('secao');
     @endphp
+
+    <!-- Sistema Global de Toasts (Sucesso, Erro, Alerta, Info) -->
+    <x-toast-notifications />
+
     <div class="min-h-full flex">
         <!-- Sidebar Desktop (Estilo Linear / Filament) -->
         <aside class="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 bg-slate-900 text-slate-300 border-r border-slate-800">
@@ -27,7 +33,7 @@
                 </div>
             </div>
 
-            <nav class="flex-1 space-y-1 px-3 py-4 text-sm">
+            <nav class="flex-1 overflow-y-auto space-y-1 px-3 py-4 text-sm" x-data="{ menuConfigAberto: {{ $emConfiguracoes ? 'true' : 'true' }} }">
                 @auth
                     @if(auth()->user()->hasAnyRole(['recepcao', 'terapeuta', 'faturamento', 'coordenacao']))
                         <a href="{{ route('grade.semanal') }}"
@@ -61,23 +67,76 @@
                         </a>
                     @endif
 
+                    <!-- Menu Expansível de Configurações com Subitens -->
                     <div class="pt-4 mt-4 border-t border-slate-800/80 space-y-1">
-                        <a href="{{ route('configuracoes.index') }}"
-                           class="group flex items-center gap-3 rounded-lg px-3 py-2 font-medium transition {{ request()->routeIs('configuracoes.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
-                            <span class="h-2 w-2 rounded-full {{ request()->routeIs('configuracoes.*') ? 'bg-teal-400' : 'bg-slate-600' }}"></span>
-                            Configurações & Cadastros
-                        </a>
+                        <button type="button"
+                                @click="menuConfigAberto = !menuConfigAberto"
+                                class="w-full flex items-center justify-between rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-wider {{ $emConfiguracoes ? 'text-teal-400 bg-slate-800/50' : 'text-slate-400 hover:bg-slate-800/40 hover:text-white' }}">
+                            <span class="flex items-center gap-2.5">
+                                <span>⚙</span>
+                                <span>Configurações</span>
+                            </span>
+                            <span class="text-[10px] transition-transform duration-150" :class="menuConfigAberto ? 'rotate-90' : ''">▸</span>
+                        </button>
 
-                        <a href="{{ route('ajuda.sobre') }}"
-                           class="group flex items-center justify-between rounded-lg px-3 py-2 font-medium transition {{ request()->routeIs('ajuda.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
-                            <span class="flex items-center gap-3">
-                                <span class="h-2 w-2 rounded-full {{ request()->routeIs('ajuda.*') ? 'bg-teal-400' : 'bg-slate-600' }}"></span>
-                                Ajuda & Sobre
-                            </span>
-                            <span class="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono text-teal-400 border border-slate-700">
-                                v{{ $versaoSistema }}
-                            </span>
-                        </a>
+                        <div x-show="menuConfigAberto" class="space-y-0.5 pl-4 border-l border-slate-800 ml-3 text-xs">
+                            @if(auth()->user()->hasAnyRole(['recepcao', 'coordenacao']))
+                                <a href="{{ route('configuracoes.secao', ['secao' => 'pacientes']) }}"
+                                   class="flex items-center gap-2.5 rounded-lg px-3 py-1.5 font-medium transition {{ $secaoConfigAtual === 'pacientes' ? 'bg-slate-800 text-teal-400 font-semibold' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white' }}">
+                                    <span>•</span>
+                                    <span>Pacientes SUS</span>
+                                </a>
+                            @endif
+
+                            @if(auth()->user()->hasRole('coordenacao'))
+                                <a href="{{ route('configuracoes.secao', ['secao' => 'salas']) }}"
+                                   class="flex items-center gap-2.5 rounded-lg px-3 py-1.5 font-medium transition {{ $secaoConfigAtual === 'salas' ? 'bg-slate-800 text-teal-400 font-semibold' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white' }}">
+                                    <span>•</span>
+                                    <span>Salas & Espaços</span>
+                                </a>
+
+                                <a href="{{ route('configuracoes.secao', ['secao' => 'profissionais']) }}"
+                                   class="flex items-center gap-2.5 rounded-lg px-3 py-1.5 font-medium transition {{ $secaoConfigAtual === 'profissionais' ? 'bg-slate-800 text-teal-400 font-semibold' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white' }}">
+                                    <span>•</span>
+                                    <span>Equipe & Perfis RBAC</span>
+                                </a>
+                            @endif
+
+                            @if(auth()->user()->hasAnyRole(['faturamento', 'coordenacao']))
+                                <a href="{{ route('configuracoes.secao', ['secao' => 'sigtap']) }}"
+                                   class="flex items-center gap-2.5 rounded-lg px-3 py-1.5 font-medium transition {{ $secaoConfigAtual === 'sigtap' ? 'bg-slate-800 text-teal-400 font-semibold' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white' }}">
+                                    <span>•</span>
+                                    <span>Tabela SIGTAP x CBO</span>
+                                </a>
+                            @endif
+
+                            @if(auth()->user()->hasRole('coordenacao'))
+                                <a href="{{ route('configuracoes.secao', ['secao' => 'auditoria']) }}"
+                                   class="flex items-center gap-2.5 rounded-lg px-3 py-1.5 font-medium transition {{ $secaoConfigAtual === 'auditoria' ? 'bg-slate-800 text-teal-400 font-semibold' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white' }}">
+                                    <span>•</span>
+                                    <span>Auditoria LGPD</span>
+                                </a>
+                            @endif
+
+                            <a href="{{ route('configuracoes.secao', ['secao' => 'perfil']) }}"
+                               class="flex items-center gap-2.5 rounded-lg px-3 py-1.5 font-medium transition {{ $secaoConfigAtual === 'perfil' ? 'bg-slate-800 text-teal-400 font-semibold' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white' }}">
+                                <span>•</span>
+                                <span>Minha Conta & PIN</span>
+                            </a>
+                        </div>
+
+                        <div class="pt-2">
+                            <a href="{{ route('ajuda.sobre') }}"
+                               class="group flex items-center justify-between rounded-lg px-3 py-2 font-medium transition {{ request()->routeIs('ajuda.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
+                                <span class="flex items-center gap-3">
+                                    <span class="h-2 w-2 rounded-full {{ request()->routeIs('ajuda.*') ? 'bg-teal-400' : 'bg-slate-600' }}"></span>
+                                    Ajuda & Sobre
+                                </span>
+                                <span class="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono text-teal-400 border border-slate-700">
+                                    v{{ $versaoSistema }}
+                                </span>
+                            </a>
+                        </div>
                     </div>
                 @endauth
             </nav>

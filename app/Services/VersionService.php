@@ -43,6 +43,18 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.3.0',
+                'data' => '06/11/2026',
+                'titulo' => 'Submenu de Configurações na Sidebar, CRUD Completo em Modais e Sistema Global de Toasts',
+                'tipo' => 'Minor Release',
+                'destaques' => [
+                    'Menu lateral expansível em Configurações com rotas dedicadas (/configuracoes/pacientes, /salas, /profissionais, /sigtap, /auditoria, /perfil).',
+                    'CRUD completo (Criar, Buscar, Editar, Ativar/Inativar e Excluir) baseado em Modais em todos os submódulos, com validação de integridade referencial.',
+                    'Sistema global de notificações Toast (Sucesso, Erro, Alerta e Informação) integrado em toda a plataforma (Grade, Recepção, PEP e Configurações).',
+                    'Inspeção detalhada de payloads JSON na Trilha de Auditoria LGPD via modal dedicado.',
+                ],
+            ],
+            [
                 'versao' => '1.2.0',
                 'data' => '06/11/2026',
                 'titulo' => 'Novo Módulo de Configurações, Parâmetros SUS & Cadastros Base (/configuracoes)',

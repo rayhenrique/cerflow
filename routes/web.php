@@ -33,6 +33,11 @@ Route::middleware(['auth'])->group(function (): void {
         ->middleware('role:recepcao|terapeuta|faturamento|coordenacao')
         ->name('configuracoes.index');
 
+    Route::get('/configuracoes/{secao}', ConfiguracoesSistema::class)
+        ->whereIn('secao', ['pacientes', 'salas', 'profissionais', 'sigtap', 'auditoria', 'perfil'])
+        ->middleware('role:recepcao|terapeuta|faturamento|coordenacao')
+        ->name('configuracoes.secao');
+
     Route::get('/ajuda', AjudaSobre::class)
         ->middleware('role:recepcao|terapeuta|faturamento|coordenacao')
         ->name('ajuda.sobre');

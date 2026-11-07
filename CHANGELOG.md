@@ -2,6 +2,13 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.3.0] - 2026-11-06
+
+### Adicionado
+- **Subitens de Menu em Configurações (`/configuracoes/{secao}`):** navegação direta na barra lateral expansível para `Pacientes (CER)`, `Salas & Espaços`, `Equipe & Perfis`, `Tabela SIGTAP`, `Trilha de Auditoria` e `Meu Perfil & PIN`.
+- **CRUD Completo com Modais em Todos os Submódulos:** criação, busca em tempo real, edição completa em modal, alternância de status (Ativo/Inativo) e modal padronizado de confirmação de exclusão com verificação prévia de vínculos clínicos/BPA-I.
+- **Sistema Global de Toasts (`<x-toast-notifications />`):** notificações flutuantes padronizadas de `sucesso`, `erro`, `alerta` e `info` com barra de progresso e suporte a eventos Livewire (`$this->dispatch('toast', ...)`).
+
 ## [1.2.0] - 2026-11-06
 
 ### Adicionado

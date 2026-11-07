@@ -110,7 +110,9 @@ class ProntuarioPaciente extends Component
 
         $this->modalPinAberto = false;
         $this->reset(['queixa_estado_atual', 'conduta_terapeutica', 'intercorrencias', 'pin_assinatura']);
-        session()->flash('sucesso_pep', 'Evolução clínica assinada eletronicamente (SHA-256) e produção BPA-i gerada.');
+        $mensagem = 'Evolução clínica assinada eletronicamente (SHA-256) e produção BPA-i gerada.';
+        session()->flash('sucesso_pep', $mensagem);
+        $this->dispatch('toast', tipo: 'sucesso', titulo: 'Evolução assinada', mensagem: $mensagem);
     }
 
     public function abrirModalAdendo(int $evolucaoId): void
@@ -146,7 +148,9 @@ class ProntuarioPaciente extends Component
 
         $this->modalAdendoAberto = false;
         $this->reset(['evolucaoAdendoId', 'justificativa_adendo', 'texto_adendo', 'pin_adendo']);
-        session()->flash('sucesso_pep', 'Termo de adendo retificador vinculado à evolução clínica.');
+        $mensagem = 'Termo de adendo retificador vinculado à evolução clínica.';
+        session()->flash('sucesso_pep', $mensagem);
+        $this->dispatch('toast', tipo: 'sucesso', titulo: 'Adendo registrado', mensagem: $mensagem);
     }
 
     public function render(): View

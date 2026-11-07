@@ -39,6 +39,19 @@ class RecepcaoCheckin extends Component
         )->validate();
 
         $agendamento->update(['status' => $novoStatus]);
+
+        $tipoToast = match ($novoStatus) {
+            'PRESENTE', 'ATENDIDO' => 'sucesso',
+            'FALTA_JUSTIFICADA', 'FALTA_INJUSTIFICADA', 'CANCELADO' => 'alerta',
+            default => 'info',
+        };
+
+        $this->dispatch(
+            'toast',
+            tipo: $tipoToast,
+            titulo: 'Status atualizado na Recepção',
+            mensagem: "Agendamento #{$agendamento->id} alterado para {$novoStatus}."
+        );
     }
 
     public function render(AgendamentoService $agendamentoService): View
