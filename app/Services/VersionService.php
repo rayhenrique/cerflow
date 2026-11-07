@@ -44,6 +44,17 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.6.0',
+                'data' => '07/11/2026',
+                'titulo' => 'Menu Lateral Retrátil (Recolher/Expandir) e Novos Ícones Visuais em Todo o Menu',
+                'tipo' => 'Nova Funcionalidade',
+                'destaques' => [
+                    'Novo botão para recolher ou expandir a barra lateral no computador, ganhando mais espaço na tela para a Grade Semanal e o Prontuário.',
+                    'Todos os itens e subitens do menu agora contam com ícones visuais próprios que facilitam encontrar cada setor rapidamente.',
+                    'Quando o menu está recolhido, basta passar o mouse sobre qualquer ícone para ver o nome do módulo.',
+                ],
+            ],
+            [
                 'versao' => '1.5.0',
                 'data' => '07/11/2026',
                 'titulo' => 'Novo Painel Inicial (Dashboard) com Estatísticas do CER em Tempo Real',

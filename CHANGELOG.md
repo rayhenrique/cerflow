@@ -2,6 +2,12 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.6.0] - 2026-11-07
+
+### Adicionado
+- **Toggle Retrátil na Sidebar (`sidebarCollapsed` com persistência em `localStorage`):** permite recolher (`lg:w-20`) ou expandir (`lg:w-64`) a barra de navegação no desktop com 1 clique pelo topo da sidebar ou pelo cabeçalho superior.
+- **Ícones SVG Dedicados em Todos os Itens e Subitens do Menu:** ícones vetoriais exclusivos para `Dashboard Inicial`, `Grade Semanal`, `Recepção & Check-in`, `Prontuário (PEP Multi)`, `Faturamento BPA-i`, `Configurações` (`Pacientes SUS`, `Salas & Espaços`, `Equipe & Perfis`, `Tabela SIGTAP`, `Auditoria LGPD`, `Minha Conta & PIN`), `Ajuda & Sobre` e `Sair`.
+
 ## [1.5.0] - 2026-11-07
 
 ### Adicionado
