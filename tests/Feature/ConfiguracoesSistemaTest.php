@@ -198,7 +198,7 @@ class ConfiguracoesSistemaTest extends TestCase
         $this->actingAs($terapeuta)->get('/configuracoes/estabelecimento')->assertForbidden();
     }
 
-    public function test_coordenação_pode_salvar_dados_institucionais_e_logo(): void
+    public function test_coordenacao_pode_salvar_dados_institucionais_e_logo(): void
     {
         Storage::fake('public');
         $coordenador = User::factory()->create(['ativo' => true]);
