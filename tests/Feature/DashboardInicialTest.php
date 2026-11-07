@@ -111,4 +111,36 @@ class DashboardInicialTest extends TestCase
                     && $contagem['INTELECTUAL'] === 0;
             });
     }
+
+    public function test_reabertura_do_dashboard_apos_sair_do_modulo_utiliza_cache_sem_erro_500(): void
+    {
+        $coordenador = User::factory()->create(['ativo' => true]);
+        $coordenador->assignRole('coordenacao');
+
+        Sala::create([
+            'nome' => 'Consultório 02 - Fonoaudiologia',
+            'tipo' => 'CONSULTORIO',
+            'ativo' => true,
+        ]);
+
+        // 1. Primeira abertura do dashboard (alimenta cache)
+        $primeiroAcesso = $this->actingAs($coordenador)->get('/dashboard');
+        $primeiroAcesso->assertOk();
+        $primeiroAcesso->assertSee('Consultório 02 - Fonoaudiologia');
+
+        // 2. Sai do módulo para outro módulo
+        $outroModulo = $this->actingAs($coordenador)->get('/ajuda');
+        $outroModulo->assertOk();
+
+        // 3. Retorna ao dashboard (lê do cache)
+        $retornoAoDashboard = $this->actingAs($coordenador)->get('/dashboard');
+        $retornoAoDashboard->assertOk();
+        $retornoAoDashboard->assertSee('Consultório 02 - Fonoaudiologia');
+
+        // 4. Teste direto no componente Livewire
+        Livewire::actingAs($coordenador)
+            ->test(DashboardInicial::class)
+            ->assertOk()
+            ->assertSee('Consultório 02 - Fonoaudiologia');
+    }
 }

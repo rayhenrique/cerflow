@@ -44,6 +44,17 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.16.1',
+                'data' => '07/11/2026',
+                'titulo' => 'Correção de Deserialização de Cache no Painel Inicial (Dashboard)',
+                'tipo' => 'Correção Crítica',
+                'destaques' => [
+                    'Correção na serialização de dados de ocupação de salas no cache do Dashboard, convertendo modelos Eloquent em estruturas puras (arrays/escalares).',
+                    'Tratamento preventivo na View Blade para suportar propriedades de salas tanto em formato de objeto quanto array.',
+                    'Limpeza e renovação automática de chaves de cache para evitar erro 500 no retorno ao módulo após navegação.',
+                ],
+            ],
+            [
                 'versao' => '1.16.0',
                 'data' => '07/11/2026',
                 'titulo' => 'Manual Completo e Didático do Usuário para Todos os Colaboradores',

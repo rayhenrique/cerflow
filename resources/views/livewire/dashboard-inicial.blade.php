@@ -213,13 +213,18 @@
 
             <div class="space-y-2.5 text-xs">
                 @forelse($salasOcupacao as $sala)
+                    @php
+                        $salaNome = is_array($sala) ? ($sala['nome'] ?? '') : ($sala->nome ?? '');
+                        $salaTipo = is_array($sala) ? ($sala['tipo'] ?? '') : ($sala->tipo ?? '');
+                        $salaAtendimentos = is_array($sala) ? ($sala['atendimentos_mes_count'] ?? 0) : ($sala->atendimentos_mes_count ?? 0);
+                    @endphp
                     <div class="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2">
                         <div class="min-w-0 pr-2">
-                            <span class="font-semibold text-slate-800 block truncate">{{ $sala->nome }}</span>
-                            <span class="text-[10px] font-mono text-slate-400">{{ $sala->tipo }}</span>
+                            <span class="font-semibold text-slate-800 block truncate">{{ $salaNome }}</span>
+                            <span class="text-[10px] font-mono text-slate-400">{{ $salaTipo }}</span>
                         </div>
                         <span class="rounded-md bg-white px-2.5 py-1 font-mono text-xs font-bold text-teal-700 border border-slate-200 shrink-0">
-                            {{ $sala->atendimentos_mes_count }} atend.
+                            {{ $salaAtendimentos }} atend.
                         </span>
                     </div>
                 @empty

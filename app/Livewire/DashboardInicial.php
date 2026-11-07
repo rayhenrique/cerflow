@@ -54,7 +54,9 @@ class DashboardInicial extends Component
         $metricasMes = $this->calcularMetricasMensais($inicioMes, $fimMes);
         $metricasBpai = $this->calcularMetricasBpai($competenciaLimpa);
 
-        $salasOcupacao = Cache::remember('dash_salas_ocupacao_'.$inicioMes->format('Ym'), 60, function () use ($inicioMes, $fimMes) {
+        Cache::forget('dash_salas_ocupacao_'.$inicioMes->format('Ym'));
+
+        $salasOcupacao = Cache::remember('dash_salas_ocupacao_v2_'.$inicioMes->format('Ym'), 60, function () use ($inicioMes, $fimMes): array {
             return Sala::query()
                 ->ativas()
                 ->withCount([
@@ -65,7 +67,14 @@ class DashboardInicial extends Component
                 ])
                 ->orderByDesc('atendimentos_mes_count')
                 ->limit(6)
-                ->get();
+                ->get()
+                ->map(fn ($sala): array => [
+                    'id' => $sala->id,
+                    'nome' => (string) $sala->nome,
+                    'tipo' => (string) $sala->tipo,
+                    'atendimentos_mes_count' => (int) $sala->atendimentos_mes_count,
+                ])
+                ->all();
         });
 
         return view('livewire.dashboard-inicial', [
