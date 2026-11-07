@@ -45,4 +45,39 @@ class HistoricoSincronizacaoEsus extends Model
             'detalhes' => 'array',
         ];
     }
+
+    public function getRegistrosValidosAttribute(): int
+    {
+        return (int) ($this->detalhes['registros_validos'] ?? ($this->novos_pacientes + $this->pacientes_atualizados + ($this->detalhes['pacientes_sem_alteracoes'] ?? 0)));
+    }
+
+    public function getRegistrosInvalidosAttribute(): int
+    {
+        return (int) ($this->detalhes['registros_invalidos'] ?? $this->registros_ignorados);
+    }
+
+    public function getSemIdentificadorAttribute(): int
+    {
+        return (int) ($this->detalhes['sem_identificador'] ?? 0);
+    }
+
+    public function getPacientesSemAlteracoesAttribute(): int
+    {
+        return (int) ($this->detalhes['pacientes_sem_alteracoes'] ?? 0);
+    }
+
+    public function getFalhasGravacaoAttribute(): int
+    {
+        return (int) ($this->detalhes['falhas_gravacao'] ?? 0);
+    }
+
+    public function getEtapaAtualAttribute(): string
+    {
+        return (string) ($this->detalhes['etapa'] ?? '');
+    }
+
+    public function getPercentualProgressoAttribute(): int
+    {
+        return (int) ($this->detalhes['percentual'] ?? 0);
+    }
 }

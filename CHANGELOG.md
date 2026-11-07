@@ -2,6 +2,17 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.11.1] - 2026-11-07
+
+### Corrigido
+- **Correção Crítica no Mapeamento de Colunas do DW e-SUS APS PEC (`tb_acomp_cidadaos_vinculados`):**
+  - Mapeamento das colunas reais da visualização DW do e-SUS PEC: inclusão de `dt_nascimento_cidadao`, `nu_cpf_cidadao`, `nu_cns_cidadao`, `no_sexo_cidadao`, `co_fat_cidadao_pec`, `ds_logradouro_domicilio`, `no_bairro_domicilio` e `co_ibge_domicilio`.
+  - Resolução do descarte em massa de registros: anteriormente, todos os 38.467 registros consultados na VPS tinham sua data de nascimento lida como nula devido à nomenclatura da coluna de origem, resultando em 0 pacientes persistidos.
+  - Otimização com processamento em lotes de 500 registros e pré-carregamento em memória de pacientes locais por ID externo, CPF e CNS, acelerando drasticamente o tempo de sincronização e eliminando queries individuais (N+1).
+  - Acompanhamento em tempo real do progresso da sincronização com 6 etapas efetivas (`Consultando origem`, `Validando registros`, `Identificando pacientes existentes`, `Importando novos`, `Atualizando existentes`, `Finalizando`), barra de progresso dinâmica e métricas parciais.
+  - Implementação de contabilidade exata de registros: total consultado, válidos, inválidos, sem documento, novos, atualizados, sem alterações, duplicidades e falhas de gravação.
+  - Bloqueio de falsos positivos: o sistema não apresenta mais status `SUCESSO` caso a consulta retorne dados mas nenhum registro seja persistido ou atualizado.
+
 ## [1.11.0] - 2026-11-07
 
 ### Adicionado

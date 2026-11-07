@@ -44,6 +44,19 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.11.1',
+                'data' => '07/11/2026',
+                'titulo' => 'Correção Crítica no Mapeamento e Persistência do e-SUS PEC',
+                'tipo' => 'Correção Crítica',
+                'destaques' => [
+                    'Correção no mapeamento de colunas do DW PEC (tb_acomp_cidadaos_vinculados), incluindo dt_nascimento_cidadao, nu_cpf_cidadao, nu_cns_cidadao e co_fat_cidadao_pec.',
+                    'Eliminação do descarte indevido que impedia a gravação dos pacientes consultados na base do e-SUS PEC.',
+                    'Otimização de alta performance com processamento em lotes e pré-carregamento em memória, acelerando o processamento de grandes bases.',
+                    'Acompanhamento do progresso da sincronização em tempo real com etapas reais, métricas parciais e barra de progresso.',
+                    'Contabilização detalhada de registros válidos, inválidos, sem documento, novos, atualizados e sem alterações.',
+                ],
+            ],
+            [
                 'versao' => '1.11.0',
                 'data' => '07/11/2026',
                 'titulo' => 'Integração com e-SUS APS PEC & Sincronização Unidirecional de Pacientes',

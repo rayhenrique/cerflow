@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Jobs\SincronizarEsusPecJob;
 use App\Livewire\ConfiguracoesSistema;
 use App\Models\ConfiguracaoEsusPec;
+use App\Models\HistoricoSincronizacaoEsus;
 use App\Models\Paciente;
 use App\Models\User;
 use App\Rules\CnsValido;
@@ -86,7 +87,6 @@ class IntegracaoEsusPecTest extends TestCase
         $this->assertSame('192.168.10.50', $config->host);
         $this->assertSame(5433, $config->porta);
         $this->assertSame('esus_leitura', $config->usuario);
-        // O cast 'encrypted' garante que a senha gravada no banco é ilegível/criptografada
         $this->assertSame($senhaSecreta, $config->senha);
 
         // Ao renderizar a view novamente, a senha NÃO é retornada como texto plano no formulário
@@ -100,7 +100,7 @@ class IntegracaoEsusPecTest extends TestCase
         Livewire::actingAs($coordenador)
             ->test(ConfiguracoesSistema::class, ['secao' => 'esus'])
             ->set('esus_host', '192.168.10.60')
-            ->set('esus_senha', '') // Vazio para manter
+            ->set('esus_senha', '')
             ->call('salvarConfiguracaoEsus')
             ->assertHasNoErrors();
 
@@ -135,7 +135,6 @@ class IntegracaoEsusPecTest extends TestCase
 
     public function test_descoberta_de_schema_com_banco_simulado_dw_pec(): void
     {
-        // Cria banco em memória SQLite simulando a estrutura do DW e-SUS APS PEC
         $pdoSimulado = new PDO('sqlite::memory:');
         $pdoSimulado->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
@@ -147,17 +146,18 @@ class IntegracaoEsusPecTest extends TestCase
             INSERT INTO tb_versao_sistema VALUES (1, "5.3.18");
 
             CREATE TABLE tb_acomp_cidadaos_vinculados (
-                co_seq_fat_cidadao_vinculado INTEGER PRIMARY KEY,
+                co_seq_acomp_cidadaos_vinc INTEGER PRIMARY KEY,
+                co_fat_cidadao_pec INTEGER,
                 no_cidadao VARCHAR(255),
-                nu_cpf VARCHAR(11),
-                nu_cns VARCHAR(15),
-                dt_nascimento DATE,
-                no_sexo VARCHAR(20),
-                no_mae VARCHAR(255),
+                nu_cpf_cidadao VARCHAR(11),
+                nu_cns_cidadao VARCHAR(15),
+                dt_nascimento_cidadao DATE,
+                no_sexo_cidadao VARCHAR(20),
+                no_mae_cidadao VARCHAR(255),
                 nu_telefone_celular VARCHAR(20),
-                ds_logradouro VARCHAR(255),
-                no_bairro VARCHAR(100),
-                co_ibge VARCHAR(6),
+                ds_logradouro_domicilio VARCHAR(255),
+                no_bairro_domicilio VARCHAR(100),
+                co_ibge_domicilio VARCHAR(6),
                 no_unidade_saude VARCHAR(255),
                 no_profissional_acs VARCHAR(255)
             );
@@ -171,8 +171,9 @@ class IntegracaoEsusPecTest extends TestCase
         $this->assertTrue($diagnostico['compativel_importacao']);
         $this->assertSame('5.3.18', $diagnostico['versao_pec']);
         $this->assertContains('no_cidadao', $diagnostico['colunas_origem']);
-        $this->assertContains('nu_cpf', $diagnostico['colunas_origem']);
-        $this->assertContains('nu_cns', $diagnostico['colunas_origem']);
+        $this->assertContains('nu_cpf_cidadao', $diagnostico['colunas_origem']);
+        $this->assertContains('nu_cns_cidadao', $diagnostico['colunas_origem']);
+        $this->assertContains('dt_nascimento_cidadao', $diagnostico['colunas_origem']);
     }
 
     public function test_descoberta_de_schema_identifica_pec_operacional_e_interrompe_importacao(): void
@@ -193,7 +194,6 @@ class IntegracaoEsusPecTest extends TestCase
         $this->assertSame('PEC_OPERACIONAL', $diagnostico['tipo_banco']);
         $this->assertFalse($diagnostico['compativel_importacao']);
 
-        // Tentativa de sincronização deve ser interrompida por não ser DW oficial
         $historico = $service->sincronizarPacientes('MANUAL', $pdoSimulado);
 
         $this->assertSame('INTERROMPIDO', $historico->status);
@@ -201,27 +201,29 @@ class IntegracaoEsusPecTest extends TestCase
         $this->assertSame(0, $historico->novos_pacientes);
     }
 
-    public function test_sincronizacao_importa_novos_pacientes_com_desduplicacao_e_rastreabilidade(): void
+    public function test_importacao_de_paciente_novo_com_schema_real_pec_e_colunas_oficiais(): void
     {
         $pdoSimulado = new PDO('sqlite::memory:');
         $pdoSimulado->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        $cnsValido1 = CnsValido::gerarDefinitivo('10020030040');
-        $cnsValido2 = CnsValido::gerarDefinitivo('50060070080');
+        $cns1 = CnsValido::gerarDefinitivo('10020030040');
+        $cns2 = CnsValido::gerarDefinitivo('50060070080');
 
         $pdoSimulado->exec('
             CREATE TABLE tb_acomp_cidadaos_vinculados (
-                co_seq_fat_cidadao_vinculado INTEGER PRIMARY KEY,
+                co_seq_acomp_cidadaos_vinc INTEGER PRIMARY KEY,
+                co_fat_cidadao_pec INTEGER,
                 no_cidadao VARCHAR(255),
-                nu_cpf VARCHAR(11),
-                nu_cns VARCHAR(15),
-                dt_nascimento DATE,
-                no_sexo VARCHAR(20),
-                no_mae VARCHAR(255),
+                nu_cpf_cidadao VARCHAR(11),
+                nu_cns_cidadao VARCHAR(15),
+                dt_nascimento_cidadao DATE,
+                no_sexo_cidadao VARCHAR(20),
+                no_mae_cidadao VARCHAR(255),
                 nu_telefone_celular VARCHAR(20),
-                ds_logradouro VARCHAR(255),
-                no_bairro VARCHAR(100),
-                co_ibge VARCHAR(6),
+                ds_logradouro_domicilio VARCHAR(255),
+                nu_numero_domicilio VARCHAR(10),
+                no_bairro_domicilio VARCHAR(100),
+                co_ibge_domicilio VARCHAR(6),
                 no_unidade_saude VARCHAR(255),
                 no_profissional_acs VARCHAR(255)
             );
@@ -229,10 +231,10 @@ class IntegracaoEsusPecTest extends TestCase
 
         $stmt = $pdoSimulado->prepare('
             INSERT INTO tb_acomp_cidadaos_vinculados VALUES
-            (101, "Lucas Vinicius de Oliveira", "11122233344", ?, "2013-05-10", "M", "Tereza Cristina", "(82) 99888-0001", "Rua A, 10", "Centro", "270430", "UBS Central", "ACS Carlos"),
-            (102, "Mariana Fernanda Costa", "55566677788", ?, "2018-09-22", "F", "Silvia Costa", "(82) 99888-0002", "Rua B, 20", "Bela Vista", "270430", "UBS Bela Vista", "ACS Sonia");
+            (1, 9001, "Lucas Vinicius de Oliveira", "11122233344", ?, "2013-05-10", "MASCULINO", "Tereza Cristina", "(82) 99888-0001", "Rua A", "10", "Centro", "270430", "UBS Central", "ACS Carlos"),
+            (2, 9002, "Mariana Fernanda Costa", "55566677788", ?, "2018-09-22", "FEMININO", "Silvia Costa", "(82) 99888-0002", "Rua B", "20", "Bela Vista", "270430", "UBS Bela Vista", "ACS Sonia");
         ');
-        $stmt->execute([$cnsValido1, $cnsValido2]);
+        $stmt->execute([$cns1, $cns2]);
 
         $service = new EsusPecIntegrationService;
         $historico = $service->sincronizarPacientes('MANUAL', $pdoSimulado);
@@ -245,9 +247,12 @@ class IntegracaoEsusPecTest extends TestCase
         $this->assertDatabaseHas('pacientes', [
             'nome' => 'Lucas Vinicius de Oliveira',
             'cpf' => '11122233344',
-            'cns' => $cnsValido1,
+            'cns' => $cns1,
+            'sexo' => 'M',
             'origem_cadastro' => 'ESUS_APS',
-            'id_externo_esus' => '101',
+            'id_externo_esus' => '9001',
+            'endereco' => 'Rua A, 10',
+            'bairro' => 'Centro',
             'ubs_referencia' => 'UBS Central',
             'nome_acs' => 'ACS Carlos',
         ]);
@@ -255,19 +260,21 @@ class IntegracaoEsusPecTest extends TestCase
         $this->assertDatabaseHas('pacientes', [
             'nome' => 'Mariana Fernanda Costa',
             'cpf' => '55566677788',
-            'cns' => $cnsValido2,
+            'cns' => $cns2,
+            'sexo' => 'F',
             'origem_cadastro' => 'ESUS_APS',
-            'id_externo_esus' => '102',
+            'id_externo_esus' => '9002',
+            'endereco' => 'Rua B, 20',
+            'bairro' => 'Bela Vista',
             'ubs_referencia' => 'UBS Bela Vista',
             'nome_acs' => 'ACS Sonia',
         ]);
     }
 
-    public function test_sincronizacao_atualiza_sem_perda_de_dados_locais_e_preserva_dados_clinicos(): void
+    public function test_atualizacao_de_paciente_existente_preservando_dados_preenchidos_e_clinicos(): void
     {
         $cnsValido = CnsValido::gerarDefinitivo('88899900011');
 
-        // Paciente preexistente no CER com dados clínicos registrados
         $pacienteLocal = Paciente::create([
             'nome' => 'Arthur Gabriel Ramos',
             'cpf' => '99988877766',
@@ -290,26 +297,26 @@ class IntegracaoEsusPecTest extends TestCase
 
         $pdoSimulado->exec('
             CREATE TABLE tb_acomp_cidadaos_vinculados (
-                co_seq_fat_cidadao_vinculado INTEGER PRIMARY KEY,
+                co_seq_acomp_cidadaos_vinc INTEGER PRIMARY KEY,
+                co_fat_cidadao_pec INTEGER,
                 no_cidadao VARCHAR(255),
-                nu_cpf VARCHAR(11),
-                nu_cns VARCHAR(15),
-                dt_nascimento DATE,
-                no_sexo VARCHAR(20),
-                no_mae VARCHAR(255),
+                nu_cpf_cidadao VARCHAR(11),
+                nu_cns_cidadao VARCHAR(15),
+                dt_nascimento_cidadao DATE,
+                no_sexo_cidadao VARCHAR(20),
+                no_mae_cidadao VARCHAR(255),
                 nu_telefone_celular VARCHAR(20),
-                ds_logradouro VARCHAR(255),
-                no_bairro VARCHAR(100),
-                co_ibge VARCHAR(6),
+                ds_logradouro_domicilio VARCHAR(255),
+                no_bairro_domicilio VARCHAR(100),
+                co_ibge_domicilio VARCHAR(6),
                 no_unidade_saude VARCHAR(255),
                 no_profissional_acs VARCHAR(255)
             );
         ');
 
-        // Cidadão no PEC com mesmo CPF, mas sem telefone e sem endereço no e-SUS
         $stmt = $pdoSimulado->prepare('
             INSERT INTO tb_acomp_cidadaos_vinculados VALUES
-            (501, "Arthur Gabriel Ramos", "99988877766", ?, "2015-02-14", "M", "Renata Ramos", NULL, NULL, "Bairro Novo", "270430", "UBS Santo Antonio", "ACS Joao");
+            (1, 9501, "Arthur Gabriel Ramos", "99988877766", ?, "2015-02-14", "M", "Renata Ramos", NULL, NULL, "Bairro Novo", "270430", "UBS Santo Antonio", "ACS Joao");
         ');
         $stmt->execute([$cnsValido]);
 
@@ -321,72 +328,179 @@ class IntegracaoEsusPecTest extends TestCase
 
         $pacienteLocal->refresh();
 
-        // 1. Vinculou o ID externo do PEC
-        $this->assertSame('501', $pacienteLocal->id_externo_esus);
-        // 2. Preencheu o que estava vazio no local
+        $this->assertSame('9501', $pacienteLocal->id_externo_esus);
         $this->assertSame('Bairro Novo', $pacienteLocal->bairro);
         $this->assertSame('UBS Santo Antonio', $pacienteLocal->ubs_referencia);
         $this->assertSame('ACS Joao', $pacienteLocal->nome_acs);
-        // 3. NÃO sobrescreveu campos preenchidos com valores nulos da origem
+        // Não sobrescreveu campos preenchidos com valores nulos da origem
         $this->assertSame('(82) 99999-1234', $pacienteLocal->telefone_contato);
         $this->assertSame('Rua Local Preservada, 50', $pacienteLocal->endereco);
-        // 4. PRESERVOU integralmente os dados clínicos
+        // Preservou integralmente os dados clínicos
         $this->assertSame('F840', $pacienteLocal->cid_principal);
         $this->assertSame('F900', $pacienteLocal->cid_secundario);
         $this->assertSame(['INTELECTUAL'], $pacienteLocal->modalidades_reabilitacao);
     }
 
-    public function test_sincronizacao_repetida_e_idempotente(): void
+    public function test_identificacao_prioritaria_por_id_externo_estavel(): void
     {
+        $pacienteLocal = Paciente::create([
+            'nome' => 'Carlos Eduardo Lima',
+            'cpf' => '12345678901',
+            'cns' => null,
+            'data_nascimento' => '2012-04-10',
+            'sexo' => 'M',
+            'municipio_ibge' => '270430',
+            'id_externo_esus' => '88801',
+        ]);
+
         $pdoSimulado = new PDO('sqlite::memory:');
         $pdoSimulado->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        $cns = CnsValido::gerarDefinitivo('33322211100');
+        $pdoSimulado->exec('
+            CREATE TABLE tb_acomp_cidadaos_vinculados (
+                co_seq_acomp_cidadaos_vinc INTEGER PRIMARY KEY,
+                co_fat_cidadao_pec INTEGER,
+                no_cidadao VARCHAR(255),
+                nu_cpf_cidadao VARCHAR(11),
+                nu_cns_cidadao VARCHAR(15),
+                dt_nascimento_cidadao DATE,
+                no_sexo_cidadao VARCHAR(20),
+                nu_telefone_celular VARCHAR(20)
+            );
+            INSERT INTO tb_acomp_cidadaos_vinculados VALUES
+            (99, 88801, "Carlos Eduardo Lima", "12345678901", NULL, "2012-04-10", "M", "(82) 99111-2222");
+        ');
+
+        $service = new EsusPecIntegrationService;
+        $historico = $service->sincronizarPacientes('MANUAL', $pdoSimulado);
+
+        $this->assertSame(1, $historico->pacientes_atualizados);
+        $this->assertSame(0, $historico->novos_pacientes);
+
+        $pacienteLocal->refresh();
+        $this->assertSame('(82) 99111-2222', $pacienteLocal->telefone_contato);
+    }
+
+    public function test_identificacao_por_cpf(): void
+    {
+        $pacienteLocal = Paciente::create([
+            'nome' => 'Fabiana Menezes',
+            'cpf' => '32165498700',
+            'cns' => null,
+            'data_nascimento' => '2014-08-15',
+            'sexo' => 'F',
+            'municipio_ibge' => '270430',
+            'id_externo_esus' => null,
+        ]);
+
+        $pdoSimulado = new PDO('sqlite::memory:');
+        $pdoSimulado->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
         $pdoSimulado->exec('
             CREATE TABLE tb_acomp_cidadaos_vinculados (
-                co_seq_fat_cidadao_vinculado INTEGER PRIMARY KEY,
+                co_seq_acomp_cidadaos_vinc INTEGER PRIMARY KEY,
+                co_fat_cidadao_pec INTEGER,
                 no_cidadao VARCHAR(255),
-                nu_cpf VARCHAR(11),
-                nu_cns VARCHAR(15),
-                dt_nascimento DATE,
-                no_sexo VARCHAR(20),
-                no_mae VARCHAR(255),
-                nu_telefone_celular VARCHAR(20),
-                ds_logradouro VARCHAR(255),
-                no_bairro VARCHAR(100),
-                co_ibge VARCHAR(6),
-                no_unidade_saude VARCHAR(255),
-                no_profissional_acs VARCHAR(255)
+                nu_cpf_cidadao VARCHAR(11),
+                nu_cns_cidadao VARCHAR(15),
+                dt_nascimento_cidadao DATE,
+                no_sexo_cidadao VARCHAR(20)
+            );
+            INSERT INTO tb_acomp_cidadaos_vinculados VALUES
+            (1, 55555, "Fabiana Menezes", "32165498700", NULL, "2014-08-15", "F");
+        ');
+
+        $service = new EsusPecIntegrationService;
+        $historico = $service->sincronizarPacientes('MANUAL', $pdoSimulado);
+
+        $this->assertSame(1, $historico->pacientes_atualizados);
+        $this->assertSame(0, $historico->novos_pacientes);
+
+        $pacienteLocal->refresh();
+        $this->assertSame('55555', $pacienteLocal->id_externo_esus);
+    }
+
+    public function test_identificacao_por_cns(): void
+    {
+        $cns = CnsValido::gerarDefinitivo('77711122233');
+
+        $pacienteLocal = Paciente::create([
+            'nome' => 'Guilherme Santos',
+            'cpf' => null,
+            'cns' => $cns,
+            'data_nascimento' => '2016-12-05',
+            'sexo' => 'M',
+            'municipio_ibge' => '270430',
+            'id_externo_esus' => null,
+        ]);
+
+        $pdoSimulado = new PDO('sqlite::memory:');
+        $pdoSimulado->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        $pdoSimulado->exec('
+            CREATE TABLE tb_acomp_cidadaos_vinculados (
+                co_seq_acomp_cidadaos_vinc INTEGER PRIMARY KEY,
+                co_fat_cidadao_pec INTEGER,
+                no_cidadao VARCHAR(255),
+                nu_cpf_cidadao VARCHAR(11),
+                nu_cns_cidadao VARCHAR(15),
+                dt_nascimento_cidadao DATE,
+                no_sexo_cidadao VARCHAR(20)
             );
         ');
 
         $stmt = $pdoSimulado->prepare('
             INSERT INTO tb_acomp_cidadaos_vinculados VALUES
-            (701, "Danielle Marques Souza", "44433322211", ?, "2011-11-11", "F", "Marise Souza", "(82) 98888-7777", "Rua Teste, 1", "Centro", "270430", "UBS Centro", NULL);
+            (1, 77777, "Guilherme Santos", NULL, ?, "2016-12-05", "M");
         ');
         $stmt->execute([$cns]);
 
         $service = new EsusPecIntegrationService;
+        $historico = $service->sincronizarPacientes('MANUAL', $pdoSimulado);
 
-        // 1ª execução
-        $h1 = $service->sincronizarPacientes('MANUAL', $pdoSimulado);
-        $this->assertSame(1, $h1->novos_pacientes);
-        $totalPacientesApos1 = Paciente::count();
+        $this->assertSame(1, $historico->pacientes_atualizados);
+        $this->assertSame(0, $historico->novos_pacientes);
 
-        // 2ª execução com exatamente os mesmos dados
-        $h2 = $service->sincronizarPacientes('MANUAL', $pdoSimulado);
-        $this->assertSame(0, $h2->novos_pacientes);
-        $this->assertSame(1, $h2->pacientes_atualizados);
-        $this->assertSame($totalPacientesApos1, Paciente::count());
+        $pacienteLocal->refresh();
+        $this->assertSame('77777', $pacienteLocal->id_externo_esus);
     }
 
-    public function test_sincronizacao_identifica_duplicidade_e_nao_duplica_registros(): void
+    public function test_registro_sem_identificador_minimo_e_ignorado_e_contabilizado(): void
+    {
+        $pdoSimulado = new PDO('sqlite::memory:');
+        $pdoSimulado->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        // Registro possui nome e data de nascimento, mas NÃO possui id_externo_esus, nem CPF, nem CNS
+        $pdoSimulado->exec('
+            CREATE TABLE tb_acomp_cidadaos_vinculados (
+                co_seq_acomp_cidadaos_vinc INTEGER PRIMARY KEY,
+                co_fat_cidadao_pec INTEGER,
+                no_cidadao VARCHAR(255),
+                nu_cpf_cidadao VARCHAR(11),
+                nu_cns_cidadao VARCHAR(15),
+                dt_nascimento_cidadao DATE,
+                no_sexo_cidadao VARCHAR(20)
+            );
+            INSERT INTO tb_acomp_cidadaos_vinculados VALUES
+            (1, NULL, "Cidadao Sem Documento Algum", NULL, NULL, "2015-05-05", "M");
+        ');
+
+        $service = new EsusPecIntegrationService;
+        $historico = $service->sincronizarPacientes('MANUAL', $pdoSimulado);
+
+        // Não deve criar paciente sem identificação mínima confiável
+        $this->assertSame(0, $historico->novos_pacientes);
+        $this->assertSame(1, $historico->total_consultado);
+        $this->assertSame(1, $historico->registros_ignorados);
+        $this->assertSame(1, $historico->sem_identificador);
+        $this->assertDatabaseMissing('pacientes', ['nome' => 'Cidadao Sem Documento Algum']);
+    }
+
+    public function test_prevencao_de_duplicidade_e_conflito_cruzado(): void
     {
         $cnsValido1 = CnsValido::gerarDefinitivo('11122233344');
         $cnsValido2 = CnsValido::gerarDefinitivo('55566677788');
 
-        // Cria dois pacientes distintos no banco CER
         Paciente::create([
             'nome' => 'Paciente A',
             'cpf' => '77788899900',
@@ -409,26 +523,19 @@ class IntegracaoEsusPecTest extends TestCase
 
         $pdoSimulado->exec('
             CREATE TABLE tb_acomp_cidadaos_vinculados (
-                co_seq_fat_cidadao_vinculado INTEGER PRIMARY KEY,
+                co_seq_acomp_cidadaos_vinc INTEGER PRIMARY KEY,
+                co_fat_cidadao_pec INTEGER,
                 no_cidadao VARCHAR(255),
-                nu_cpf VARCHAR(11),
-                nu_cns VARCHAR(15),
-                dt_nascimento DATE,
-                no_sexo VARCHAR(20),
-                no_mae VARCHAR(255),
-                nu_telefone_celular VARCHAR(20),
-                ds_logradouro VARCHAR(255),
-                no_bairro VARCHAR(100),
-                co_ibge VARCHAR(6),
-                no_unidade_saude VARCHAR(255),
-                no_profissional_acs VARCHAR(255)
+                nu_cpf_cidadao VARCHAR(11),
+                nu_cns_cidadao VARCHAR(15),
+                dt_nascimento_cidadao DATE,
+                no_sexo_cidadao VARCHAR(20)
             );
         ');
 
-        // Registro do e-SUS contendo CPF do Paciente A, mas CNS do Paciente B (conflito cruzado de duplicidade)
         $stmt = $pdoSimulado->prepare('
             INSERT INTO tb_acomp_cidadaos_vinculados VALUES
-            (801, "Cidadao Conflitante", "77788899900", ?, "2010-01-01", "M", NULL, NULL, NULL, NULL, "270430", NULL, NULL);
+            (801, NULL, "Cidadao Conflitante", "77788899900", ?, "2010-01-01", "M");
         ');
         $stmt->execute([$cnsValido2]);
 
@@ -438,6 +545,122 @@ class IntegracaoEsusPecTest extends TestCase
         $this->assertSame(1, $historico->duplicidades_identificadas);
         $this->assertSame(0, $historico->novos_pacientes);
         $this->assertSame(0, $historico->pacientes_atualizados);
+    }
+
+    public function test_reexecucao_sem_duplicacao_e_contabilizacao_sem_alteracoes(): void
+    {
+        $pdoSimulado = new PDO('sqlite::memory:');
+        $pdoSimulado->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        $cns = CnsValido::gerarDefinitivo('33322211100');
+
+        $pdoSimulado->exec('
+            CREATE TABLE tb_acomp_cidadaos_vinculados (
+                co_seq_acomp_cidadaos_vinc INTEGER PRIMARY KEY,
+                co_fat_cidadao_pec INTEGER,
+                no_cidadao VARCHAR(255),
+                nu_cpf_cidadao VARCHAR(11),
+                nu_cns_cidadao VARCHAR(15),
+                dt_nascimento_cidadao DATE,
+                no_sexo_cidadao VARCHAR(20),
+                no_mae_cidadao VARCHAR(255),
+                nu_telefone_celular VARCHAR(20),
+                ds_logradouro_domicilio VARCHAR(255),
+                no_bairro_domicilio VARCHAR(100),
+                co_ibge_domicilio VARCHAR(6),
+                no_unidade_saude VARCHAR(255),
+                no_profissional_acs VARCHAR(255)
+            );
+        ');
+
+        $stmt = $pdoSimulado->prepare('
+            INSERT INTO tb_acomp_cidadaos_vinculados VALUES
+            (1, 7001, "Danielle Marques Souza", "44433322211", ?, "2011-11-11", "F", "Marise Souza", "(82) 98888-7777", "Rua Teste, 1", "Centro", "270430", "UBS Centro", NULL);
+        ');
+        $stmt->execute([$cns]);
+
+        $service = new EsusPecIntegrationService;
+
+        // 1ª execução: cria novo paciente
+        $h1 = $service->sincronizarPacientes('MANUAL', $pdoSimulado);
+        $this->assertSame(1, $h1->novos_pacientes);
+        $this->assertSame(0, $h1->pacientes_sem_alteracoes);
+        $totalPacientes = Paciente::count();
+
+        // 2ª execução com exatamente os mesmos dados: identifica registro idêntico sem alterações
+        $h2 = $service->sincronizarPacientes('MANUAL', $pdoSimulado);
+        $this->assertSame(0, $h2->novos_pacientes);
+        $this->assertSame(0, $h2->pacientes_atualizados);
+        $this->assertSame(1, $h2->pacientes_sem_alteracoes);
+        $this->assertSame($totalPacientes, Paciente::count());
+    }
+
+    public function test_status_interrompido_quando_nenhum_paciente_e_persistido_em_consulta_nao_vazia(): void
+    {
+        $pdoSimulado = new PDO('sqlite::memory:');
+        $pdoSimulado->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        // Insere 2 registros inválidos (sem nome ou data inválida)
+        $pdoSimulado->exec('
+            CREATE TABLE tb_acomp_cidadaos_vinculados (
+                co_seq_acomp_cidadaos_vinc INTEGER PRIMARY KEY,
+                co_fat_cidadao_pec INTEGER,
+                no_cidadao VARCHAR(255),
+                nu_cpf_cidadao VARCHAR(11),
+                nu_cns_cidadao VARCHAR(15),
+                dt_nascimento_cidadao DATE
+            );
+            INSERT INTO tb_acomp_cidadaos_vinculados VALUES
+            (1, 100, "", "11122233344", NULL, "2010-01-01"),
+            (2, 101, "Nome Valido", "55566677788", NULL, "1850-01-01");
+        ');
+
+        $service = new EsusPecIntegrationService;
+        $historico = $service->sincronizarPacientes('MANUAL', $pdoSimulado);
+
+        // Status NÃO deve ser SUCESSO quando nada foi importado/atualizado
+        $this->assertSame('INTERROMPIDO', $historico->status);
+        $this->assertSame(2, $historico->total_consultado);
+        $this->assertSame(0, $historico->novos_pacientes);
+        $this->assertSame(2, $historico->registros_invalidos);
+        $this->assertNotEmpty($historico->mensagem_erro);
+    }
+
+    public function test_lote_com_multiplos_registros_e_performance_em_bloco(): void
+    {
+        $pdoSimulado = new PDO('sqlite::memory:');
+        $pdoSimulado->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        $pdoSimulado->exec('
+            CREATE TABLE tb_acomp_cidadaos_vinculados (
+                co_seq_acomp_cidadaos_vinc INTEGER PRIMARY KEY,
+                co_fat_cidadao_pec INTEGER,
+                no_cidadao VARCHAR(255),
+                nu_cpf_cidadao VARCHAR(11),
+                nu_cns_cidadao VARCHAR(15),
+                dt_nascimento_cidadao DATE,
+                no_sexo_cidadao VARCHAR(20)
+            );
+        ');
+
+        $stmt = $pdoSimulado->prepare('
+            INSERT INTO tb_acomp_cidadaos_vinculados (co_seq_acomp_cidadaos_vinc, co_fat_cidadao_pec, no_cidadao, nu_cpf_cidadao, nu_cns_cidadao, dt_nascimento_cidadao, no_sexo_cidadao)
+            VALUES (?, ?, ?, ?, ?, ?, "M")
+        ');
+
+        for ($i = 1; $i <= 10; $i++) {
+            $cpf = str_pad((string) (10000000000 + $i), 11, '0', STR_PAD_LEFT);
+            $cns = CnsValido::gerarDefinitivo(str_pad((string) (20000000000 + $i), 11, '0', STR_PAD_LEFT));
+            $stmt->execute([$i, 1000 + $i, "Paciente Teste Lote {$i}", $cpf, $cns, '2010-01-01']);
+        }
+
+        $service = new EsusPecIntegrationService;
+        $historico = $service->sincronizarPacientes('MANUAL', $pdoSimulado);
+
+        $this->assertSame('SUCESSO', $historico->status);
+        $this->assertSame(10, $historico->total_consultado);
+        $this->assertSame(10, $historico->novos_pacientes);
+        $this->assertSame(10, Paciente::count());
     }
 
     public function test_job_agendado_registrado_no_scheduler_as_02h(): void
@@ -452,5 +675,81 @@ class IntegracaoEsusPecTest extends TestCase
         $this->assertNotNull($jobEvent, 'O job SincronizarEsusPecJob deve estar registrado no agendador de tarefas.');
         $this->assertSame('0 2 * * *', $jobEvent->expression);
         $this->assertSame('America/Sao_Paulo', $jobEvent->timezone);
+    }
+
+    public function test_contabilizacao_correta_de_todos_os_contadores(): void
+    {
+        $pdoSimulado = new PDO('sqlite::memory:');
+        $pdoSimulado->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        $pdoSimulado->exec('
+            CREATE TABLE tb_acomp_cidadaos_vinculados (
+                co_seq_acomp_cidadaos_vinc INTEGER PRIMARY KEY,
+                co_fat_cidadao_pec INTEGER,
+                no_cidadao VARCHAR(255),
+                nu_cpf_cidadao VARCHAR(11),
+                nu_cns_cidadao VARCHAR(15),
+                dt_nascimento_cidadao DATE,
+                no_sexo_cidadao VARCHAR(20)
+            );
+        ');
+
+        $cnsValido1 = CnsValido::gerarDefinitivo('11111111111');
+        $cnsValido2 = CnsValido::gerarDefinitivo('22222222222');
+
+        // Cria 1 paciente local existente para gerar 'atualizado'
+        Paciente::create([
+            'nome' => 'Paciente Existente Local',
+            'cpf' => '11122233344',
+            'cns' => null,
+            'data_nascimento' => '2010-01-01',
+            'sexo' => 'M',
+            'municipio_ibge' => '270430',
+            'id_externo_esus' => null,
+        ]);
+
+        $stmt = $pdoSimulado->prepare('
+            INSERT INTO tb_acomp_cidadaos_vinculados VALUES
+            (1, 1001, "Novo Paciente 1", "99988877711", ?, "2015-05-10", "M"),
+            (2, 1002, "Paciente Existente Local", "11122233344", ?, "2010-01-01", "M"),
+            (3, NULL, "Sem Identificador", NULL, NULL, "2014-04-04", "F"),
+            (4, 1004, "", "88877766655", NULL, "2012-02-02", "M");
+        ');
+        $stmt->execute([$cnsValido1, $cnsValido2]);
+
+        $service = new EsusPecIntegrationService;
+        $historico = $service->sincronizarPacientes('MANUAL', $pdoSimulado);
+
+        $this->assertSame(4, $historico->total_consultado);
+        $this->assertSame(1, $historico->novos_pacientes);
+        $this->assertSame(1, $historico->pacientes_atualizados);
+        $this->assertSame(0, $historico->pacientes_sem_alteracoes);
+        $this->assertSame(2, $historico->registros_ignorados);
+        $this->assertSame(1, $historico->sem_identificador);
+        $this->assertSame(1, $historico->registros_invalidos);
+        $this->assertSame(2, $historico->registros_validos);
+        $this->assertSame(0, $historico->falhas_gravacao);
+    }
+
+    public function test_livewire_sincronizacao_manual_com_progresso(): void
+    {
+        $coordenador = User::factory()->create(['ativo' => true]);
+        $coordenador->assignRole('coordenacao');
+
+        ConfiguracaoEsusPec::atual()->update([
+            'ativo' => true,
+            'host' => 'localhost',
+            'porta' => 5433,
+            'banco' => 'esus',
+            'usuario' => 'esus_leitura',
+        ]);
+
+        Livewire::actingAs($coordenador)
+            ->test(ConfiguracoesSistema::class, ['secao' => 'esus'])
+            ->call('sincronizarEsusAgora')
+            ->assertDispatched('toast');
+
+        $historico = HistoricoSincronizacaoEsus::latest('id')->first();
+        $this->assertNotNull($historico);
     }
 }

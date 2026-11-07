@@ -418,6 +418,42 @@
                 </div>
             </div>
 
+            <!-- Progresso em Tempo Real da Sincronização -->
+            @if ($sincronizandoEsus)
+                <div wire:poll.2s="verificarProgressoSincronizacao" class="bg-teal-50 border border-teal-200 rounded-xl p-4 shadow-xs space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <svg class="animate-spin h-4 w-4 text-teal-600" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span class="text-xs font-bold text-teal-900">Etapa Atual: {{ $progressoEtapa ?: 'Processando...' }}</span>
+                        </div>
+                        <div class="text-xs text-teal-700 font-mono">
+                            @if ($progressoTotal > 0)
+                                {{ number_format($progressoProcessados, 0, ',', '.') }} / {{ number_format($progressoTotal, 0, ',', '.') }} registros ({{ $progressoPercentual }}%)
+                            @else
+                                {{ number_format($progressoProcessados, 0, ',', '.') }} registros processados
+                            @endif
+                        </div>
+                    </div>
+
+                    <!-- Barra de Progresso Real -->
+                    <div class="w-full bg-teal-200/60 rounded-full h-2 overflow-hidden">
+                        <div class="bg-teal-600 h-2 rounded-full transition-all duration-300" style="width: {{ max(5, $progressoPercentual) }}%"></div>
+                    </div>
+
+                    <!-- Métricas em Tempo Real -->
+                    <div class="flex flex-wrap items-center gap-2 text-[11px] pt-1">
+                        <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">+{{ $progressoContadores['novos'] ?? 0 }} novos</span>
+                        <span class="px-2 py-0.5 rounded bg-teal-100 text-teal-800 font-bold">{{ $progressoContadores['atualizados'] ?? 0 }} atualizados</span>
+                        <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold">{{ $progressoContadores['sem_alteracoes'] ?? 0 }} sem alterações</span>
+                        <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">{{ $progressoContadores['duplicidades'] ?? 0 }} duplicidades</span>
+                        <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-500 font-semibold">{{ ($progressoContadores['invalidos'] ?? 0) + ($progressoContadores['sem_identificador'] ?? 0) }} ignorados/inválidos</span>
+                    </div>
+                </div>
+            @endif
+
             <!-- Tabela: Histórico de Sincronizações -->
             <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
                 <div class="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -437,29 +473,31 @@
                     <table class="min-w-full divide-y divide-slate-200 text-sm">
                         <thead class="bg-slate-50 text-xs font-bold uppercase text-slate-500">
                             <tr>
-                                <th class="px-5 py-3 text-left">Início / Duração</th>
-                                <th class="px-5 py-3 text-center">Tipo</th>
-                                <th class="px-5 py-3 text-center">Status</th>
-                                <th class="px-5 py-3 text-center">Consultados</th>
-                                <th class="px-5 py-3 text-center">Novos</th>
-                                <th class="px-5 py-3 text-center">Atualizados</th>
-                                <th class="px-5 py-3 text-center">Duplicidades</th>
-                                <th class="px-5 py-3 text-left">Observação / Erro</th>
+                                <th class="px-4 py-3 text-left">Início / Duração</th>
+                                <th class="px-3 py-3 text-center">Tipo</th>
+                                <th class="px-3 py-3 text-center">Status</th>
+                                <th class="px-3 py-3 text-center">Consultados</th>
+                                <th class="px-3 py-3 text-center">Novos</th>
+                                <th class="px-3 py-3 text-center">Atualizados</th>
+                                <th class="px-3 py-3 text-center">Sem Alt.</th>
+                                <th class="px-3 py-3 text-center">Duplicidades</th>
+                                <th class="px-3 py-3 text-center">Ignorados</th>
+                                <th class="px-4 py-3 text-left">Observação / Diagnóstico</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 text-xs">
                             @forelse ($historicoEsus as $hist)
                                 <tr class="hover:bg-slate-50/80">
-                                    <td class="px-5 py-3 text-slate-700">
+                                    <td class="px-4 py-3 text-slate-700">
                                         <div class="font-bold">{{ $hist->iniciado_em?->format('d/m/Y H:i:s') }}</div>
                                         <div class="text-[11px] text-slate-400">{{ $hist->duracao_segundos }}s de execução</div>
                                     </td>
-                                    <td class="px-5 py-3 text-center">
+                                    <td class="px-3 py-3 text-center">
                                         <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $hist->tipo_execucao === 'AGENDADA' ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-700' }}">
                                             {{ $hist->tipo_execucao }}
                                         </span>
                                     </td>
-                                    <td class="px-5 py-3 text-center">
+                                    <td class="px-3 py-3 text-center">
                                         <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold
                                             {{ $hist->status === 'SUCESSO' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : '' }}
                                             {{ $hist->status === 'INTERROMPIDO' ? 'bg-amber-50 text-amber-700 border border-amber-200' : '' }}
@@ -468,17 +506,19 @@
                                             {{ $hist->status }}
                                         </span>
                                     </td>
-                                    <td class="px-5 py-3 text-center font-mono font-bold text-slate-800">{{ $hist->total_consultado }}</td>
-                                    <td class="px-5 py-3 text-center font-mono text-emerald-700 font-bold">+{{ $hist->novos_pacientes }}</td>
-                                    <td class="px-5 py-3 text-center font-mono text-teal-700 font-bold">{{ $hist->pacientes_atualizados }}</td>
-                                    <td class="px-5 py-3 text-center font-mono text-amber-700 font-bold">{{ $hist->duplicidades_identificadas }}</td>
-                                    <td class="px-5 py-3 text-slate-500 max-w-xs truncate" title="{{ $hist->mensagem_erro }}">
-                                        {{ $hist->mensagem_erro ?: 'Sincronização executada com sucesso.' }}
+                                    <td class="px-3 py-3 text-center font-mono font-bold text-slate-800">{{ number_format($hist->total_consultado, 0, ',', '.') }}</td>
+                                    <td class="px-3 py-3 text-center font-mono text-emerald-700 font-bold">+{{ number_format($hist->novos_pacientes, 0, ',', '.') }}</td>
+                                    <td class="px-3 py-3 text-center font-mono text-teal-700 font-bold">{{ number_format($hist->pacientes_atualizados, 0, ',', '.') }}</td>
+                                    <td class="px-3 py-3 text-center font-mono text-slate-600 font-bold">{{ number_format($hist->pacientes_sem_alteracoes, 0, ',', '.') }}</td>
+                                    <td class="px-3 py-3 text-center font-mono text-amber-700 font-bold">{{ number_format($hist->duplicidades_identificadas, 0, ',', '.') }}</td>
+                                    <td class="px-3 py-3 text-center font-mono text-slate-500 font-bold">{{ number_format($hist->registros_ignorados, 0, ',', '.') }}</td>
+                                    <td class="px-4 py-3 text-slate-500 max-w-xs truncate" title="{{ $hist->mensagem_erro ?: ($hist->detalhes['mensagem_resumo'] ?? 'Sincronização executada com sucesso.') }}">
+                                        {{ $hist->mensagem_erro ?: ($hist->detalhes['mensagem_resumo'] ?? 'Sincronização executada com sucesso.') }}
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="px-5 py-8 text-center text-slate-400 text-xs">
+                                    <td colspan="10" class="px-5 py-8 text-center text-slate-400 text-xs">
                                         Nenhuma sincronização realizada até o momento. Utilize o botão "Sincronizar Agora" ou aguarde a rotina agendada (02:00).
                                     </td>
                                 </tr>

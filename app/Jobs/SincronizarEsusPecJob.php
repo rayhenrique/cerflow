@@ -18,19 +18,20 @@ class SincronizarEsusPecJob implements ShouldQueue
     /**
      * O tempo máximo em segundos que o job pode rodar antes de expirar.
      */
-    public int $timeout = 300;
+    public int $timeout = 600;
 
     /**
      * Número máximo de tentativas de execução.
      */
-    public int $tries = 2;
+    public int $tries = 1;
 
     public function __construct(
-        public string $tipoExecucao = 'AGENDADA'
+        public string $tipoExecucao = 'AGENDADA',
+        public ?int $historicoId = null
     ) {}
 
     public function handle(EsusPecIntegrationService $service): void
     {
-        $service->sincronizarPacientes($this->tipoExecucao);
+        $service->sincronizarPacientes($this->tipoExecucao, null, $this->historicoId);
     }
 }

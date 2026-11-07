@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
+use App\Jobs\SincronizarEsusPecJob;
 use App\Models\ConfiguracaoEstabelecimento;
 use App\Models\ConfiguracaoEsusPec;
 use App\Models\HistoricoSincronizacaoEsus;
@@ -17,6 +18,7 @@ use App\Rules\CnsValido;
 use App\Services\EsusPecIntegrationService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -203,6 +205,22 @@ class ConfiguracoesSistema extends Component
 
     public ?string $esus_ultima_sincronizacao_status = null;
 
+    // --- Progresso em Tempo Real da Sincronização e-SUS PEC ---
+    public bool $sincronizandoEsus = false;
+
+    public ?int $sincronizacaoAtivaId = null;
+
+    public string $progressoEtapa = '';
+
+    public int $progressoProcessados = 0;
+
+    public int $progressoTotal = 0;
+
+    public int $progressoPercentual = 0;
+
+    /** @var array<string, int> */
+    public array $progressoContadores = [];
+
     public function mount(?string $secao = null): void
     {
         $user = auth()->user();
@@ -362,6 +380,13 @@ class ConfiguracoesSistema extends Component
         $this->esus_ultima_conexao = $config->ultima_conexao_em?->format('d/m/Y H:i:s');
         $this->esus_ultima_sincronizacao = $config->ultima_sincronizacao_em?->format('d/m/Y H:i:s');
         $this->esus_ultima_sincronizacao_status = $config->ultima_sincronizacao_status;
+
+        $emAndamento = HistoricoSincronizacaoEsus::where('status', 'EM_ANDAMENTO')->latest('iniciado_em')->first();
+        if ($emAndamento) {
+            $this->sincronizandoEsus = true;
+            $this->sincronizacaoAtivaId = $emAndamento->id;
+            $this->verificarProgressoSincronizacao();
+        }
     }
 
     public function salvarConfiguracaoEsus(): void
@@ -451,22 +476,100 @@ class ConfiguracoesSistema extends Component
     {
         abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
 
-        $historico = $service->sincronizarPacientes('MANUAL');
-        $this->carregarConfiguracaoEsus();
+        $config = ConfiguracaoEsusPec::atual();
+        if (! $config->ativo) {
+            $this->dispatch('toast', tipo: 'alerta', titulo: 'Integração inativa', mensagem: 'Ative a integração e-SUS APS PEC e salve as configurações antes de sincronizar.');
 
-        if ($historico->status === 'SUCESSO') {
-            $msg = sprintf(
-                'Sincronização concluída com sucesso em %ds: %d novos pacientes, %d atualizados (%d consultados).',
-                $historico->duracao_segundos,
-                $historico->novos_pacientes,
-                $historico->pacientes_atualizados,
-                $historico->total_consultado
-            );
-            $this->dispatch('toast', tipo: 'sucesso', titulo: 'Sincronização e-SUS concluída', mensagem: $msg);
-        } elseif ($historico->status === 'INTERROMPIDO') {
-            $this->dispatch('toast', tipo: 'alerta', titulo: 'Sincronização interrompida', mensagem: $historico->mensagem_erro ?? 'Operação interrompida por segurança.');
+            return;
+        }
+
+        $historico = HistoricoSincronizacaoEsus::create([
+            'iniciado_em' => now(),
+            'tipo_execucao' => 'MANUAL',
+            'status' => 'EM_ANDAMENTO',
+            'total_consultado' => 0,
+            'novos_pacientes' => 0,
+            'pacientes_atualizados' => 0,
+            'registros_ignorados' => 0,
+            'duplicidades_identificadas' => 0,
+            'detalhes' => [
+                'etapa' => 'Consultando origem',
+                'percentual' => 0,
+            ],
+        ]);
+
+        $this->sincronizandoEsus = true;
+        $this->sincronizacaoAtivaId = $historico->id;
+        $this->progressoEtapa = 'Consultando origem';
+        $this->progressoPercentual = 0;
+
+        if (config('queue.default') === 'sync') {
+            $service->sincronizarPacientes('MANUAL', null, $historico->id);
+            $this->verificarProgressoSincronizacao();
         } else {
-            $this->dispatch('toast', tipo: 'erro', titulo: 'Erro na sincronização', mensagem: $historico->mensagem_erro ?? 'Ocorreu um erro durante a leitura do e-SUS PEC.');
+            SincronizarEsusPecJob::dispatch('MANUAL', $historico->id);
+            $this->dispatch('toast', tipo: 'info', titulo: 'Sincronização em andamento', mensagem: 'A importação foi iniciada. O progresso em tempo real é exibido abaixo.');
+        }
+    }
+
+    public function verificarProgressoSincronizacao(): void
+    {
+        if (! $this->sincronizacaoAtivaId) {
+            $emAndamento = HistoricoSincronizacaoEsus::where('status', 'EM_ANDAMENTO')->latest('iniciado_em')->first();
+            if ($emAndamento) {
+                $this->sincronizacaoAtivaId = $emAndamento->id;
+                $this->sincronizandoEsus = true;
+            } else {
+                $this->sincronizandoEsus = false;
+
+                return;
+            }
+        }
+
+        $historico = HistoricoSincronizacaoEsus::find($this->sincronizacaoAtivaId);
+        if (! $historico) {
+            $this->sincronizandoEsus = false;
+            $this->sincronizacaoAtivaId = null;
+
+            return;
+        }
+
+        $cache = Cache::get("esus_sync_progresso_{$historico->id}");
+        $detalhes = $historico->detalhes ?? [];
+
+        $this->progressoEtapa = (string) ($cache['etapa'] ?? ($detalhes['etapa'] ?? 'Processando registros...'));
+        $this->progressoProcessados = (int) ($cache['processados'] ?? ($detalhes['processados'] ?? $historico->total_consultado));
+        $this->progressoTotal = (int) ($cache['total'] ?? ($detalhes['total_estimado'] ?? 0));
+        $this->progressoPercentual = (int) ($cache['percentual'] ?? ($detalhes['percentual'] ?? 0));
+
+        $contadores = $cache['contadores'] ?? [
+            'novos' => $historico->novos_pacientes,
+            'atualizados' => $historico->pacientes_atualizados,
+            'sem_alteracoes' => $detalhes['pacientes_sem_alteracoes'] ?? 0,
+            'duplicidades' => $historico->duplicidades_identificadas,
+            'invalidos' => $detalhes['registros_invalidos'] ?? 0,
+            'sem_identificador' => $detalhes['sem_identificador'] ?? 0,
+        ];
+        $this->progressoContadores = $contadores;
+
+        if ($historico->status !== 'EM_ANDAMENTO') {
+            $this->sincronizandoEsus = false;
+            $this->sincronizacaoAtivaId = null;
+            $this->carregarConfiguracaoEsus();
+
+            if ($historico->status === 'SUCESSO') {
+                $msg = $detalhes['mensagem_resumo'] ?? sprintf(
+                    'Sincronização concluída com sucesso: %d novos pacientes, %d atualizados (%d consultados).',
+                    $historico->novos_pacientes,
+                    $historico->pacientes_atualizados,
+                    $historico->total_consultado
+                );
+                $this->dispatch('toast', tipo: 'sucesso', titulo: 'Sincronização e-SUS concluída', mensagem: $msg);
+            } elseif ($historico->status === 'INTERROMPIDO') {
+                $this->dispatch('toast', tipo: 'alerta', titulo: 'Sincronização interrompida', mensagem: $historico->mensagem_erro ?? 'Operação interrompida.');
+            } else {
+                $this->dispatch('toast', tipo: 'erro', titulo: 'Erro na sincronização', mensagem: $historico->mensagem_erro ?? 'Falha na sincronização.');
+            }
         }
     }
 
