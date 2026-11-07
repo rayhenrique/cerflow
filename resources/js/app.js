@@ -1,6 +1,1 @@
-import Alpine from 'alpinejs';
-
-if (!window.Alpine) {
-    window.Alpine = Alpine;
-    Alpine.start();
-}
+// Livewire 4 já inclui e inicializa o Alpine.js 3 nativamente com suporte a $wire.

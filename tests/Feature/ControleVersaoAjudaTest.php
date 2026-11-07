@@ -40,14 +40,16 @@ class ControleVersaoAjudaTest extends TestCase
         $response->assertRedirect('/');
         $this->assertTrue(session()->get('exibir_modal_versao'));
 
-        // Ao acessar a tela após login, o modal de novidades da versão deve estar aberto e exibir a versão atual:
+        // Ao acessar a tela após login, o modal de novidades da versão deve estar aberto, exibir a versão atual e consumir a flag:
         $versaoAtiva = app(VersionService::class)->versaoAtual();
         $paginaGrade = $this->actingAs($user)->get('/grade');
         $paginaGrade->assertOk();
         $paginaGrade->assertSee('Novidades da Versão');
         $paginaGrade->assertSee('v'.$versaoAtiva);
+        $this->assertNull(session()->get('exibir_modal_versao'));
 
-        // Ao fechar o modal pelo componente Livewire, limpa a flag da sessão atual:
+        // Também permite abrir e fechar o modal diretamente pelo componente Livewire:
+        session()->put('exibir_modal_versao', true);
         Livewire::actingAs($user)
             ->test(ModalNovidadesVersao::class)
             ->assertSet('aberto', true)
@@ -66,6 +68,7 @@ class ControleVersaoAjudaTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Central de Ajuda & Sobre o CER Flow', false);
+        $response->assertSee('v1.1.3');
         $response->assertSee('v1.1.2');
         $response->assertSee('v1.1.1');
         $response->assertSee('v1.1.0');

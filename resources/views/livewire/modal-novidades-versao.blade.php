@@ -1,7 +1,11 @@
 <div>
     @if($aberto)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-            <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 space-y-5">
+        <div x-data="{ visivel: true }"
+             x-show="visivel"
+             x-on:keydown.escape.window="visivel = false; $wire.fecharModal()"
+             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+            <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 space-y-5"
+                 @click.outside="visivel = false; $wire.fecharModal()">
                 <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
                     <div>
                         <div class="flex items-center gap-2">
@@ -17,6 +21,7 @@
                         </h3>
                     </div>
                     <button type="button"
+                            x-on:click="visivel = false"
                             wire:click="fecharModal"
                             class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
                         ✕
@@ -39,12 +44,13 @@
 
                 <div class="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
                     <a href="{{ route('ajuda.sobre') }}"
-                       wire:click="fecharModal"
+                       x-on:click="visivel = false"
                        class="font-semibold text-teal-700 hover:text-teal-600 underline underline-offset-4">
                         Ver evolução completa das versões →
                     </a>
 
                     <button type="button"
+                            x-on:click="visivel = false"
                             wire:click="fecharModal"
                             class="rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white shadow-xs hover:bg-slate-800">
                         Entendi, continuar
@@ -54,4 +60,3 @@
         </div>
     @endif
 </div>
-

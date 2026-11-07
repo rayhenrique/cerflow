@@ -123,8 +123,9 @@ php artisan key:generate --force
 # 3. Cria todas as tabelas na ordem estrita e popula Roles, Procedimentos SIGTAP, Salas e Admin inicial
 php artisan migrate --seed --force
 
-# 4. Cria o link simbólico de storage público
+# 4. Cria o link simbólico de storage público e publica os assets estáticos do Livewire 4 (evita erro 404 no Nginx do CloudPanel)
 php artisan storage:link
+php artisan livewire:publish --assets
 
 # 5. Instala pacotes Node e compila o Tailwind CSS v4 + Alpine.js 3 via Vite
 npm ci --no-audit --no-fund

@@ -2,6 +2,12 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.1.3] - 2026-11-06
+
+### Corrigido
+- Corrigido erro `404 Not Found` no carregamento de `livewire.min.js` em produção no Nginx/CloudPanel por meio da publicação dos assets estáticos em `public/vendor/livewire` (`php artisan livewire:publish --assets`).
+- Corrigido travamento do modal de novidades da versão pós-login utilizando `session()->pull('exibir_modal_versao')`, fechamento instantâneo com Alpine.js (`x-show` / `ESC` / clique externo) e remoção de inicialização duplicada do Alpine em `resources/js/app.js`.
+
 ## [1.1.2] - 2026-11-06
 
 ### Alterado

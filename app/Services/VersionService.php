@@ -43,6 +43,17 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.1.3',
+                'data' => '06/11/2026',
+                'titulo' => 'Correção de Assets Estáticos do Livewire 4 no Nginx/CloudPanel e Fechamento Instantâneo do Modal',
+                'tipo' => 'Patch Release',
+                'destaques' => [
+                    'Publicação estática de public/vendor/livewire (livewire.min.js) evitando erro 404 na regra de arquivos .js do Nginx no CloudPanel.',
+                    'Consumo atômico da sessão (session()->pull) no Modal de Novidades da Versão e fechamento instantâneo via Alpine.js + tecla ESC.',
+                    'Remoção de instância duplicada do Alpine.js em resources/js/app.js em favor do bundle nativo do Livewire 4.',
+                ],
+            ],
+            [
                 'versao' => '1.1.2',
                 'data' => '06/11/2026',
                 'titulo' => 'Padronização PSR-12 dos Componentes de Versão e Revisão do Guia de Deploy CloudPanel',

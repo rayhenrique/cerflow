@@ -15,7 +15,7 @@ class ModalNovidadesVersao extends Component
 
     public function mount(): void
     {
-        if (session()->get('exibir_modal_versao', false) === true) {
+        if (session()->pull('exibir_modal_versao', false) === true) {
             $this->aberto = true;
         }
     }

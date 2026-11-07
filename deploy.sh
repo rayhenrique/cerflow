@@ -30,8 +30,9 @@ fi
 # 3. Instala dependências PHP de produção
 composer install --no-interaction --no-dev --prefer-dist --optimize-autoloader
 
-# 4. Executa migrations pendentes e limpa cache de permissões Spatie
+# 4. Executa migrations pendentes, publica assets do Livewire e limpa cache de permissões Spatie
 php artisan migrate --force
+php artisan livewire:publish --assets
 php artisan permission:cache-reset
 
 # 5. Compila assets Frontend (Tailwind CSS v4 + Alpine.js 3 + Vite)
