@@ -36,37 +36,37 @@
     @endphp
 
     {{-- Cabeçalho Dinâmico do Submódulo --}}
-    <div class="bg-white rounded-xl border border-slate-200 p-6 shadow-xs flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+    <div class="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-xs flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
             <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-teal-50 text-teal-700 border border-teal-200 text-xs font-semibold mb-2">
                 <span>Configurações &rarr; {{ $secaoAtual['badge'] }}</span>
             </div>
-            <h1 class="text-xl font-bold text-slate-900">{{ $secaoAtual['titulo'] }}</h1>
-            <p class="text-sm text-slate-500 mt-1">{{ $secaoAtual['subtitulo'] }}</p>
+            <h1 class="text-lg sm:text-xl font-bold text-slate-900">{{ $secaoAtual['titulo'] }}</h1>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">{{ $secaoAtual['subtitulo'] }}</p>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2.5">
+        <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
             @if ($abaAtiva === 'pacientes' && in_array('pacientes', $abasPermitidas, true))
                 <button type="button" wire:click="abrirModalNovoPaciente"
-                    class="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
+                    class="w-full sm:w-auto justify-center inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     Novo Paciente
                 </button>
             @elseif ($abaAtiva === 'salas' && in_array('salas', $abasPermitidas, true))
                 <button type="button" wire:click="abrirModalNovaSala"
-                    class="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
+                    class="w-full sm:w-auto justify-center inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     Nova Sala / Espaço
                 </button>
             @elseif ($abaAtiva === 'profissionais' && in_array('profissionais', $abasPermitidas, true))
                 <button type="button" wire:click="abrirModalNovoProfissional"
-                    class="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
+                    class="w-full sm:w-auto justify-center inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     Novo Usuário / Profissional
                 </button>
             @elseif ($abaAtiva === 'sigtap' && in_array('sigtap', $abasPermitidas, true))
                 <button type="button" wire:click="abrirModalNovoSigtap"
-                    class="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
+                    class="w-full sm:w-auto justify-center inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     Novo Procedimento SIGTAP
                 </button>
@@ -902,7 +902,7 @@
                         @error('sig_cbos_csv') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
                     </div>
 
-                    <div class="grid grid-cols-3 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1">Idade Mín.</label>
                             <input type="number" wire:model="sig_idade_minima"

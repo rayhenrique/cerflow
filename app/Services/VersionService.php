@@ -44,6 +44,17 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.4.0',
+                'data' => '06/11/2026',
+                'titulo' => 'Sistema 100% Adaptado para Celulares, Tablets e Computadores',
+                'tipo' => 'Nova Funcionalidade',
+                'destaques' => [
+                    'Novo menu lateral deslizante no celular e tablet: basta tocar no ícone de três barras (☰) no topo para navegar por todos os módulos.',
+                    'Tabelas, filtros, botões e janelas de cadastro ajustados para funcionar perfeitamente em telas pequenas sem cortar informações.',
+                    'Melhoria na visualização da Grade Semanal, Check-in da Recepção, Prontuário e Configurações em dispositivos móveis.',
+                ],
+            ],
+            [
                 'versao' => '1.3.3',
                 'data' => '06/11/2026',
                 'titulo' => 'Aviso Automático de Nova Versão Mesmo para Quem Já Está Logado',

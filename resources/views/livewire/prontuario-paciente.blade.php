@@ -1,8 +1,8 @@
-<div class="space-y-6">
+<div class="space-y-4 sm:space-y-6">
     <!-- Cabeçalho do PEP e Seletor de Paciente -->
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
         <div>
-            <h2 class="text-lg font-bold text-slate-900">Prontuário Eletrônico Multiprofissional (PEP)</h2>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">Prontuário Eletrônico Multiprofissional (PEP)</h2>
             <p class="text-xs text-slate-500">Linha do tempo integrada, assinatura eletrônica SHA-256 e trava legal de 24h</p>
         </div>
 
@@ -16,15 +16,9 @@
         </div>
     </div>
 
-    @if (session()->has('sucesso_pep'))
-        <div class="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
-            {{ session('sucesso_pep') }}
-        </div>
-    @endif
-
     @if($pacienteSelecionado)
         <!-- Ficha Resumo do Usuário -->
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-4 bg-slate-900 text-white p-4 rounded-xl text-xs">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 bg-slate-900 text-white p-4 rounded-xl text-xs">
             <div>
                 <span class="text-slate-400 block">Usuário do CER</span>
                 <span class="font-bold text-sm">{{ $pacienteSelecionado->nome }}</span>
@@ -49,7 +43,7 @@
 
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
             <!-- Coluna Esquerda: Formulário de Evolução Rápida -->
-            <div class="lg:col-span-5 bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4 text-xs h-fit">
+            <div class="lg:col-span-5 bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4 text-xs h-fit">
                 <h3 class="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">
                     Nova Evolução Clínica + Produção BPA-i
                 </h3>
@@ -98,7 +92,7 @@
 
                     <button type="button"
                             wire:click="solicitarPinAssinatura"
-                            class="w-full rounded-lg bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-xs hover:bg-teal-500">
+                            class="w-full rounded-lg bg-teal-600 px-4 py-2.5 font-semibold text-white shadow-xs hover:bg-teal-500 cursor-pointer">
                         Assinar Eletronicamente com PIN
                     </button>
                 </div>
@@ -112,8 +106,8 @@
                     @php
                         $bloqueada = $ev->estaBloqueada();
                     @endphp
-                    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-3 text-xs">
-                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div class="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs space-y-3 text-xs">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-3">
                             <div>
                                 <span class="font-bold text-slate-900">{{ $ev->profissional?->nome }}</span>
                                 <span class="text-slate-500">• {{ $ev->profissional?->especialidade }} (CBO {{ $ev->profissional?->cbo_padrao }})</span>
@@ -122,7 +116,7 @@
                                 </span>
                             </div>
 
-                            <div class="flex items-center gap-2">
+                            <div class="flex flex-wrap items-center gap-2">
                                 @if($bloqueada)
                                     <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700 border border-slate-300">
                                         🔒 Imutável (+24h)
@@ -136,7 +130,7 @@
                                 @can('createAdendo', $ev)
                                     <button type="button"
                                             wire:click="abrirModalAdendo({{ $ev->id }})"
-                                            class="rounded-md bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-slate-700">
+                                            class="rounded-md bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-slate-700 cursor-pointer">
                                         + Adendo Retificador
                                     </button>
                                 @endcan
@@ -152,11 +146,11 @@
                         </div>
 
                         @if($ev->producaoBpai)
-                            <div class="rounded-lg bg-slate-50 px-3 py-2 border border-slate-200 flex items-center justify-between text-[11px]">
+                            <div class="rounded-lg bg-slate-50 px-3 py-2 border border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-[11px]">
                                 <span>
                                     <strong>SIGTAP:</strong> {{ $ev->producaoBpai->procedimento?->codigo }} — {{ $ev->producaoBpai->procedimento?->descricao }}
                                 </span>
-                                <span class="font-mono font-semibold text-teal-700">
+                                <span class="font-mono font-semibold text-teal-700 shrink-0">
                                     Comp. {{ $ev->producaoBpai->competencia }} ({{ $ev->producaoBpai->status_exportacao }})
                                 </span>
                             </div>
@@ -188,8 +182,8 @@
 
     <!-- Modal de Confirmação de PIN para Assinatura Eletrônica -->
     @if($modalPinAberto)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-            <div class="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl border border-slate-200 text-xs space-y-4">
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-4 overflow-y-auto">
+            <div class="w-full max-w-sm rounded-xl bg-white p-5 sm:p-6 shadow-xl border border-slate-200 text-xs space-y-4 my-auto">
                 <h3 class="text-sm font-bold text-slate-900">Assinatura Eletrônica do Prontuário</h3>
                 <p class="text-slate-500">Confirme seu PIN individual para gerar o hash SHA-256 e lançar a produção no BPA-i.</p>
 
@@ -199,11 +193,11 @@
                     @error('pin_assinatura') <span class="text-red-600 mt-1 block">{{ $message }}</span> @enderror
                 </div>
 
-                <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" wire:click="$set('modalPinAberto', false)" class="rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-700">
+                <div class="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
+                    <button type="button" wire:click="$set('modalPinAberto', false)" class="w-full sm:w-auto rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-700 cursor-pointer">
                         Cancelar
                     </button>
-                    <button type="button" wire:click="confirmarAssinaturaEvolucao" class="rounded-lg bg-teal-600 px-4 py-2 font-semibold text-white hover:bg-teal-500">
+                    <button type="button" wire:click="confirmarAssinaturaEvolucao" class="w-full sm:w-auto rounded-lg bg-teal-600 px-4 py-2 font-semibold text-white hover:bg-teal-500 cursor-pointer">
                         Confirmar e Assinar
                     </button>
                 </div>
@@ -213,8 +207,8 @@
 
     <!-- Modal de Inserção de Termo de Adendo (Evoluções Bloqueadas >24h) -->
     @if($modalAdendoAberto)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-            <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl border border-slate-200 text-xs space-y-4">
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 sm:p-4 overflow-y-auto">
+            <div class="w-full max-w-md rounded-xl bg-white p-5 sm:p-6 shadow-xl border border-slate-200 text-xs space-y-4 my-auto max-h-[92vh] overflow-y-auto">
                 <h3 class="text-sm font-bold text-slate-900">Inserir Termo de Adendo Retificador</h3>
                 <p class="text-slate-500">A evolução original permanece imutável. O adendo será anexado com carimbo de tempo e assinatura.</p>
 
@@ -236,11 +230,11 @@
                     @error('pin_adendo') <span class="text-red-600 mt-1 block">{{ $message }}</span> @enderror
                 </div>
 
-                <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" wire:click="$set('modalAdendoAberto', false)" class="rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-700">
+                <div class="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
+                    <button type="button" wire:click="$set('modalAdendoAberto', false)" class="w-full sm:w-auto rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-700 cursor-pointer">
                         Cancelar
                     </button>
-                    <button type="button" wire:click="salvarAdendo" class="rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white hover:bg-slate-800">
+                    <button type="button" wire:click="salvarAdendo" class="w-full sm:w-auto rounded-lg bg-slate-900 px-4 py-2 font-semibold text-white hover:bg-slate-800 cursor-pointer">
                         Assinar Adendo
                     </button>
                 </div>
@@ -248,4 +242,3 @@
         </div>
     @endif
 </div>
-

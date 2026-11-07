@@ -2,6 +2,13 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.4.0] - 2026-11-06
+
+### Adicionado
+- **Responsividade Total (Mobile, Tablet e Desktop):**
+  - Menu lateral deslizante (*Off-canvas Drawer*) com botão hamburger (`☰`) no cabeçalho para telas menores que `1024px` (`lg:hidden`).
+  - Adaptação responsiva de todas as telas (`GradeSemanal`, `RecepcaoCheckin`, `ProntuarioPaciente`, `FaturamentoBpai`, `ConfiguracoesSistema`, `AjudaSobre`, `Login` e `ToastNotifications`) com rolagem horizontal segura nas tabelas (`overflow-x-auto`), grids adaptativos (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`) e modais ajustados para celulares.
+
 ## [1.3.3] - 2026-11-06
 
 ### Adicionado

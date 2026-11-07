@@ -7,7 +7,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="h-full flex items-center justify-center p-4 font-sans text-slate-900 antialiased">
-    <div class="w-full max-w-md bg-white rounded-xl border border-slate-200 shadow-sm p-8">
+    <div class="w-full max-w-md bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-8">
         <div class="mb-6">
             <span class="inline-flex items-center rounded-md bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700 ring-1 ring-inset ring-teal-600/20">
                 SUS / SIA - BPA-i

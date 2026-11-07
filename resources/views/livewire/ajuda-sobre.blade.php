@@ -13,22 +13,22 @@
             </p>
         </div>
 
-        <div class="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-1 text-xs">
+        <div class="grid grid-cols-2 sm:inline-flex rounded-lg border border-slate-200 bg-slate-100 p-1 text-xs w-full sm:w-auto">
             <button type="button"
                     wire:click="selecionarAba('evolucao')"
-                    class="rounded-md px-3.5 py-1.5 font-semibold transition cursor-pointer {{ $abaAtiva === 'evolucao' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900' }}">
+                    class="rounded-md px-3 py-1.5 font-semibold text-center transition cursor-pointer {{ $abaAtiva === 'evolucao' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900' }}">
                 Novidades de Cada Versão
             </button>
             <button type="button"
                     wire:click="selecionarAba('ajuda')"
-                    class="rounded-md px-3.5 py-1.5 font-semibold transition cursor-pointer {{ $abaAtiva === 'ajuda' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900' }}">
+                    class="rounded-md px-3 py-1.5 font-semibold text-center transition cursor-pointer {{ $abaAtiva === 'ajuda' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900' }}">
                 Como Usar o Sistema
             </button>
         </div>
     </div>
 
     <!-- Resumo Rápido da Unidade -->
-    <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
             <span class="text-[11px] text-slate-400 block">Versão Atual do Sistema</span>
             <span class="mt-1 font-mono text-sm font-bold text-teal-700 block">v{{ $versaoAtual }}</span>

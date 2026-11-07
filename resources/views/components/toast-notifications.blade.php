@@ -27,7 +27,7 @@
      @elseif(session()->has('alerta'))
          x-init="adicionar('alerta', 'Atenção', @js(session('alerta')))"
      @endif
-     class="fixed top-4 right-4 z-[100] flex w-full max-w-sm flex-col gap-2.5 pointer-events-none">
+     class="fixed top-3 right-3 left-3 sm:left-auto sm:top-4 sm:right-4 z-[100] flex w-auto sm:w-full sm:max-w-sm flex-col gap-2.5 pointer-events-none">
 
     <template x-for="t in toasts" :key="t.id">
         <div class="pointer-events-auto flex items-start gap-3 rounded-xl border p-4 shadow-xl backdrop-blur-xs transition-all duration-200 bg-white"
