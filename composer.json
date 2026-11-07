@@ -1,10 +1,10 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "kltecnologia/cerflow",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
-    "license": "MIT",
+    "description": "Sistema proprietário de Gestão Clínica, Grade Semanal, PEP Multiprofissional e Faturamento BPA-i (SIA/SUS) para CER — desenvolvido pela KL Tecnologia (kltecnologia.com).",
+    "keywords": ["cerflow", "sus", "bpai", "pep", "kltecnologia"],
+    "license": "proprietary",
     "require": {
         "php": "^8.3",
         "laravel/fortify": "^1.41",
