@@ -44,6 +44,18 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.15.3',
+                'data' => '07/11/2026',
+                'titulo' => 'Otimização de Alta Performance no Painel Inicial Operacional (Dashboard)',
+                'tipo' => 'Performance e Otimização',
+                'destaques' => [
+                    'Eliminação da hidratação em massa de dezenas de milhares de modelos de pacientes no cálculo de modalidades de reabilitação.',
+                    'Agregação direta em SQL para métricas de modalidades, agendamentos mensais e produção BPA-i.',
+                    'Carregamento seletivo de colunas (eager loading) em agendamentos do dia (paciente, sala e profissionais).',
+                    'Camada inteligente de cache de curta duração (60s) para contagens e métricas gerenciais do painel.',
+                ],
+            ],
+            [
                 'versao' => '1.15.2',
                 'data' => '07/11/2026',
                 'titulo' => 'Busca Dinâmica de Pacientes no Prontuário Multiprofissional (PEP)',

@@ -59,4 +59,56 @@ class DashboardInicialTest extends TestCase
             ->assertSee('Reabilitação Física')
             ->assertSee('Consultório 01 - Fisioterapia');
     }
+
+    public function test_contagem_modalidades_ignora_inativos_e_excluidos(): void
+    {
+        $coordenador = User::factory()->create(['ativo' => true]);
+        $coordenador->assignRole('coordenacao');
+
+        // Paciente Ativo com FISICA e VISUAL
+        Paciente::create([
+            'nome' => 'Paciente Ativo Modalidades',
+            'cns' => CnsValido::gerarDefinitivo('10101010101'),
+            'data_nascimento' => '2010-01-01',
+            'sexo' => 'F',
+            'nome_mae' => 'Mãe Ativa',
+            'municipio_ibge' => '270430',
+            'modalidades_reabilitacao' => ['FISICA', 'VISUAL'],
+            'ativo' => true,
+        ]);
+
+        // Paciente Inativo com AUDITIVA (não deve ser contado)
+        Paciente::create([
+            'nome' => 'Paciente Inativo Modalidade',
+            'cns' => CnsValido::gerarDefinitivo('20202020202'),
+            'data_nascimento' => '2010-01-01',
+            'sexo' => 'M',
+            'nome_mae' => 'Mãe Inativa',
+            'municipio_ibge' => '270430',
+            'modalidades_reabilitacao' => ['AUDITIVA'],
+            'ativo' => false,
+        ]);
+
+        // Paciente Excluído com INTELECTUAL (não deve ser contado)
+        $excluido = Paciente::create([
+            'nome' => 'Paciente Excluído Modalidade',
+            'cns' => CnsValido::gerarDefinitivo('30303030303'),
+            'data_nascimento' => '2010-01-01',
+            'sexo' => 'M',
+            'nome_mae' => 'Mãe Excluída',
+            'municipio_ibge' => '270430',
+            'modalidades_reabilitacao' => ['INTELECTUAL'],
+            'ativo' => true,
+        ]);
+        $excluido->delete();
+
+        Livewire::actingAs($coordenador)
+            ->test(DashboardInicial::class)
+            ->assertViewHas('contagemModalidades', function (array $contagem): bool {
+                return $contagem['FISICA'] === 1
+                    && $contagem['VISUAL'] === 1
+                    && $contagem['AUDITIVA'] === 0
+                    && $contagem['INTELECTUAL'] === 0;
+            });
+    }
 }
