@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+@php($configuracaoEstabelecimento = \App\Models\ConfiguracaoEstabelecimento::atual())
 <html lang="pt-BR" class="h-full bg-slate-50">
 <head>
     <meta charset="utf-8">
@@ -12,7 +13,11 @@
             <span class="inline-flex items-center rounded-md bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700 ring-1 ring-inset ring-teal-600/20">
                 SUS / SIA - BPA-i
             </span>
-            <h1 class="mt-3 text-2xl font-bold tracking-tight text-slate-900">CER Digital</h1>
+            @if ($configuracaoEstabelecimento->logo_path)
+                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($configuracaoEstabelecimento->logo_path) }}" alt="Logo do estabelecimento" class="mb-4 max-h-24 max-w-full object-contain object-left">
+            @else
+                <h1 class="mt-3 text-2xl font-bold tracking-tight text-slate-900">CER Digital</h1>
+            @endif
             <p class="mt-1 text-sm text-slate-500">Centro Especializado em Reabilitação — Prontuário e Grade</p>
         </div>
 

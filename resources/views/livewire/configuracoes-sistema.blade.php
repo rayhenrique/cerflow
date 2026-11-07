@@ -26,6 +26,11 @@
                 'titulo' => 'Trilha de Auditoria Imutável',
                 'subtitulo' => 'Rastreamento em tempo real de acessos ao prontuário (PEP), assinaturas clínicas com hash SHA-256 e exportações BPA-I.',
             ],
+            'estabelecimento' => [
+                'badge' => 'Identidade Institucional',
+                'titulo' => 'Identificação do Estabelecimento',
+                'subtitulo' => 'Configure a logo institucional, o código IBGE padrão e o CNES utilizado no faturamento SUS.',
+            ],
             'perfil' => [
                 'badge' => 'Credenciais Pessoais',
                 'titulo' => 'Meu Perfil & PIN de Assinatura Clínica',
@@ -73,6 +78,66 @@
             @endif
         </div>
     </div>
+
+    {{-- ===================================================================== --}}
+    {{-- IDENTIFICAÇÃO DO ESTABELECIMENTO (Coordenação)                        --}}
+    {{-- ===================================================================== --}}
+    @if ($abaAtiva === 'estabelecimento' && in_array('estabelecimento', $abasPermitidas, true))
+        @php($configuracaoEstabelecimento = \App\Models\ConfiguracaoEstabelecimento::atual())
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+            <section class="xl:col-span-1 bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+                <div>
+                    <h2 class="text-sm font-bold text-slate-900">Logo institucional</h2>
+                    <p class="text-xs text-slate-500 mt-1">A imagem substituirá o monograma CD no menu lateral e na tela de acesso.</p>
+                </div>
+                <div class="min-h-36 rounded-xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center p-4">
+                    @if ($logoEstabelecimento)
+                        <img src="{{ $logoEstabelecimento->temporaryUrl() }}" alt="Pré-visualização da logo" class="max-h-28 max-w-full object-contain">
+                    @elseif ($configuracaoEstabelecimento->logo_path && !$removerLogoEstabelecimento)
+                        <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($configuracaoEstabelecimento->logo_path) }}" alt="Logo do estabelecimento" class="max-h-28 max-w-full object-contain">
+                    @else
+                        <div class="text-center text-slate-400">
+                            <svg class="w-10 h-10 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 16.5l4.5-4.5 3 3L16.5 9 21 13.5M4.5 4.5h15A1.5 1.5 0 0121 6v12a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 18V6a1.5 1.5 0 011.5-1.5z"/></svg>
+                            <span class="text-xs">Nenhuma logo cadastrada</span>
+                        </div>
+                    @endif
+                </div>
+                <input type="file" wire:model="logoEstabelecimento" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" class="block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-50 file:px-3 file:py-2 file:text-xs file:font-bold file:text-teal-700 hover:file:bg-teal-100">
+                <p class="text-[11px] text-slate-500">PNG, JPG ou WebP. Tamanho máximo: 2 MB.</p>
+                @error('logoEstabelecimento') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                @if ($configuracaoEstabelecimento->logo_path || $logoEstabelecimento)
+                    <label class="inline-flex items-center gap-2 text-xs text-rose-700">
+                        <input type="checkbox" wire:model="removerLogoEstabelecimento" class="rounded border-slate-300 text-rose-600">
+                        Remover logo atual ao salvar
+                    </label>
+                @endif
+            </section>
+            <section class="xl:col-span-2 bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+                <h2 class="text-sm font-bold text-slate-900">Dados do estabelecimento</h2>
+                <p class="text-xs text-slate-500 mt-1 mb-5">Esses valores serão usados como padrão nos cadastros novos e no arquivo magnético BPA-i.</p>
+                <form wire:submit="salvarIdentificacaoEstabelecimento" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Código IBGE padrão do município *</label>
+                        <input type="text" inputmode="numeric" maxlength="6" wire:model="estabelecimento_ibge" placeholder="6 dígitos" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-mono focus:border-teal-600 focus:outline-none">
+                        <p class="text-[11px] text-slate-500 mt-1">Código municipal de 6 dígitos, conforme o layout atualmente adotado pelo sistema.</p>
+                        @error('estabelecimento_ibge') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">CNES do estabelecimento *</label>
+                        <input type="text" inputmode="numeric" maxlength="7" wire:model="estabelecimento_cnes" placeholder="7 dígitos" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-mono focus:border-teal-600 focus:outline-none">
+                        <p class="text-[11px] text-slate-500 mt-1">CNES de 7 dígitos usado na identificação do prestador no BPA-i.</p>
+                        @error('estabelecimento_cnes') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 flex justify-end">
+                        <button type="submit" wire:loading.attr="disabled" class="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-teal-700 disabled:opacity-60 cursor-pointer">
+                            <span wire:loading.remove wire:target="salvarIdentificacaoEstabelecimento">Salvar identificação</span>
+                            <span wire:loading wire:target="salvarIdentificacaoEstabelecimento">Salvando...</span>
+                        </button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    @endif
 
     {{-- ===================================================================== --}}
     {{-- SUBMÓDULO 1: PACIENTES DO CER (CRUD COMPLETO COM MODAL)               --}}
