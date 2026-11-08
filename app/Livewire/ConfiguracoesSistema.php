@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Rules\CnsValido;
 use App\Services\EsusPecIntegrationService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -976,6 +977,8 @@ class ConfiguracoesSistema extends Component
             $this->resetPage();
         }
 
+        Cache::forget('pacientes_lista_ubs_dropdown');
+
         $this->modalPacienteAberto = false;
         $this->reset([
             'pacienteEditandoId',
@@ -1557,8 +1560,9 @@ class ConfiguracoesSistema extends Component
         $podePacientes = $user?->hasAnyRole(['recepcao', 'coordenacao']) === true;
         $podeSigtap = $user?->hasAnyRole(['faturamento', 'coordenacao']) === true;
 
+        // Otimização de Performance: busca exclusivamente os dados da aba ativa
         $salas = collect();
-        if ($isCoordenacao) {
+        if ($isCoordenacao && $this->abaAtiva === 'salas') {
             $salas = Sala::query()
                 ->when($this->buscaSala !== '', function ($q): void {
                     $termo = '%'.trim($this->buscaSala).'%';
@@ -1569,7 +1573,7 @@ class ConfiguracoesSistema extends Component
         }
 
         $usuarios = collect();
-        if ($isCoordenacao) {
+        if ($isCoordenacao && $this->abaAtiva === 'profissionais') {
             $usuarios = User::query()
                 ->with(['roles', 'profissional'])
                 ->when($this->buscaProfissional !== '', function ($q): void {
@@ -1585,7 +1589,7 @@ class ConfiguracoesSistema extends Component
         }
 
         $pacientes = collect();
-        if ($podePacientes) {
+        if ($podePacientes && $this->abaAtiva === 'pacientes') {
             $termo = trim($this->buscaPaciente);
             $termoDigitos = preg_replace('/\D/', '', $termo) ?? '';
 
@@ -1593,27 +1597,79 @@ class ConfiguracoesSistema extends Component
                 ? $this->porPaginaPaciente
                 : 25;
 
-            $pacientes = Paciente::query()
-                ->when($termo !== '', function ($q) use ($termo, $termoDigitos): void {
-                    $q->where(function ($sub) use ($termo, $termoDigitos): void {
-                        $sub->where('nome', 'like', '%'.$termo.'%')
-                            ->orWhere('cid_principal', 'like', '%'.$termo.'%');
+            // Restringe projeção apenas às colunas renderizadas na tabela, evitando SELECT * pesado
+            $colunas = [
+                'id',
+                'nome',
+                'cpf',
+                'cns',
+                'data_nascimento',
+                'sexo',
+                'nome_mae',
+                'cid_principal',
+                'cid_secundario',
+                'modalidades_reabilitacao',
+                'ubs_referencia',
+                'nome_acs',
+                'telefone_contato',
+                'telefone_secundario',
+                'ativo',
+            ];
 
-                        if ($termoDigitos !== '') {
-                            $sub->orWhere('cpf', 'like', '%'.$termoDigitos.'%')
-                                ->orWhere('cns', 'like', '%'.$termoDigitos.'%');
-                        } else {
-                            $sub->orWhere('cns', 'like', '%'.$termo.'%')
-                                ->orWhere('cpf', 'like', '%'.$termo.'%');
+            $query = Paciente::query()->select($colunas);
+
+            if ($termo !== '') {
+                $somenteDigitos = $termoDigitos !== '' && strlen(preg_replace('/[\s\.\-\/]/', '', $termo)) === strlen($termoDigitos);
+
+                $query->where(function (Builder $sub) use ($termo, $termoDigitos, $somenteDigitos): void {
+                    // 1. Termo numérico (CPF ou CNS): busca exata ou prefixo indexado
+                    if ($somenteDigitos) {
+                        if (strlen($termoDigitos) === 11) {
+                            $sub->where('cpf', $termoDigitos)->orWhere('cns', 'like', $termoDigitos.'%');
+
+                            return;
                         }
-                    });
-                })
-                ->latest('id')
-                ->paginate($itensPorPagina);
+                        if (strlen($termoDigitos) === 15) {
+                            $sub->where('cns', $termoDigitos);
+
+                            return;
+                        }
+                        if (strlen($termoDigitos) >= 3) {
+                            $sub->where('cpf', 'like', $termoDigitos.'%')->orWhere('cns', 'like', $termoDigitos.'%');
+
+                            return;
+                        }
+                    }
+
+                    // 2. Termo textual: prioriza prefixo do nome e CID
+                    $sub->where('nome', 'like', $termo.'%')
+                        ->orWhere('cid_principal', 'like', $termo.'%');
+
+                    if (strlen($termoDigitos) >= 3) {
+                        $sub->orWhere('cpf', 'like', $termoDigitos.'%')
+                            ->orWhere('cns', 'like', $termoDigitos.'%');
+                    }
+
+                    // 3. Suporte a palavras intermediárias no MySQL via FULLTEXT ou fallback indexável
+                    $driver = DB::connection()->getDriverName();
+                    if ($driver === 'mysql' && mb_strlen($termo) >= 3) {
+                        $termoFulltext = preg_replace('/[+\-><()~*\"@]+/', ' ', $termo) ?? $termo;
+                        $palavras = array_filter(explode(' ', trim($termoFulltext)));
+                        if ($palavras !== []) {
+                            $expressao = implode(' ', array_map(fn (string $p): string => '+'.$p.'*', $palavras));
+                            $sub->orWhereRaw('MATCH(nome) AGAINST(? IN BOOLEAN MODE)', [$expressao]);
+                        }
+                    } elseif ($driver !== 'mysql') {
+                        $sub->orWhere('nome', 'like', '%'.$termo.'%');
+                    }
+                });
+            }
+
+            $pacientes = $query->latest('id')->paginate($itensPorPagina);
         }
 
         $procedimentosSigtap = collect();
-        if ($podeSigtap) {
+        if ($podeSigtap && $this->abaAtiva === 'sigtap') {
             $procedimentosSigtap = ProcedimentoSigtap::query()
                 ->when($this->buscaSigtap !== '', function ($q): void {
                     $termo = '%'.trim($this->buscaSigtap).'%';
@@ -1625,7 +1681,7 @@ class ConfiguracoesSistema extends Component
 
         $logsAuditoria = collect();
         $logInspecionado = null;
-        if ($isCoordenacao) {
+        if ($isCoordenacao && $this->abaAtiva === 'auditoria') {
             $logsAuditoria = LogAuditoria::query()
                 ->with('user')
                 ->when($this->filtroAcaoAuditoria !== '', fn ($q) => $q->where('acao', $this->filtroAcaoAuditoria))
@@ -1639,33 +1695,36 @@ class ConfiguracoesSistema extends Component
         }
 
         $historicoEsus = collect();
-        if ($isCoordenacao) {
+        if ($isCoordenacao && $this->abaAtiva === 'esus') {
             $historicoEsus = HistoricoSincronizacaoEsus::query()
                 ->latest('iniciado_em')
                 ->limit(20)
                 ->get();
         }
 
+        // Carrega lista de UBS exclusivamente sob demanda (aba pacientes ou modal aberto) com cache de 1 hora
         $listaUbs = [];
-        if ($podePacientes) {
-            $ubsDoBanco = Paciente::query()
-                ->whereNotNull('ubs_referencia')
-                ->where('ubs_referencia', '!=', '')
-                ->distinct()
-                ->pluck('ubs_referencia')
-                ->toArray();
+        if ($podePacientes && ($this->abaAtiva === 'pacientes' || $this->modalPacienteAberto)) {
+            $listaUbs = Cache::remember('pacientes_lista_ubs_dropdown', 3600, function (): array {
+                $ubsDoBanco = Paciente::query()
+                    ->whereNotNull('ubs_referencia')
+                    ->where('ubs_referencia', '!=', '')
+                    ->distinct()
+                    ->pluck('ubs_referencia')
+                    ->toArray();
 
-            $padroes = [
-                'UBS Centro / PSF Central',
-                'UBS Dr. José Ferreira',
-                'UBS Santa Luzia',
-                'UBS Bela Vista',
-                'UBS São José',
-                'USF Esperança',
-                'UBS Zona Rural',
-            ];
+                $padroes = [
+                    'UBS Centro / PSF Central',
+                    'UBS Dr. José Ferreira',
+                    'UBS Santa Luzia',
+                    'UBS Bela Vista',
+                    'UBS São José',
+                    'USF Esperança',
+                    'UBS Zona Rural',
+                ];
 
-            $listaUbs = array_values(array_unique(array_filter(array_merge($padroes, $ubsDoBanco))));
+                return array_values(array_unique(array_filter(array_merge($padroes, $ubsDoBanco))));
+            });
         }
 
         return view('livewire.configuracoes-sistema', [

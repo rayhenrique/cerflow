@@ -102,7 +102,12 @@ class RecepcaoCheckin extends Component
     public function render(AgendamentoService $agendamentoService): View
     {
         $agendamentos = Agendamento::query()
-            ->with(['paciente', 'sala', 'profissionais', 'chamadas'])
+            ->with([
+                'paciente:id,nome,cns,cid_principal',
+                'sala:id,nome',
+                'profissionais:id,nome',
+                'chamadas',
+            ])
             ->whereDate('data_atendimento', $this->dataFiltro)
             ->when($this->statusFiltro !== '', fn ($q) => $q->where('status', $this->statusFiltro))
             ->orderBy('hora_inicio')

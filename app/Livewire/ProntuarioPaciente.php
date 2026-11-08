@@ -94,37 +94,15 @@ class ProntuarioPaciente extends Component
      */
     public function buscarPacientes(): array
     {
-        $termo = trim($this->pesquisaPaciente);
+        $pacientes = Paciente::buscarParaSelecao($this->pesquisaPaciente, 20);
 
-        if (mb_strlen($termo) < 3) {
-            return [];
-        }
-
-        $termoDigitos = preg_replace('/\D/', '', $termo) ?? '';
-
-        $query = Paciente::query()
-            ->ativos()
-            ->where(function ($q) use ($termo, $termoDigitos): void {
-                $q->where('nome', 'like', '%'.$termo.'%');
-
-                if ($termoDigitos !== '') {
-                    $q->orWhere('cpf', 'like', '%'.$termoDigitos.'%')
-                        ->orWhere('cns', 'like', '%'.$termoDigitos.'%');
-                }
-            });
-
-        return $query
-            ->orderBy('nome')
-            ->limit(20)
-            ->get(['id', 'nome', 'cpf', 'cns', 'data_nascimento'])
-            ->map(fn (Paciente $p): array => [
-                'id' => (int) $p->id,
-                'nome' => (string) $p->nome,
-                'cpf' => $p->cpf ? $this->formatarCpf((string) $p->cpf) : null,
-                'cns' => $p->cns,
-                'data_nascimento' => $p->data_nascimento?->format('d/m/Y'),
-            ])
-            ->all();
+        return $pacientes->map(fn (Paciente $p): array => [
+            'id' => (int) $p->id,
+            'nome' => (string) $p->nome,
+            'cpf' => $p->cpf ? $this->formatarCpf((string) $p->cpf) : null,
+            'cns' => $p->cns,
+            'data_nascimento' => $p->data_nascimento?->format('d/m/Y'),
+        ])->all();
     }
 
     private function formatarCpf(string $cpf): string

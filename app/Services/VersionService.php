@@ -44,6 +44,19 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.17.1',
+                'data' => '08/11/2026',
+                'titulo' => 'Otimização de Alta Performance e Consultas no Banco de Dados',
+                'tipo' => 'Desempenho e Infraestrutura',
+                'destaques' => [
+                    'Eliminação de varreduras completas (full table scan) na base de pacientes com suporte otimizado a mais de 40 mil registros.',
+                    'Busca ultrarrápida de pacientes com projeção seletiva de colunas, índices dedicados para CPF e CNS e pesquisa de nomes em duas etapas (prefixo + FULLTEXT).',
+                    'Isolamento estrito de consultas no módulo de Configurações, executando apenas as buscas da aba ativa.',
+                    'Armazenamento em cache de alta velocidade para lista de UBS e indicadores analíticos do Painel Inicial Operacional.',
+                    'Novos índices de banco de dados para UBS, busca textual e filtragem de registros ativos.',
+                ],
+            ],
+            [
                 'versao' => '1.17.0',
                 'data' => '08/11/2026',
                 'titulo' => 'Painel de Chamadas para TV Integrado à Agenda e Recepção',

@@ -158,39 +158,15 @@ class GradeSemanal extends Component
      */
     public function buscarPacientes(): array
     {
-        $termo = trim($this->pesquisaPaciente);
+        $pacientes = Paciente::buscarParaSelecao($this->pesquisaPaciente, 20);
 
-        // Requisito: Exigir pelo menos 3 caracteres para iniciar a busca
-        if (mb_strlen($termo) < 3) {
-            return [];
-        }
-
-        // Normalização: extração de dígitos para busca em CPF e CNS
-        $termoDigitos = preg_replace('/\D/', '', $termo) ?? '';
-
-        $query = Paciente::query()
-            ->ativos()
-            ->where(function ($q) use ($termo, $termoDigitos): void {
-                $q->where('nome', 'like', '%'.$termo.'%');
-
-                if ($termoDigitos !== '') {
-                    $q->orWhere('cpf', 'like', '%'.$termoDigitos.'%')
-                        ->orWhere('cns', 'like', '%'.$termoDigitos.'%');
-                }
-            });
-
-        return $query
-            ->orderBy('nome')
-            ->limit(20)
-            ->get(['id', 'nome', 'cpf', 'cns', 'data_nascimento'])
-            ->map(fn (Paciente $p): array => [
-                'id' => (int) $p->id,
-                'nome' => (string) $p->nome,
-                'cpf' => $p->cpf ? $this->formatarCpf((string) $p->cpf) : null,
-                'cns' => $p->cns,
-                'data_nascimento' => $p->data_nascimento?->format('d/m/Y'),
-            ])
-            ->all();
+        return $pacientes->map(fn (Paciente $p): array => [
+            'id' => (int) $p->id,
+            'nome' => (string) $p->nome,
+            'cpf' => $p->cpf ? $this->formatarCpf((string) $p->cpf) : null,
+            'cns' => $p->cns,
+            'data_nascimento' => $p->data_nascimento?->format('d/m/Y'),
+        ])->all();
     }
 
     private function formatarCpf(string $cpf): string
@@ -322,7 +298,7 @@ class GradeSemanal extends Component
             'salas' => $salas,
             'slots' => $slots,
             'gradeIndexada' => $gradeIndexada,
-            'pacientesResultados' => $this->buscarPacientes(),
+            'pacientesResultados' => $this->modalAberto ? $this->buscarPacientes() : [],
             'profissionaisDisponiveis' => Profissional::query()->ativos()->orderBy('nome')->get(['id', 'nome', 'especialidade', 'cbo_padrao']),
         ]);
     }

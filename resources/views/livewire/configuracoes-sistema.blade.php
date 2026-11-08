@@ -785,7 +785,7 @@
                         </select>
                     </div>
                     <div class="relative w-full sm:w-80">
-                        <input type="text" wire:model.live.debounce.300ms="buscaPaciente"
+                        <input type="text" wire:model.live.debounce.400ms="buscaPaciente"
                             placeholder="Buscar por nome, CNS, CPF ou CID..."
                             class="w-full rounded-lg border border-slate-300 pl-9 pr-8 py-2 text-xs focus:border-teal-600 focus:outline-none">
                         <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -56,7 +56,7 @@ class DashboardInicial extends Component
 
         Cache::forget('dash_salas_ocupacao_'.$inicioMes->format('Ym'));
 
-        $salasOcupacao = Cache::remember('dash_salas_ocupacao_v2_'.$inicioMes->format('Ym'), 60, function () use ($inicioMes, $fimMes): array {
+        $salasOcupacao = Cache::remember('dash_salas_ocupacao_v2_'.$inicioMes->format('Ym'), 300, function () use ($inicioMes, $fimMes): array {
             return Sala::query()
                 ->ativas()
                 ->withCount([
@@ -79,11 +79,11 @@ class DashboardInicial extends Component
 
         return view('livewire.dashboard-inicial', [
             'competenciaFormatada' => substr($competenciaLimpa, 4, 2).'/'.substr($competenciaLimpa, 0, 4),
-            'totalPacientesAtivos' => Cache::remember('dash_total_pacientes_ativos', 60, fn () => Paciente::query()->ativos()->count()),
-            'novosPacientesMes' => Cache::remember('dash_novos_pacientes_mes_'.$inicioMes->format('Ym'), 60, fn () => Paciente::query()->whereBetween('created_at', [$inicioMes, $fimMes])->count()),
-            'totalProfissionaisAtivos' => Cache::remember('dash_total_profissionais_ativos', 60, fn () => Profissional::query()->ativos()->count()),
-            'totalSalasAtivas' => Cache::remember('dash_total_salas_ativas', 60, fn () => Sala::query()->ativas()->count()),
-            'totalProcedimentosAtivos' => Cache::remember('dash_total_procedimentos_ativos', 60, fn () => ProcedimentoSigtap::query()->ativos()->count()),
+            'totalPacientesAtivos' => Cache::remember('dash_total_pacientes_ativos', 300, fn () => Paciente::query()->ativos()->count()),
+            'novosPacientesMes' => Cache::remember('dash_novos_pacientes_mes_'.$inicioMes->format('Ym'), 300, fn () => Paciente::query()->whereBetween('created_at', [$inicioMes, $fimMes])->count()),
+            'totalProfissionaisAtivos' => Cache::remember('dash_total_profissionais_ativos', 300, fn () => Profissional::query()->ativos()->count()),
+            'totalSalasAtivas' => Cache::remember('dash_total_salas_ativas', 300, fn () => Sala::query()->ativas()->count()),
+            'totalProcedimentosAtivos' => Cache::remember('dash_total_procedimentos_ativos', 300, fn () => ProcedimentoSigtap::query()->ativos()->count()),
             'contagemModalidades' => $this->contarModalidadesPacientes(),
             'agendamentosHoje' => $agendamentosHoje->take(8),
             'hojeTotal' => $agendamentosHoje->count(),
@@ -96,7 +96,7 @@ class DashboardInicial extends Component
             'mesFaltasInjustificadas' => $metricasMes['faltas_injustificadas'],
             'mesCompartilhados' => $metricasMes['compartilhados'],
             'taxaComparecimento' => $metricasMes['taxa_comparecimento'],
-            'evolucoesMes' => Cache::remember('dash_evolucoes_mes_'.$inicioMes->format('Ym'), 60, fn () => EvolucaoClinica::query()->whereBetween('assinado_em', [$inicioMes, $fimMes])->count()),
+            'evolucoesMes' => Cache::remember('dash_evolucoes_mes_'.$inicioMes->format('Ym'), 300, fn () => EvolucaoClinica::query()->whereBetween('assinado_em', [$inicioMes, $fimMes])->count()),
             'bpaiTotal' => $metricasBpai['total'],
             'bpaiAptos' => $metricasBpai['aptos'],
             'bpaiExportados' => $metricasBpai['exportados'],
@@ -139,10 +139,11 @@ class DashboardInicial extends Component
             default => 'TEXT',
         };
 
-        return Cache::remember('dashboard_contagem_modalidades', 60, function () use ($castType): array {
+        return Cache::remember('dashboard_contagem_modalidades', 300, function () use ($castType): array {
             $metricas = DB::table('pacientes')
                 ->where('ativo', true)
                 ->whereNull('deleted_at')
+                ->whereNotNull('modalidades_reabilitacao')
                 ->selectRaw("
                     SUM(CASE WHEN CAST(modalidades_reabilitacao AS {$castType}) LIKE '%FISICA%' THEN 1 ELSE 0 END) as fisica,
                     SUM(CASE WHEN CAST(modalidades_reabilitacao AS {$castType}) LIKE '%INTELECTUAL%' THEN 1 ELSE 0 END) as intelectual,
@@ -167,7 +168,7 @@ class DashboardInicial extends Component
     {
         $cacheKey = 'dashboard_metricas_mensais_'.$inicioMes->format('Ym');
 
-        return Cache::remember($cacheKey, 60, function () use ($inicioMes, $fimMes): array {
+        return Cache::remember($cacheKey, 300, function () use ($inicioMes, $fimMes): array {
             $metricas = Agendamento::query()
                 ->whereBetween('data_atendimento', [$inicioMes->toDateString(), $fimMes->toDateString()])
                 ->where('status', '!=', 'CANCELADO')
@@ -201,7 +202,7 @@ class DashboardInicial extends Component
     {
         $cacheKey = 'dashboard_metricas_bpai_'.$competenciaLimpa;
 
-        return Cache::remember($cacheKey, 60, function () use ($competenciaLimpa): array {
+        return Cache::remember($cacheKey, 300, function () use ($competenciaLimpa): array {
             $metricas = ProducaoBpai::query()
                 ->where('competencia', $competenciaLimpa)
                 ->selectRaw("
