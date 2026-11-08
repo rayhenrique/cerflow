@@ -8,6 +8,7 @@ use App\Models\Agendamento;
 use App\Models\EvolucaoClinica;
 use App\Models\Paciente;
 use App\Models\ProcedimentoSigtap;
+use App\Services\ChamadaPacienteService;
 use App\Services\EvolucaoService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
@@ -275,6 +276,50 @@ class ProntuarioPaciente extends Component
         $this->dispatch('toast', tipo: 'sucesso', titulo: 'Diagnóstico atualizado', mensagem: $mensagem);
     }
 
+    public function chamarPaciente(int $agendamentoId, ChamadaPacienteService $chamadaService): void
+    {
+        $agendamento = Agendamento::with(['paciente', 'sala', 'profissionais'])->findOrFail($agendamentoId);
+
+        try {
+            $chamada = $chamadaService->chamarPaciente($agendamento, auth()->user());
+
+            $this->dispatch(
+                'toast',
+                tipo: 'sucesso',
+                titulo: 'Paciente chamado na TV',
+                mensagem: "Chamada enviada para o painel: {$chamada->paciente_nome} ➔ {$chamada->sala_nome}."
+            );
+        } catch (\Throwable $e) {
+            $this->dispatch(
+                'toast',
+                tipo: 'erro',
+                titulo: 'Não foi possível chamar o paciente',
+                mensagem: $e->getMessage()
+            );
+        }
+    }
+
+    public function repetirChamada(int $agendamentoId, ChamadaPacienteService $chamadaService): void
+    {
+        try {
+            $chamada = $chamadaService->repetirChamada($agendamentoId, auth()->user());
+
+            $this->dispatch(
+                'toast',
+                tipo: 'alerta',
+                titulo: 'Chamada repetida na TV',
+                mensagem: "Repetição enviada para o painel: {$chamada->paciente_nome} ➔ {$chamada->sala_nome}."
+            );
+        } catch (\Throwable $e) {
+            $this->dispatch(
+                'toast',
+                tipo: 'erro',
+                titulo: 'Não foi possível repetir a chamada',
+                mensagem: $e->getMessage()
+            );
+        }
+    }
+
     public function render(): View
     {
         $pacienteSelecionado = $this->pacienteId !== null
@@ -295,7 +340,7 @@ class ProntuarioPaciente extends Component
 
         $agendamentosPaciente = $pacienteSelecionado !== null
             ? Agendamento::query()
-                ->with(['sala', 'profissionais'])
+                ->with(['sala', 'profissionais', 'chamadas'])
                 ->where('paciente_id', $pacienteSelecionado->id)
                 ->whereIn('status', ['AGENDADO', 'PRESENTE', 'ATENDIDO'])
                 ->orderByDesc('data_atendimento')

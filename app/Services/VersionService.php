@@ -44,6 +44,19 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.17.0',
+                'data' => '08/11/2026',
+                'titulo' => 'Painel de Chamadas para TV Integrado à Agenda e Recepção',
+                'tipo' => 'Nova Funcionalidade',
+                'destaques' => [
+                    'Módulo dedicado para Smart TV em /painel-chamadas com proporção 16:9, relógio digital e layout de alto contraste.',
+                    'Aviso sonoro em dois tons (Web Audio API) e sintetização de voz nativa pt-BR (Web Speech API) sem custos externos.',
+                    'Chamada e repetição de chamadas a partir da Recepção e do Prontuário Multiprofissional (PEP), restrito a agendamentos PRESENTE.',
+                    'Proteção de dados e conformidade com a LGPD: modos de exibição de nome (Completo, Primeiro e Último, Abreviado ou Primeiro Nome) e acesso seguro por token revogável.',
+                    'Parâmetros ajustáveis em Configurações > Painel de Chamadas para controle de volume, voz, tempo de destaque e histórico.',
+                ],
+            ],
+            [
                 'versao' => '1.16.1',
                 'data' => '07/11/2026',
                 'titulo' => 'Correção de Deserialização de Cache no Painel Inicial (Dashboard)',

@@ -45,6 +45,19 @@ class ConfiguracoesSistema extends Component
 
     public string $estabelecimento_cnes = '2000001';
 
+    // --- Configurações do Painel de Chamadas para TV ---
+    public bool $painel_voz_ativa = true;
+
+    public int $painel_volume = 80;
+
+    public int $painel_tempo_destaque_segundos = 15;
+
+    public int $painel_quantidade_historico = 5;
+
+    public string $painel_modo_exibicao_nome = 'COMPLETO';
+
+    public ?string $painel_token_acesso = null;
+
     public string $abaAtiva = 'pacientes';
 
     // --- Filtros de Busca ---
@@ -251,6 +264,12 @@ class ConfiguracoesSistema extends Component
             $configuracao = ConfiguracaoEstabelecimento::atual();
             $this->estabelecimento_ibge = $configuracao->codigo_ibge_padrao;
             $this->estabelecimento_cnes = $configuracao->cnes;
+            $this->painel_voz_ativa = (bool) ($configuracao->painel_voz_ativa ?? true);
+            $this->painel_volume = (int) ($configuracao->painel_volume ?? 80);
+            $this->painel_tempo_destaque_segundos = (int) ($configuracao->painel_tempo_destaque_segundos ?? 15);
+            $this->painel_quantidade_historico = (int) ($configuracao->painel_quantidade_historico ?? 5);
+            $this->painel_modo_exibicao_nome = (string) ($configuracao->painel_modo_exibicao_nome ?? 'COMPLETO');
+            $this->painel_token_acesso = $configuracao->painel_token_acesso;
             $this->carregarConfiguracaoEsus();
         }
 
@@ -307,7 +326,7 @@ class ConfiguracoesSistema extends Component
         }
 
         if ($user->hasRole('coordenacao')) {
-            return ['pacientes', 'salas', 'profissionais', 'sigtap', 'auditoria', 'estabelecimento', 'esus', 'perfil'];
+            return ['pacientes', 'salas', 'profissionais', 'sigtap', 'auditoria', 'estabelecimento', 'esus', 'chamadas', 'perfil'];
         }
 
         $abas = ['perfil'];
@@ -386,6 +405,82 @@ class ConfiguracoesSistema extends Component
         $this->resetValidation();
 
         $this->dispatch('toast', tipo: 'sucesso', titulo: 'Identificação atualizada', mensagem: 'Os dados institucionais foram salvos com sucesso.');
+    }
+
+    // =========================================================================
+    // PAINEL DE CHAMADAS PARA TV (Coordenação)
+    // =========================================================================
+    public function salvarConfiguracaoPainelChamadas(): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $this->validate([
+            'painel_voz_ativa' => ['required', 'boolean'],
+            'painel_volume' => ['required', 'integer', 'min:0', 'max:100'],
+            'painel_tempo_destaque_segundos' => ['required', 'integer', 'min:5', 'max:120'],
+            'painel_quantidade_historico' => ['required', 'integer', 'min:1', 'max:15'],
+            'painel_modo_exibicao_nome' => ['required', Rule::in(['COMPLETO', 'PRIMEIRO_NOME', 'PRIMEIRO_E_ULTIMO', 'ABREVIADO'])],
+        ]);
+
+        $configuracao = ConfiguracaoEstabelecimento::atual();
+        $configuracao->update([
+            'painel_voz_ativa' => $this->painel_voz_ativa,
+            'painel_volume' => $this->painel_volume,
+            'painel_tempo_destaque_segundos' => $this->painel_tempo_destaque_segundos,
+            'painel_quantidade_historico' => $this->painel_quantidade_historico,
+            'painel_modo_exibicao_nome' => $this->painel_modo_exibicao_nome,
+        ]);
+
+        LogAuditoria::create([
+            'user_id' => auth()->id(),
+            'acao' => 'ATUALIZACAO_CONFIG_PAINEL_CHAMADAS',
+            'tabela_afetada' => 'configuracoes_estabelecimento',
+            'registro_id' => $configuracao->id,
+            'ip_address' => request()->ip() ?? '127.0.0.1',
+            'detalhes' => [
+                'painel_voz_ativa' => $this->painel_voz_ativa,
+                'painel_volume' => $this->painel_volume,
+                'painel_tempo_destaque_segundos' => $this->painel_tempo_destaque_segundos,
+                'painel_quantidade_historico' => $this->painel_quantidade_historico,
+                'painel_modo_exibicao_nome' => $this->painel_modo_exibicao_nome,
+            ],
+            'created_at' => now(),
+        ]);
+
+        $this->dispatch(
+            'toast',
+            tipo: 'sucesso',
+            titulo: 'Configurações da TV Atualizadas',
+            mensagem: 'Os parâmetros de voz, volume e privacidade do painel de chamadas foram salvos.'
+        );
+    }
+
+    public function regenerarTokenTv(): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $configuracao = ConfiguracaoEstabelecimento::atual();
+        $novoToken = $configuracao->gerarTokenTv();
+        $this->painel_token_acesso = $novoToken;
+
+        LogAuditoria::create([
+            'user_id' => auth()->id(),
+            'acao' => 'REGENERACAO_TOKEN_TV',
+            'tabela_afetada' => 'configuracoes_estabelecimento',
+            'registro_id' => $configuracao->id,
+            'ip_address' => request()->ip() ?? '127.0.0.1',
+            'detalhes' => [
+                'motivo' => 'Revogação do token anterior e emissão de nova credencial para a TV.',
+            ],
+            'created_at' => now(),
+        ]);
+
+        $this->dispatch(
+            'toast',
+            tipo: 'alerta',
+            titulo: 'Novo Token da TV Gerado',
+            mensagem: 'O link de acesso à TV foi renovado. Acesse a TV utilizando o novo link.'
+        );
     }
 
     // =========================================================================

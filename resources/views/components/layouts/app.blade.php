@@ -115,6 +115,19 @@
                                 </svg>
                                 <span>Recepção & Check-in</span>
                             </a>
+
+                            <a href="{{ route('painel.chamadas') }}"
+                               target="_blank"
+                               @click="mobileMenuOpen = false"
+                               class="group flex items-center justify-between rounded-lg px-3 py-2.5 font-medium transition text-teal-300 hover:bg-slate-800/60 hover:text-white">
+                                <span class="flex items-center gap-3">
+                                    <svg class="h-5 w-5 shrink-0 text-teal-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                    </svg>
+                                    <span>Painel TV</span>
+                                </span>
+                                <span class="rounded bg-teal-950 px-1.5 py-0.5 text-[10px] font-mono text-teal-300 border border-teal-800">TV</span>
+                            </a>
                         @endif
 
                         @if(auth()->user()->hasAnyRole(['terapeuta', 'coordenacao']))
@@ -219,6 +232,15 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-.778.099-1.533.284-2.253"/>
                                         </svg>
                                         <span>Integração e-SUS PEC</span>
+                                    </a>
+
+                                    <a href="{{ route('configuracoes.secao', ['secao' => 'chamadas']) }}"
+                                       @click="mobileMenuOpen = false"
+                                       class="flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium transition {{ $secaoConfigAtual === 'chamadas' ? 'bg-slate-800 text-teal-400 font-semibold' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white' }}">
+                                        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                                        </svg>
+                                        <span>Painel de Chamadas</span>
                                     </a>
                                 @endif
 
@@ -346,6 +368,20 @@
                             </svg>
                             <span x-show="!sidebarCollapsed" class="truncate">Recepção & Check-in</span>
                         </a>
+
+                        <a href="{{ route('painel.chamadas') }}"
+                           target="_blank"
+                           title="Painel de Chamadas para TV (Abrir em nova aba)"
+                           :class="sidebarCollapsed ? 'justify-center px-2' : 'px-3'"
+                           class="group flex items-center gap-3 rounded-lg py-2.5 font-medium transition text-teal-300 hover:bg-slate-800/60 hover:text-white">
+                            <svg class="h-5 w-5 shrink-0 text-teal-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                            <span x-show="!sidebarCollapsed" class="truncate flex items-center justify-between w-full">
+                                <span>Painel TV</span>
+                                <span class="rounded bg-teal-950 px-1.5 py-0.5 text-[10px] font-mono text-teal-300 border border-teal-800">TV</span>
+                            </span>
+                        </a>
                     @endif
 
                     @if(auth()->user()->hasAnyRole(['terapeuta', 'coordenacao']))
@@ -464,6 +500,16 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-.778.099-1.533.284-2.253"/>
                                     </svg>
                                     <span x-show="!sidebarCollapsed" class="truncate">Integração e-SUS PEC</span>
+                                </a>
+
+                                <a href="{{ route('configuracoes.secao', ['secao' => 'chamadas']) }}"
+                                   title="Painel de Chamadas"
+                                   :class="sidebarCollapsed ? 'justify-center px-2 py-2' : 'px-3 py-1.5'"
+                                   class="flex items-center gap-2.5 rounded-lg font-medium transition {{ $secaoConfigAtual === 'chamadas' ? 'bg-slate-800 text-teal-400 font-semibold' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white' }}">
+                                    <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                                    </svg>
+                                    <span x-show="!sidebarCollapsed" class="truncate">Painel de Chamadas</span>
                                 </a>
                             @endif
 

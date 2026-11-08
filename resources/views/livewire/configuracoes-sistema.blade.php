@@ -31,6 +31,11 @@
                 'titulo' => 'Identificação do Estabelecimento',
                 'subtitulo' => 'Configure a logo institucional, o código IBGE padrão e o CNES utilizado no faturamento SUS.',
             ],
+            'chamadas' => [
+                'badge' => 'Recepção & Painel TV',
+                'titulo' => 'Painel de Chamadas para TV',
+                'subtitulo' => 'Configure o comportamento sonoro, síntese de voz, privacidade do nome do paciente e token de acesso da TV.',
+            ],
             'esus' => [
                 'badge' => 'Atenção Primária à Saúde',
                 'titulo' => 'Integração e-SUS APS PEC',
@@ -93,6 +98,12 @@
                     <span wire:loading.remove wire:target="sincronizarEsusAgora">Sincronizar Agora</span>
                     <span wire:loading wire:target="sincronizarEsusAgora">Sincronizando...</span>
                 </button>
+            @elseif ($abaAtiva === 'chamadas' && in_array('chamadas', $abasPermitidas, true))
+                <a href="{{ route('painel.chamadas', ['token' => $painel_token_acesso]) }}" target="_blank"
+                    class="w-full sm:w-auto justify-center inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    Abrir Painel da TV
+                </a>
             @endif
         </div>
     </div>
@@ -154,6 +165,149 @@
                     </div>
                 </form>
             </section>
+        </div>
+    @endif
+
+    {{-- ===================================================================== --}}
+    {{-- PAINEL DE CHAMADAS PARA TV (Coordenação)                              --}}
+    {{-- ===================================================================== --}}
+    @if ($abaAtiva === 'chamadas' && in_array('chamadas', $abasPermitidas, true))
+        <div class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Informações e Acesso à TV -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-600">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-900">Acesso da Smart TV</h3>
+                                <p class="text-xs text-slate-500">URL e autenticação via token</p>
+                            </div>
+                        </div>
+
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            O painel da TV foi projetado para exibição contínua em proporção 16:9 de televisores e monitores de recepção, sem menus administrativos ou dados clínicos sensíveis.
+                        </p>
+
+                        <div class="rounded-lg bg-slate-50 border border-slate-200 p-3 space-y-2">
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider">URL com Token de Segurança</label>
+                            <div class="flex items-center gap-2">
+                                <input type="text" readonly value="{{ route('painel.chamadas', ['token' => $painel_token_acesso]) }}"
+                                    class="w-full text-xs font-mono bg-white border border-slate-300 rounded px-2.5 py-1.5 text-slate-700 select-all focus:outline-none">
+                            </div>
+                            <p class="text-[11px] text-slate-500">
+                                Cole esta URL no navegador da Smart TV. Dispositivos autenticados no CER Digital também podem acessar diretamente por <code class="text-teal-700 font-mono">/painel-chamadas</code>.
+                            </p>
+                        </div>
+
+                        <div class="pt-2 flex flex-col sm:flex-row items-center gap-2">
+                            <a href="{{ route('painel.chamadas', ['token' => $painel_token_acesso]) }}" target="_blank"
+                                class="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-lg transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                Testar Painel TV
+                            </a>
+                            <button type="button" wire:click="regenerarTokenTv" wire:confirm="Tem certeza de que deseja regenerar o token da TV? Todas as TVs conectadas com o token anterior precisarão da nova URL."
+                                class="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition cursor-pointer">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                Regenerar Token
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulário de Parâmetros -->
+                <div class="lg:col-span-2">
+                    <form wire:submit="salvarConfiguracaoPainelChamadas" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-6">
+                        <div>
+                            <h2 class="text-sm font-bold text-slate-900">Parâmetros de Exibição e Áudio</h2>
+                            <p class="text-xs text-slate-500 mt-0.5">Defina como a TV anunciará os pacientes e as regras de privacidade na recepção.</p>
+                        </div>
+
+                        <!-- Chamada por Voz e Sinal Sonoro -->
+                        <div class="border-t border-slate-100 pt-4 space-y-4">
+                            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Áudio & Síntese de Voz</h3>
+                            
+                            <div class="flex items-start gap-3">
+                                <div class="flex h-5 items-center">
+                                    <input id="painel_voz_ativa" type="checkbox" wire:model="painel_voz_ativa"
+                                        class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500">
+                                </div>
+                                <div class="text-xs">
+                                    <label for="painel_voz_ativa" class="font-bold text-slate-800 cursor-pointer">Ativar anúncio sonoro por voz (Síntese pt-BR)</label>
+                                    <p class="text-slate-500 mt-0.5">Quando ativo, além do sino/chime inicial, a TV sintetiza a frase: <em>"Paciente [Nome], dirigir-se à sala [Sala]"</em>.</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">Volume Padrão da TV ({{ $painel_volume }}%)</label>
+                                    <input type="range" min="0" max="100" step="5" wire:model.live="painel_volume"
+                                        class="w-full accent-teal-600 cursor-pointer">
+                                    <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+                                        <span>Mudo (0%)</span>
+                                        <span>50%</span>
+                                        <span>Máximo (100%)</span>
+                                    </div>
+                                    @error('painel_volume') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">Tempo de Destaque da Chamada</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" min="5" max="120" wire:model="painel_tempo_destaque_segundos"
+                                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                                        <span class="text-xs text-slate-500 font-medium shrink-0">segundos</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-400 mt-1">Tempo que o card da chamada atual pisca e permanece em evidência.</p>
+                                    @error('painel_tempo_destaque_segundos') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Privacidade do Nome & Histórico -->
+                        <div class="border-t border-slate-100 pt-4 space-y-4">
+                            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Privacidade & Histórico na Tela</h3>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">Modo de Exibição do Nome (LGPD)</label>
+                                    <select wire:model="painel_modo_exibicao_nome"
+                                        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none bg-white">
+                                        <option value="COMPLETO">Nome Completo (ex: Maria Francisca dos Santos)</option>
+                                        <option value="PRIMEIRO_E_ULTIMO">Primeiro e Último Nome (ex: Maria Santos)</option>
+                                        <option value="ABREVIADO">Nome Abreviado (ex: Maria F. d. Santos)</option>
+                                        <option value="PRIMEIRO_NOME">Apenas Primeiro Nome (ex: Maria)</option>
+                                    </select>
+                                    <p class="text-[11px] text-slate-400 mt-1">Garante que a visualização na sala de espera respeite as diretrizes de privacidade.</p>
+                                    @error('painel_modo_exibicao_nome') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">Chamadas no Histórico Inferior</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" min="1" max="15" wire:model="painel_quantidade_historico"
+                                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                                        <span class="text-xs text-slate-500 font-medium shrink-0">cards</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-400 mt-1">Recomendado entre 3 e 6 cards para manter a proporção 16:9 na TV.</p>
+                                    @error('painel_quantidade_historico') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+                            <span class="text-xs text-slate-500">Alterações são refletidas automaticamente na TV em até 3 segundos.</span>
+                            <button type="submit" wire:loading.attr="disabled"
+                                class="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 disabled:opacity-60 cursor-pointer">
+                                <span wire:loading.remove wire:target="salvarConfiguracaoPainelChamadas">Salvar Configurações</span>
+                                <span wire:loading wire:target="salvarConfiguracaoPainelChamadas">Salvando...</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     @endif
 

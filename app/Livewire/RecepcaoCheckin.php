@@ -6,6 +6,7 @@ namespace App\Livewire;
 
 use App\Models\Agendamento;
 use App\Services\AgendamentoService;
+use App\Services\ChamadaPacienteService;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
@@ -54,10 +55,54 @@ class RecepcaoCheckin extends Component
         );
     }
 
+    public function chamarPaciente(int $agendamentoId, ChamadaPacienteService $chamadaService): void
+    {
+        $agendamento = Agendamento::with(['paciente', 'sala', 'profissionais'])->findOrFail($agendamentoId);
+
+        try {
+            $chamada = $chamadaService->chamarPaciente($agendamento, auth()->user());
+
+            $this->dispatch(
+                'toast',
+                tipo: 'sucesso',
+                titulo: 'Paciente chamado na TV',
+                mensagem: "Chamada enviada para o painel: {$chamada->paciente_nome} ➔ {$chamada->sala_nome}."
+            );
+        } catch (\Throwable $e) {
+            $this->dispatch(
+                'toast',
+                tipo: 'erro',
+                titulo: 'Não foi possível chamar o paciente',
+                mensagem: $e->getMessage()
+            );
+        }
+    }
+
+    public function repetirChamada(int $agendamentoId, ChamadaPacienteService $chamadaService): void
+    {
+        try {
+            $chamada = $chamadaService->repetirChamada($agendamentoId, auth()->user());
+
+            $this->dispatch(
+                'toast',
+                tipo: 'alerta',
+                titulo: 'Chamada repetida na TV',
+                mensagem: "Repetição enviada para o painel: {$chamada->paciente_nome} ➔ {$chamada->sala_nome}."
+            );
+        } catch (\Throwable $e) {
+            $this->dispatch(
+                'toast',
+                tipo: 'erro',
+                titulo: 'Não foi possível repetir a chamada',
+                mensagem: $e->getMessage()
+            );
+        }
+    }
+
     public function render(AgendamentoService $agendamentoService): View
     {
         $agendamentos = Agendamento::query()
-            ->with(['paciente', 'sala', 'profissionais'])
+            ->with(['paciente', 'sala', 'profissionais', 'chamadas'])
             ->whereDate('data_atendimento', $this->dataFiltro)
             ->when($this->statusFiltro !== '', fn ($q) => $q->where('status', $this->statusFiltro))
             ->orderBy('hora_inicio')

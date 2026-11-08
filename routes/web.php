@@ -8,11 +8,15 @@ use App\Livewire\ConfiguracoesSistema;
 use App\Livewire\DashboardInicial;
 use App\Livewire\FaturamentoBpai;
 use App\Livewire\GradeSemanal;
+use App\Livewire\PainelChamadas;
 use App\Livewire\ProntuarioPaciente;
 use App\Livewire\RecepcaoCheckin;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard');
+
+Route::get('/painel-chamadas', PainelChamadas::class)
+    ->name('painel.chamadas');
 
 Route::middleware(['auth'])->group(function (): void {
     Route::get('/dashboard', DashboardInicial::class)
@@ -44,7 +48,7 @@ Route::middleware(['auth'])->group(function (): void {
         ->name('configuracoes.index');
 
     Route::get('/configuracoes/{secao}', ConfiguracoesSistema::class)
-        ->whereIn('secao', ['pacientes', 'salas', 'profissionais', 'sigtap', 'auditoria', 'estabelecimento', 'esus', 'perfil'])
+        ->whereIn('secao', ['pacientes', 'salas', 'profissionais', 'sigtap', 'auditoria', 'estabelecimento', 'esus', 'chamadas', 'perfil'])
         ->middleware('role:recepcao|terapeuta|faturamento|coordenacao')
         ->name('configuracoes.secao');
 

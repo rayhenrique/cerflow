@@ -134,6 +134,51 @@
             </div>
         </div>
 
+        @php
+            $agHojePresente = $agendamentosPaciente->first(fn ($ag) => $ag->data_atendimento->isToday() && $ag->status === 'PRESENTE');
+        @endphp
+        @if($agHojePresente)
+            @php
+                $qtdChamadas = $agHojePresente->chamadas->count();
+                $ultimaChamada = $agHojePresente->chamadas->sortByDesc('chamado_em')->first();
+            @endphp
+            <div class="rounded-xl border border-teal-200 bg-teal-50/80 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <span class="font-bold text-teal-900 block">Presença confirmada na recepção hoje ({{ substr((string)$agHojePresente->hora_inicio, 0, 5) }} — {{ $agHojePresente->sala?->nome }})</span>
+                        <span class="text-teal-700 text-[11px]">
+                            @if($qtdChamadas === 0)
+                                Paciente aguardando chamada para o consultório.
+                            @else
+                                Chamado {{ $qtdChamadas }} vez(es). Última chamada às {{ $ultimaChamada?->chamado_em?->format('H:i') }}.
+                            @endif
+                        </span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0">
+                    @if($qtdChamadas === 0)
+                        <button type="button" wire:click="chamarPaciente({{ $agHojePresente->id }})"
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                            Chamar Paciente na TV
+                        </button>
+                    @else
+                        <button type="button" wire:click="repetirChamada({{ $agHojePresente->id }})"
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white shadow-xs hover:bg-amber-600 transition cursor-pointer">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            Repetir Chamada ({{ $qtdChamadas }}x)
+                        </button>
+                    @endif
+                </div>
+            </div>
+        @endif
+
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
             <!-- Coluna Esquerda: Formulário de Evolução Rápida -->
             <div class="lg:col-span-5 bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4 text-xs h-fit">

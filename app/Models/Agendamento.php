@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Agendamento extends Model
@@ -63,5 +64,15 @@ class Agendamento extends Model
     public function evolucoes(): HasMany
     {
         return $this->hasMany(EvolucaoClinica::class, 'agendamento_id');
+    }
+
+    public function chamadas(): HasMany
+    {
+        return $this->hasMany(ChamadaPainel::class, 'agendamento_id');
+    }
+
+    public function ultimaChamada(): HasOne
+    {
+        return $this->hasOne(ChamadaPainel::class, 'agendamento_id')->latestOfMany('id');
     }
 }
