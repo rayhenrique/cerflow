@@ -183,6 +183,55 @@
                                     <span>Trocar</span>
                                 </button>
                             </div>
+
+                            @if($alertaPaciente)
+                                <!-- Banner Visual Claro de Pendência Cadastral (Sem Códigos Técnicos) -->
+                                <div class="mt-2.5 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900 shadow-xs">
+                                    <div class="flex items-start gap-2.5">
+                                        <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-200 text-amber-900 text-xs font-bold">
+                                            !
+                                        </span>
+                                        <div class="space-y-1.5 flex-1">
+                                            <h4 class="font-bold text-xs text-amber-950">
+                                                {{ $alertaPaciente['titulo'] }}
+                                            </h4>
+                                            <p class="text-[11px] leading-relaxed text-amber-900">
+                                                {{ $alertaPaciente['mensagem'] }}
+                                            </p>
+
+                                            <!-- Ações de Resolução Cadastral para Perfis Autorizados -->
+                                            <div class="pt-1.5 flex flex-wrap items-center gap-2">
+                                                @if(auth()->user()?->hasAnyRole(['recepcao', 'coordenacao']))
+                                                    <a
+                                                        href="{{ route('configuracoes.secao', ['secao' => 'pacientes', 'editar_paciente' => $pacienteSelecionado['id']]) }}"
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        class="inline-flex items-center gap-1 rounded-md bg-amber-700 hover:bg-amber-800 text-white px-2.5 py-1 text-[11px] font-semibold shadow-xs transition"
+                                                        title="Abrir o cadastro deste paciente em nova aba para atualizar o Cartão SUS ou data de nascimento"
+                                                    >
+                                                        <span>Atualizar cadastro</span>
+                                                        <span class="text-[10px]">↗</span>
+                                                    </a>
+
+                                                    <button
+                                                        type="button"
+                                                        wire:click="revalidarPacienteSelecionado"
+                                                        class="inline-flex items-center gap-1 rounded-md border border-amber-400 bg-white hover:bg-amber-100 text-amber-900 px-2.5 py-1 text-[11px] font-semibold transition cursor-pointer"
+                                                        title="Conferir se o cadastro foi corrigido no sistema"
+                                                    >
+                                                        <span>Revalidar dados</span>
+                                                        <span class="text-[10px]">↻</span>
+                                                    </button>
+                                                @else
+                                                    <span class="text-[10px] text-amber-800 italic">
+                                                        Solicite a atualização do cadastro do paciente à Recepção ou Coordenação.
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
                         @else
                             <!-- Input de Pesquisa Sob Demanda -->
                             <div class="relative mt-1">

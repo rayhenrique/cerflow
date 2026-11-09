@@ -23,6 +23,49 @@ class AgendamentoService
     ];
 
     /**
+     * Valida os requisitos cadastrais essenciais do paciente para agendamento no SUS.
+     * Retorna null quando os dados estiverem regulares, ou os detalhes da pendência.
+     *
+     * @return ?array{tipo: string, titulo: string, mensagem: string}
+     */
+    public function validarDadosCadastraisPaciente(?Paciente $paciente): ?array
+    {
+        if ($paciente === null) {
+            return [
+                'tipo' => 'paciente_nao_encontrado',
+                'titulo' => 'Paciente não encontrado',
+                'mensagem' => 'O paciente selecionado não foi encontrado no sistema.',
+            ];
+        }
+
+        if ($paciente->data_nascimento === null) {
+            return [
+                'tipo' => 'sem_nascimento',
+                'titulo' => 'Atenção: data de nascimento não informada',
+                'mensagem' => 'Este paciente não possui a data de nascimento cadastrada. Para realizar o agendamento, atualize o cadastro do paciente.',
+            ];
+        }
+
+        if (empty($paciente->cns)) {
+            return [
+                'tipo' => 'sem_cns',
+                'titulo' => 'Atenção: paciente sem Cartão SUS',
+                'mensagem' => 'Este paciente não possui o número do Cartão SUS (CNS) cadastrado. Para realizar o agendamento, atualize o cadastro do paciente.',
+            ];
+        }
+
+        if (! CnsValido::validar((string) $paciente->cns)) {
+            return [
+                'tipo' => 'cns_invalido',
+                'titulo' => 'Atenção: Cartão SUS inválido',
+                'mensagem' => 'O número do Cartão SUS cadastrado para este paciente é inválido. Confira e atualize essa informação antes de continuar.',
+            ];
+        }
+
+        return null;
+    }
+
+    /**
      * Cria um agendamento único ou grade semanal recorrente com alocação de 1 ou mais profissionais (co-atendimento).
      *
      * @param  array<string, mixed>  $dados
@@ -40,21 +83,10 @@ class AgendamentoService
 
         /** @var ?Paciente $paciente */
         $paciente = Paciente::find($dados['paciente_id'] ?? null);
-        if ($paciente === null) {
+        $pendencia = $this->validarDadosCadastraisPaciente($paciente);
+        if ($pendencia !== null) {
             throw ValidationException::withMessages([
-                'paciente_id' => 'O paciente selecionado não foi encontrado no sistema.',
-            ]);
-        }
-
-        if ($paciente->data_nascimento === null) {
-            throw ValidationException::withMessages([
-                'paciente_id' => 'O paciente selecionado não possui data de nascimento cadastrada (RN02).',
-            ]);
-        }
-
-        if (empty($paciente->cns) || ! CnsValido::validar((string) $paciente->cns)) {
-            throw ValidationException::withMessages([
-                'paciente_id' => 'O paciente selecionado não possui CNS válido cadastrado (RN02). É obrigatório registrar o CNS no cadastro do paciente antes de realizar o agendamento no SUS.',
+                'paciente_id' => $pendencia['mensagem'],
             ]);
         }
 

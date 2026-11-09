@@ -12,6 +12,7 @@ use App\Services\AgendamentoService;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -36,6 +37,9 @@ class GradeSemanal extends Component
 
     /** @var ?array{id: int, nome: string, cpf: ?string, cns: ?string, data_nascimento: ?string} */
     public ?array $pacienteSelecionado = null;
+
+    /** @var ?array{tipo: string, titulo: string, mensagem: string} */
+    public ?array $alertaPaciente = null;
 
     public ?int $sala_id = null;
 
@@ -111,6 +115,7 @@ class GradeSemanal extends Component
 
         $this->resetValidation();
         $this->limparPacienteSelecionado();
+        $this->alertaPaciente = null;
         $this->sala_id = $salaId;
         $this->hora_inicio = $horaInicio;
         $this->hora_fim = CarbonImmutable::createFromFormat('H:i', $horaInicio)->addMinutes(30)->format('H:i');
@@ -141,6 +146,12 @@ class GradeSemanal extends Component
             ];
             $this->pesquisaPaciente = '';
             $this->resetValidation('paciente_id');
+
+            $service = app(AgendamentoService::class);
+            $this->alertaPaciente = $service->validarDadosCadastraisPaciente($paciente);
+            if ($this->alertaPaciente !== null) {
+                $this->addError('paciente_id', $this->alertaPaciente['mensagem']);
+            }
         }
     }
 
@@ -148,7 +159,42 @@ class GradeSemanal extends Component
     {
         $this->paciente_id = null;
         $this->pacienteSelecionado = null;
+        $this->alertaPaciente = null;
         $this->pesquisaPaciente = '';
+        $this->resetValidation('paciente_id');
+    }
+
+    public function revalidarPacienteSelecionado(): void
+    {
+        if ($this->paciente_id === null) {
+            return;
+        }
+
+        $paciente = Paciente::query()->ativos()->find($this->paciente_id, ['id', 'nome', 'cpf', 'cns', 'data_nascimento']);
+        if ($paciente === null) {
+            $this->limparPacienteSelecionado();
+
+            return;
+        }
+
+        $this->pacienteSelecionado = [
+            'id' => (int) $paciente->id,
+            'nome' => (string) $paciente->nome,
+            'cpf' => $paciente->cpf ? $this->formatarCpf((string) $paciente->cpf) : null,
+            'cns' => $paciente->cns,
+            'data_nascimento' => $paciente->data_nascimento?->format('d/m/Y'),
+        ];
+
+        $service = app(AgendamentoService::class);
+        $this->alertaPaciente = $service->validarDadosCadastraisPaciente($paciente);
+
+        if ($this->alertaPaciente === null) {
+            $this->resetValidation('paciente_id');
+            $this->dispatch('toast', tipo: 'sucesso', titulo: 'Cadastro Validado', mensagem: 'Os dados do paciente foram atualizados e estão regulares para agendamento.');
+        } else {
+            $this->addError('paciente_id', $this->alertaPaciente['mensagem']);
+            $this->dispatch('toast', tipo: 'alerta', titulo: $this->alertaPaciente['titulo'], mensagem: $this->alertaPaciente['mensagem']);
+        }
     }
 
     /**
@@ -220,23 +266,52 @@ class GradeSemanal extends Component
 
         $this->validate();
 
-        $agendamentoService->criarGrade(
-            dados: [
-                'paciente_id' => $this->paciente_id,
-                'sala_id' => $this->sala_id,
-                'data_atendimento' => $this->dataReferencia,
-                'hora_inicio' => $this->hora_inicio,
-                'hora_fim' => $this->hora_fim,
-                'dia_semana' => $this->diaSemana,
-                'tipo_atendimento' => count($this->profissionaisSelecionados) > 1 && $this->tipo_atendimento === 'INDIVIDUAL'
-                    ? 'COMPARTILHADO'
-                    : $this->tipo_atendimento,
-                'recorrente' => $this->recorrente,
-                'observacao' => $this->observacao !== '' ? $this->observacao : null,
-            ],
-            profissionaisIds: $this->profissionaisSelecionados,
-            semanasRecorrencia: $this->recorrente ? $this->semanasRecorrencia : 1,
-        );
+        $paciente = Paciente::find($this->paciente_id);
+        $pendencia = $agendamentoService->validarDadosCadastraisPaciente($paciente);
+        if ($pendencia !== null) {
+            $this->alertaPaciente = $pendencia;
+            $this->addError('paciente_id', $pendencia['mensagem']);
+            $this->dispatch('toast', tipo: 'alerta', titulo: $pendencia['titulo'], mensagem: $pendencia['mensagem']);
+
+            return;
+        }
+
+        try {
+            $agendamentoService->criarGrade(
+                dados: [
+                    'paciente_id' => $this->paciente_id,
+                    'sala_id' => $this->sala_id,
+                    'data_atendimento' => $this->dataReferencia,
+                    'hora_inicio' => $this->hora_inicio,
+                    'hora_fim' => $this->hora_fim,
+                    'dia_semana' => $this->diaSemana,
+                    'tipo_atendimento' => count($this->profissionaisSelecionados) > 1 && $this->tipo_atendimento === 'INDIVIDUAL'
+                        ? 'COMPARTILHADO'
+                        : $this->tipo_atendimento,
+                    'recorrente' => $this->recorrente,
+                    'observacao' => $this->observacao !== '' ? $this->observacao : null,
+                ],
+                profissionaisIds: $this->profissionaisSelecionados,
+                semanasRecorrencia: $this->recorrente ? $this->semanasRecorrencia : 1,
+            );
+        } catch (ValidationException $e) {
+            foreach ($e->errors() as $campo => $mensagens) {
+                foreach ((array) $mensagens as $msg) {
+                    $this->addError($campo, $msg);
+                }
+            }
+
+            if (isset($e->errors()['paciente_id'])) {
+                $msg = is_array($e->errors()['paciente_id']) ? $e->errors()['paciente_id'][0] : $e->errors()['paciente_id'];
+                $this->alertaPaciente = $agendamentoService->validarDadosCadastraisPaciente($paciente) ?? [
+                    'tipo' => 'paciente_invalido',
+                    'titulo' => 'Atenção: pendência cadastral do paciente',
+                    'mensagem' => $msg,
+                ];
+            }
+
+            return;
+        }
 
         $this->modalAberto = false;
         $this->limparPacienteSelecionado();

@@ -15,6 +15,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -78,6 +79,9 @@ class AgendaOperacional extends Component
 
     /** @var ?array{id: int, nome: string, cpf: ?string, cns: ?string, data_nascimento: ?string} */
     public ?array $pacienteSelecionado = null;
+
+    /** @var ?array{tipo: string, titulo: string, mensagem: string} */
+    public ?array $alertaPaciente = null;
 
     public ?int $novo_sala_id = null;
 
@@ -445,6 +449,13 @@ class AgendaOperacional extends Component
             ];
             $this->pesquisaPaciente = '';
             $this->resetValidation('novo_paciente_id');
+
+            // Validação cadastral imediata ao selecionar o paciente
+            $service = app(AgendamentoService::class);
+            $this->alertaPaciente = $service->validarDadosCadastraisPaciente($paciente);
+            if ($this->alertaPaciente !== null) {
+                $this->addError('novo_paciente_id', $this->alertaPaciente['mensagem']);
+            }
         }
     }
 
@@ -452,7 +463,42 @@ class AgendaOperacional extends Component
     {
         $this->novo_paciente_id = null;
         $this->pacienteSelecionado = null;
+        $this->alertaPaciente = null;
         $this->pesquisaPaciente = '';
+        $this->resetValidation('novo_paciente_id');
+    }
+
+    public function revalidarPacienteSelecionado(): void
+    {
+        if ($this->novo_paciente_id === null) {
+            return;
+        }
+
+        $paciente = Paciente::query()->ativos()->find($this->novo_paciente_id, ['id', 'nome', 'cpf', 'cns', 'data_nascimento']);
+        if ($paciente === null) {
+            $this->limparPacienteSelecionado();
+
+            return;
+        }
+
+        $this->pacienteSelecionado = [
+            'id' => (int) $paciente->id,
+            'nome' => (string) $paciente->nome,
+            'cpf' => $paciente->cpf ? $this->formatarCpf((string) $paciente->cpf) : null,
+            'cns' => $paciente->cns,
+            'data_nascimento' => $paciente->data_nascimento?->format('d/m/Y'),
+        ];
+
+        $service = app(AgendamentoService::class);
+        $this->alertaPaciente = $service->validarDadosCadastraisPaciente($paciente);
+
+        if ($this->alertaPaciente === null) {
+            $this->resetValidation('novo_paciente_id');
+            $this->dispatch('toast', tipo: 'sucesso', titulo: 'Cadastro Validado', mensagem: 'Os dados do paciente foram atualizados e estão regulares para agendamento.');
+        } else {
+            $this->addError('novo_paciente_id', $this->alertaPaciente['mensagem']);
+            $this->dispatch('toast', tipo: 'alerta', titulo: $this->alertaPaciente['titulo'], mensagem: $this->alertaPaciente['mensagem']);
+        }
     }
 
     /**
@@ -505,25 +551,67 @@ class AgendaOperacional extends Component
             'novo_profissionais.min' => 'Selecione ao menos um profissional para o agendamento.',
         ]);
 
+        // Revalidação dos dados essenciais do paciente no servidor no momento do clique em salvar
+        $paciente = Paciente::find($this->novo_paciente_id);
+        $pendencia = $agendamentoService->validarDadosCadastraisPaciente($paciente);
+        if ($pendencia !== null) {
+            $this->alertaPaciente = $pendencia;
+            $this->addError('novo_paciente_id', $pendencia['mensagem']);
+            $this->dispatch('toast', tipo: 'alerta', titulo: $pendencia['titulo'], mensagem: $pendencia['mensagem']);
+
+            return;
+        }
+
         $tipoAtendimentoFinal = count($this->novo_profissionais) > 1 && $this->novo_tipo_atendimento === 'INDIVIDUAL'
             ? 'COMPARTILHADO'
             : $this->novo_tipo_atendimento;
 
-        $agendamentoService->criarGrade(
-            dados: [
-                'paciente_id' => $this->novo_paciente_id,
-                'sala_id' => $this->novo_sala_id,
-                'data_atendimento' => $this->novo_data,
-                'hora_inicio' => $this->novo_hora_inicio,
-                'hora_fim' => $this->novo_hora_fim,
-                'dia_semana' => $this->novo_dia_semana,
-                'tipo_atendimento' => $tipoAtendimentoFinal,
-                'recorrente' => $this->novo_recorrente,
-                'observacao' => $this->novo_observacao !== '' ? $this->novo_observacao : null,
-            ],
-            profissionaisIds: $this->novo_profissionais,
-            semanasRecorrencia: $this->novo_recorrente ? $this->novo_semanas_recorrencia : 1,
-        );
+        try {
+            $agendamentoService->criarGrade(
+                dados: [
+                    'paciente_id' => $this->novo_paciente_id,
+                    'sala_id' => $this->novo_sala_id,
+                    'data_atendimento' => $this->novo_data,
+                    'hora_inicio' => $this->novo_hora_inicio,
+                    'hora_fim' => $this->novo_hora_fim,
+                    'dia_semana' => $this->novo_dia_semana,
+                    'tipo_atendimento' => $tipoAtendimentoFinal,
+                    'recorrente' => $this->novo_recorrente,
+                    'observacao' => $this->novo_observacao !== '' ? $this->novo_observacao : null,
+                ],
+                profissionaisIds: $this->novo_profissionais,
+                semanasRecorrencia: $this->novo_recorrente ? $this->novo_semanas_recorrencia : 1,
+            );
+        } catch (ValidationException $e) {
+            $erros = $e->errors();
+            foreach ($erros as $campo => $mensagens) {
+                $campoMapeado = match ($campo) {
+                    'paciente_id' => 'novo_paciente_id',
+                    'sala_id' => 'novo_sala_id',
+                    'data_atendimento' => 'novo_data',
+                    'hora_inicio' => 'novo_hora_inicio',
+                    'hora_fim' => 'novo_hora_fim',
+                    'dia_semana' => 'novo_dia_semana',
+                    'tipo_atendimento' => 'novo_tipo_atendimento',
+                    'profissionais' => 'novo_profissionais',
+                    default => $campo,
+                };
+                foreach ((array) $mensagens as $msg) {
+                    $this->addError($campoMapeado, $msg);
+                }
+            }
+
+            if (isset($erros['paciente_id'])) {
+                $msg = is_array($erros['paciente_id']) ? $erros['paciente_id'][0] : $erros['paciente_id'];
+                $this->alertaPaciente = $agendamentoService->validarDadosCadastraisPaciente($paciente) ?? [
+                    'tipo' => 'paciente_invalido',
+                    'titulo' => 'Atenção: pendência cadastral do paciente',
+                    'mensagem' => $msg,
+                ];
+            }
+
+            return;
+        }
 
         $this->modalNovoAgendamentoAberto = false;
         $this->limparPacienteSelecionado();

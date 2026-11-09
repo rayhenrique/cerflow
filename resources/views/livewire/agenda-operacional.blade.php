@@ -1059,15 +1059,75 @@
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Paciente *</label>
                         @if($pacienteSelecionado)
-                            <div class="flex items-center justify-between p-2.5 rounded-lg border border-teal-200 bg-teal-50 text-slate-900">
+                            <div class="flex items-center justify-between p-2.5 rounded-lg border {{ $alertaPaciente ? 'border-amber-300 bg-amber-50/60' : 'border-teal-200 bg-teal-50' }} text-slate-900 transition">
                                 <div>
-                                    <span class="font-bold">{{ $pacienteSelecionado['nome'] }}</span>
-                                    <span class="text-slate-500 text-[11px] ml-2">Nasc: {{ $pacienteSelecionado['data_nascimento'] ?? '—' }}</span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold">{{ $pacienteSelecionado['nome'] }}</span>
+                                        @if($alertaPaciente)
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                                Pendência Cadastral
+                                            </span>
+                                        @endif
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-x-3 text-slate-500 text-[11px] mt-0.5">
+                                        <span>CPF: {{ $pacienteSelecionado['cpf'] ?? 'Não informado' }}</span>
+                                        <span>CNS: {{ $pacienteSelecionado['cns'] ?? 'Não informado' }}</span>
+                                        <span>Nasc: {{ $pacienteSelecionado['data_nascimento'] ?? 'Não informado' }}</span>
+                                    </div>
                                 </div>
-                                <button type="button" wire:click="limparPacienteSelecionado" class="text-rose-600 font-semibold hover:underline cursor-pointer">
+                                <button type="button" wire:click="limparPacienteSelecionado" class="text-rose-600 font-semibold hover:underline cursor-pointer shrink-0 ml-2">
                                     Trocar
                                 </button>
                             </div>
+
+                            @if($alertaPaciente)
+                                <!-- Banner Visual Claro de Pendência Cadastral (Sem Códigos Técnicos) -->
+                                <div class="mt-2.5 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900 shadow-xs">
+                                    <div class="flex items-start gap-2.5">
+                                        <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-200 text-amber-900 text-xs font-bold">
+                                            !
+                                        </span>
+                                        <div class="space-y-1.5 flex-1">
+                                            <h4 class="font-bold text-xs text-amber-950">
+                                                {{ $alertaPaciente['titulo'] }}
+                                            </h4>
+                                            <p class="text-[11px] leading-relaxed text-amber-900">
+                                                {{ $alertaPaciente['mensagem'] }}
+                                            </p>
+
+                                            <!-- Ações de Resolução Cadastral para Perfis Autorizados -->
+                                            <div class="pt-1.5 flex flex-wrap items-center gap-2">
+                                                @if(auth()->user()?->hasAnyRole(['recepcao', 'coordenacao']))
+                                                    <a
+                                                        href="{{ route('configuracoes.secao', ['secao' => 'pacientes', 'editar_paciente' => $pacienteSelecionado['id']]) }}"
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        class="inline-flex items-center gap-1 rounded-md bg-amber-700 hover:bg-amber-800 text-white px-2.5 py-1 text-[11px] font-semibold shadow-xs transition"
+                                                        title="Abrir o cadastro deste paciente em nova aba para atualizar o Cartão SUS ou data de nascimento"
+                                                    >
+                                                        <span>Atualizar cadastro</span>
+                                                        <span class="text-[10px]">↗</span>
+                                                    </a>
+
+                                                    <button
+                                                        type="button"
+                                                        wire:click="revalidarPacienteSelecionado"
+                                                        class="inline-flex items-center gap-1 rounded-md border border-amber-400 bg-white hover:bg-amber-100 text-amber-900 px-2.5 py-1 text-[11px] font-semibold transition cursor-pointer"
+                                                        title="Conferir se o cadastro foi corrigido no sistema"
+                                                    >
+                                                        <span>Revalidar dados</span>
+                                                        <span class="text-[10px]">↻</span>
+                                                    </button>
+                                                @else
+                                                    <span class="text-[10px] text-amber-800 italic">
+                                                        Solicite a atualização do cadastro do paciente à Recepção ou Coordenação.
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
                         @else
                             <div class="relative">
                                 <input
@@ -1097,7 +1157,9 @@
                                 @endif
                             </div>
                         @endif
-                        @error('novo_paciente_id') <span class="text-rose-600 text-[11px] mt-1 block">{{ $message }}</span> @enderror
+                        @if(! $alertaPaciente)
+                            @error('novo_paciente_id') <span class="text-rose-600 text-[11px] mt-1 block">{{ $message }}</span> @enderror
+                        @endif
                     </div>
 
                     <!-- Sala e Data -->

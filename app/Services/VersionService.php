@@ -44,6 +44,18 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.19.4',
+                'data' => '09/11/2026',
+                'titulo' => 'Avisos Claros sobre o Cartão SUS no Agendamento',
+                'tipo' => 'Melhorias e Clareza',
+                'destaques' => [
+                    'Melhorias: Ao selecionar um paciente sem o número do Cartão SUS (CNS) ou com número inválido, o sistema agora exibe um aviso claro explicando exatamente qual informação precisa ser preenchida.',
+                    'Melhorias: Usuários autorizados contam com um atalho para abrir e atualizar o cadastro do paciente, além de um botão para revalidar os dados na hora sem perder as informações já preenchidas no agendamento.',
+                    'Melhorias: Caso falte a data de nascimento do paciente, o sistema indica com clareza a pendência antes da confirmação do horário.',
+                    'Correções: O formulário de agendamento não perde mais os dados preenchidos quando uma pendência cadastral precisa ser corrigida.',
+                ],
+            ],
+            [
                 'versao' => '1.19.3',
                 'data' => '09/11/2026',
                 'titulo' => 'Consolidação da Agenda Operacional e Precisão nos Agendamentos',

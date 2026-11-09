@@ -305,6 +305,14 @@ class ConfiguracoesSistema extends Component
 
         $permitidas = $this->abasPermitidas();
 
+        $editarPacienteId = (int) request()->query('editar_paciente');
+        if ($editarPacienteId > 0 && in_array('pacientes', $permitidas, true) && $user->hasAnyRole(['recepcao', 'coordenacao'])) {
+            $this->abaAtiva = 'pacientes';
+            $this->editarPaciente($editarPacienteId);
+
+            return;
+        }
+
         if ($secao !== null) {
             abort_unless(in_array($secao, $permitidas, true), 403);
             $this->abaAtiva = $secao;

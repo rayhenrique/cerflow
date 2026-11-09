@@ -352,7 +352,7 @@ class PacienteCadastroReformuladoTest extends TestCase
             );
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('paciente_id', $e->errors());
-            $this->assertStringContainsString('CNS válido', $e->errors()['paciente_id'][0]);
+            $this->assertStringContainsString('Cartão SUS (CNS)', $e->errors()['paciente_id'][0]);
             throw $e;
         }
     }
