@@ -2,6 +2,25 @@
 
 Todas as alterações relevantes deste projeto são documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e [Versionamento Semântico (SemVer)](https://semver.org/lang/pt-BR/).
 
+## [1.19.2] - 2026-11-09
+
+### Corrigido
+- **Navegação por Datas e Sincronização da Grade Semanal (`/agenda?aba=grade`):**
+  - Correção no método `mudarDiaSemana(string $dia)` em `AgendaOperacional.php`: sincronização atômica entre `$diaSemana`, `$data`, `$semanaInicio`, `$mes`, `$ano`, `$novo_data` e `$novo_dia_semana`.
+  - Validação estrita do dia informado no conjunto de dias úteis permitidos (`SEGUNDA` a `SEXTA`).
+  - Preservação do dia da semana ativo durante a navegação entre semanas (`semanaAnterior()` e `proximaSemana()`), inclusive em transições de mês e virada de ano.
+  - Correção na consulta de agendamentos no `render()` para recuperar itens da semana sem perdas por pequenas divergências pontuais de preenchimento.
+  - Correção no preenchimento de data ao clicar em slots vagos (`+ Agendar`), enviando a data real calculada do dia ativo da grade (`$dataRefGrade`).
+
+### Adicionado
+- **Melhorias de Visualização e Regra Permanente de Notas de Versão:**
+  - Cabeçalho dinâmico na Grade Semanal exibindo data real formatada (ex.: "Terça-feira, 10/11/2026") e intervalo completo da semana ("Semana de 09/11/2026 a 13/11/2026").
+  - Botões dos dias da semana com rótulos e datas correspondentes (ex.: "Segunda 09/11", "Terça 10/11").
+  - Controles de paginação de semana (◀ / ▶) e dropdown de Turno diretamente na grade.
+  - Nova visualização alternável da grade: modo "Por Sala" e modo "Semana Completa" com filtro por sala e agendamento rápido em slots vagos.
+  - Formalização da regra permanente para notas de atualização em linguagem simples e acessível em `docs/Rules.md` e simplificação dos textos em `VersionService.php`.
+  - Suíte completa de 10 testes automatizados cobrindo todos os cenários operacionais de navegação da grade em `tests/Feature/AgendaGradeNavegacaoTest.php`.
+
 ## [1.11.1] - 2026-11-07
 
 ### Corrigido

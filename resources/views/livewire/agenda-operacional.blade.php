@@ -486,106 +486,226 @@
     <!-- CONTEÚDO DA ABA 2: GRADE SEMANAL (PLANEJAMENTO RECORRENTE) -->
     @if($aba === 'grade')
         <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-4">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <!-- Seletor dos Dias da Semana -->
+            <!-- Cabeçalho de Navegação e Filtros da Grade -->
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-b border-slate-100 pb-3">
+                <!-- Seletor dos Dias da Semana com Datas Reais -->
                 <div class="flex flex-wrap items-center gap-1.5 text-xs">
-                    @foreach(['SEGUNDA' => 'Segunda', 'TERCA' => 'Terça', 'QUARTA' => 'Quarta', 'QUINTA' => 'Quinta', 'SEXTA' => 'Sexta'] as $sigla => $label)
+                    @foreach($diasSemanaInfo as $info)
                         <button
                             type="button"
-                            wire:click="mudarDiaSemana('{{ $sigla }}')"
-                            class="px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer {{ $diaSemana === $sigla ? 'bg-teal-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}"
+                            wire:click="mudarDiaSemana('{{ $info['sigla'] }}')"
+                            class="px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer flex items-center gap-1.5 {{ $diaSemana === $info['sigla'] ? 'bg-teal-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}"
+                            title="Ver {{ $info['label'] }}-feira, {{ \Carbon\CarbonImmutable::parse($info['data'])->format('d/m/Y') }}"
                         >
-                            {{ $label }}
+                            <span>{{ $info['label'] }}</span>
+                            <span class="text-[11px] font-mono {{ $diaSemana === $info['sigla'] ? 'text-teal-100' : 'text-slate-500 font-medium' }}">
+                                {{ $info['dia_mes'] }}
+                            </span>
                         </button>
                     @endforeach
                 </div>
 
-                <!-- Turno e Navegação Semanal -->
-                <div class="flex items-center gap-2 text-xs">
-                    <select wire:model.live="turnoGrade" class="rounded-lg border border-slate-300 px-3 py-1.5 bg-white text-slate-700">
-                        <option value="MANHA">Manhã</option>
-                        <option value="TARDE">Tarde</option>
-                        <option value="TODOS">Todos os Turnos</option>
-                    </select>
+                <!-- Indicador Visual do Dia Selecionado e Intervalo da Semana -->
+                <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div class="text-left sm:text-right">
+                        <div class="text-sm font-bold text-slate-900 flex items-center gap-1.5 sm:justify-end">
+                            <span class="h-2 w-2 rounded-full bg-teal-500"></span>
+                            <span>{{ $diasSemanaInfo[$diaSemana]['label'] }}-feira, {{ \Carbon\CarbonImmutable::parse($dataRefGrade)->format('d/m/Y') }}</span>
+                        </div>
+                        <div class="text-xs text-slate-500 font-medium">
+                            Semana de {{ $semanaInicioCarbon->format('d/m/Y') }} a {{ $semanaFimCarbon->format('d/m/Y') }}
+                        </div>
+                    </div>
 
-                    <button
-                        type="button"
-                        wire:click="semanaAnterior"
-                        class="p-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 transition cursor-pointer"
-                        title="Semana anterior"
-                    >
-                        ◀
-                    </button>
-                    <span class="font-semibold text-slate-700">
-                        Semana de {{ \Carbon\CarbonImmutable::parse($semanaInicio)->format('d/m/Y') }}
-                    </span>
-                    <button
-                        type="button"
-                        wire:click="proximaSemana"
-                        class="p-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 transition cursor-pointer"
-                        title="Próxima semana"
-                    >
-                        ▶
-                    </button>
+                    <!-- Controles: Turno, Modo de Visão e Navegação entre Semanas -->
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                        <!-- Alternador de Visão (Por Sala / Semana Completa) -->
+                        <div class="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-0.5">
+                            <button
+                                type="button"
+                                wire:click="alternarVisaoGrade('SALA')"
+                                class="px-2.5 py-1 rounded-md font-semibold transition cursor-pointer {{ $visaoGrade === 'SALA' ? 'bg-white text-teal-800 shadow-xs' : 'text-slate-600 hover:text-slate-900' }}"
+                            >
+                                Por Sala
+                            </button>
+                            <button
+                                type="button"
+                                wire:click="alternarVisaoGrade('SEMANA_COMPLETA')"
+                                class="px-2.5 py-1 rounded-md font-semibold transition cursor-pointer {{ $visaoGrade === 'SEMANA_COMPLETA' ? 'bg-white text-teal-800 shadow-xs' : 'text-slate-600 hover:text-slate-900' }}"
+                            >
+                                Semana Completa
+                            </button>
+                        </div>
+
+                        <select wire:model.live="turnoGrade" class="rounded-lg border border-slate-300 px-2.5 py-1.5 bg-white text-slate-700 font-medium">
+                            <option value="MANHA">Manhã</option>
+                            <option value="TARDE">Tarde</option>
+                            <option value="TODOS">Todos os Turnos</option>
+                        </select>
+
+                        <div class="flex items-center gap-1">
+                            <button
+                                type="button"
+                                wire:click="semanaAnterior"
+                                class="p-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 transition cursor-pointer"
+                                title="Semana anterior"
+                            >
+                                ◀
+                            </button>
+                            <button
+                                type="button"
+                                wire:click="proximaSemana"
+                                class="p-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 transition cursor-pointer"
+                                title="Próxima semana"
+                            >
+                                ▶
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Grade Visual de Horários por Sala -->
-            <div class="overflow-x-auto border border-slate-200 rounded-lg">
-                <table class="w-full text-left text-xs border-collapse">
-                    <thead class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
-                        <tr>
-                            <th class="p-2.5 w-24 border-r border-slate-200 text-center">Horário</th>
+            @if($visaoGrade === 'SEMANA_COMPLETA')
+                <!-- ============================================================== -->
+                <!-- VISÃO: SEMANA COMPLETA (Horário x Segunda a Sexta)             -->
+                <!-- ============================================================== -->
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
+                    <div class="flex items-center gap-2">
+                        <label for="filtroSalaGrade" class="font-bold text-slate-700">Filtrar por Sala:</label>
+                        <select id="filtroSalaGrade" wire:model.live="filtroSalaGrade" class="rounded-lg border border-slate-300 px-3 py-1.5 bg-white text-slate-700">
+                            <option value="">Todas as Salas do CER</option>
                             @foreach($salas as $sala)
-                                <th class="p-2.5 border-r border-slate-200 min-w-44 text-slate-800">
-                                    {{ $sala->nome }}
-                                </th>
+                                <option value="{{ $sala->id }}">{{ $sala->nome }}</option>
                             @endforeach
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @foreach($slotsGrade as $slot)
-                            <tr class="hover:bg-slate-50/50">
-                                <td class="p-2 font-mono font-bold text-slate-600 bg-slate-50/70 border-r border-slate-200 text-center">
-                                    {{ $slot }}
-                                </td>
-                                @foreach($salas as $sala)
-                                    @php
-                                        $agendamentosSlot = $gradeIndexada[$sala->id][$slot] ?? [];
-                                    @endphp
-                                    <td class="p-2 border-r border-slate-200 align-top">
-                                        @if(!empty($agendamentosSlot))
-                                            <div class="space-y-1.5">
-                                                @foreach($agendamentosSlot as $ag)
-                                                    <div class="p-2 rounded-lg border text-xs {{ $ag->tipo_atendimento === 'COMPARTILHADO' ? 'bg-purple-50 border-purple-200 text-purple-900' : 'bg-teal-50 border-teal-200 text-teal-900' }}">
-                                                        <div class="font-bold flex items-center justify-between gap-1">
-                                                            <span class="truncate">{{ $ag->paciente->nome }}</span>
-                                                            @if($ag->tipo_atendimento === 'COMPARTILHADO')
-                                                                <span class="text-[9px] bg-purple-200 text-purple-800 px-1 rounded font-bold">MULTI</span>
-                                                            @endif
-                                                        </div>
-                                                        <div class="text-[11px] text-slate-600 truncate mt-0.5">
-                                                            {{ $ag->profissionais->pluck('nome')->implode(', ') }}
-                                                        </div>
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                        @else
+                        </select>
+                    </div>
+                    <span class="text-slate-500">Visualização consolidada de segunda a sexta para planejamento e visão geral.</span>
+                </div>
+
+                <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                            <tr>
+                                <th class="p-2.5 w-24 border-r border-slate-200 text-center">Horário</th>
+                                @foreach($diasSemanaInfo as $info)
+                                    <th class="p-2.5 border-r border-slate-200 min-w-48 text-slate-800 {{ $diaSemana === $info['sigla'] ? 'bg-teal-50/70 text-teal-900 border-t-2 border-t-teal-600' : '' }}">
+                                        <div class="flex items-center justify-between">
                                             <button
                                                 type="button"
-                                                wire:click="abrirModalNovoAgendamento({{ $sala->id }}, '{{ $slot }}', '{{ $dataRefGrade }}')"
-                                                class="w-full py-1.5 rounded border border-dashed border-slate-200 text-slate-400 hover:border-teal-400 hover:text-teal-600 hover:bg-teal-50/50 text-[11px] transition text-center cursor-pointer"
+                                                wire:click="mudarDiaSemana('{{ $info['sigla'] }}')"
+                                                class="font-bold hover:underline cursor-pointer text-left"
                                             >
-                                                + Agendar
+                                                {{ $info['label'] }} ({{ $info['dia_mes'] }})
                                             </button>
-                                        @endif
-                                    </td>
+                                            @if($diaSemana === $info['sigla'])
+                                                <span class="text-[9px] bg-teal-200 text-teal-800 px-1.5 py-0.5 rounded font-bold uppercase">Ativo</span>
+                                            @endif
+                                        </div>
+                                    </th>
                                 @endforeach
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @foreach($slotsGrade as $slot)
+                                <tr class="hover:bg-slate-50/50">
+                                    <td class="p-2 font-mono font-bold text-slate-600 bg-slate-50/70 border-r border-slate-200 text-center">
+                                        {{ $slot }}
+                                    </td>
+                                    @foreach($diasSemanaInfo as $info)
+                                        @php
+                                            $agendamentosSemanaSlot = $gradeSemanaCompleta[$info['data']][$slot] ?? [];
+                                        @endphp
+                                        <td class="p-2 border-r border-slate-200 align-top {{ $diaSemana === $info['sigla'] ? 'bg-teal-50/20' : '' }}">
+                                            @if(!empty($agendamentosSemanaSlot))
+                                                <div class="space-y-1.5">
+                                                    @foreach($agendamentosSemanaSlot as $ag)
+                                                        <div class="p-2 rounded-lg border text-xs {{ $ag->tipo_atendimento === 'COMPARTILHADO' ? 'bg-purple-50 border-purple-200 text-purple-900' : 'bg-teal-50 border-teal-200 text-teal-900' }}">
+                                                            <div class="font-bold flex items-center justify-between gap-1">
+                                                                <span class="truncate">{{ $ag->paciente->nome }}</span>
+                                                                <span class="text-[9px] bg-white border border-slate-200 text-slate-700 px-1 py-0.2 rounded font-medium">{{ $ag->sala->nome }}</span>
+                                                            </div>
+                                                            <div class="text-[11px] text-slate-600 truncate mt-0.5">
+                                                                {{ $ag->profissionais->pluck('nome')->implode(', ') }}
+                                                            </div>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            @else
+                                                <button
+                                                    type="button"
+                                                    wire:click="abrirModalNovoAgendamento({{ !empty($filtroSalaGrade) ? (int)$filtroSalaGrade : $salas->first()?->id }}, '{{ $slot }}', '{{ $info['data'] }}')"
+                                                    class="w-full py-1.5 rounded border border-dashed border-slate-200 text-slate-400 hover:border-teal-400 hover:text-teal-600 hover:bg-teal-50/50 text-[11px] transition text-center cursor-pointer"
+                                                >
+                                                    + Agendar
+                                                </button>
+                                            @endif
+                                        </td>
+                                    @endforeach
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <!-- ============================================================== -->
+                <!-- VISÃO: POR SALA (Horário x Salas para o Dia Selecionado)       -->
+                <!-- ============================================================== -->
+                <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                            <tr>
+                                <th class="p-2.5 w-24 border-r border-slate-200 text-center">Horário</th>
+                                @foreach($salas as $sala)
+                                    <th class="p-2.5 border-r border-slate-200 min-w-44 text-slate-800">
+                                        {{ $sala->nome }}
+                                    </th>
+                                @endforeach
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @foreach($slotsGrade as $slot)
+                                <tr class="hover:bg-slate-50/50">
+                                    <td class="p-2 font-mono font-bold text-slate-600 bg-slate-50/70 border-r border-slate-200 text-center">
+                                        {{ $slot }}
+                                    </td>
+                                    @foreach($salas as $sala)
+                                        @php
+                                            $agendamentosSlot = $gradeIndexada[$sala->id][$slot] ?? [];
+                                        @endphp
+                                        <td class="p-2 border-r border-slate-200 align-top">
+                                            @if(!empty($agendamentosSlot))
+                                                <div class="space-y-1.5">
+                                                    @foreach($agendamentosSlot as $ag)
+                                                        <div class="p-2 rounded-lg border text-xs {{ $ag->tipo_atendimento === 'COMPARTILHADO' ? 'bg-purple-50 border-purple-200 text-purple-900' : 'bg-teal-50 border-teal-200 text-teal-900' }}">
+                                                            <div class="font-bold flex items-center justify-between gap-1">
+                                                                <span class="truncate">{{ $ag->paciente->nome }}</span>
+                                                                @if($ag->tipo_atendimento === 'COMPARTILHADO')
+                                                                    <span class="text-[9px] bg-purple-200 text-purple-800 px-1 rounded font-bold">MULTI</span>
+                                                                @endif
+                                                            </div>
+                                                            <div class="text-[11px] text-slate-600 truncate mt-0.5">
+                                                                {{ $ag->profissionais->pluck('nome')->implode(', ') }}
+                                                            </div>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            @else
+                                                <button
+                                                    type="button"
+                                                    wire:click="abrirModalNovoAgendamento({{ $sala->id }}, '{{ $slot }}', '{{ $dataRefGrade }}')"
+                                                    class="w-full py-1.5 rounded border border-dashed border-slate-200 text-slate-400 hover:border-teal-400 hover:text-teal-600 hover:bg-teal-50/50 text-[11px] transition text-center cursor-pointer"
+                                                >
+                                                    + Agendar
+                                                </button>
+                                            @endif
+                                        </td>
+                                    @endforeach
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
         </div>
     @endif
 

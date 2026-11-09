@@ -25,3 +25,39 @@
 ## Gestão de Tarefas
 - Sempre consulte o arquivo `TASKS.md` antes de iniciar uma nova implementação.
 - Ao concluir com sucesso uma etapa ou funcionalidade descrita no `TASKS.md`, atualize o arquivo marcando a respectiva caixa como concluída `[x]`.
+
+## Regra Permanente para Notas de Atualização e Tela de Novidades
+
+Sempre que uma nova versão do CER Digital for preparada, com commit e push autorizados, atualizar as notas da versão utilizando **linguagem simples, clara e acessível ao usuário comum**.
+
+### Regras obrigatórias:
+1. **Foco no usuário:** Descrever o que mudou no sistema destacando os benefícios diretos para recepcionistas, profissionais de saúde, coordenação e faturamento.
+2. **Termos técnicos proibidos:** NUNCA utilizar termos de desenvolvimento, arquitetura ou infraestrutura nas notas voltadas ao usuário final, tais como:
+   - Refatoração
+   - Migration
+   - Query
+   - Endpoint
+   - Livewire
+   - Middleware
+   - Cache
+   - Backend
+   - Otimização de SQL
+   - N+1, drivers, Redis, polling, Eloquent, keyset, etc.
+3. **Substituição de expressões técnicas:** Substituir jargões por explicações claras do resultado prático e do benefício no dia a dia.
+4. **Categorias simples:** Organizar os destaques em categorias claras e objetivas:
+   - **Novidades**
+   - **Melhorias**
+   - **Correções**
+5. **Estilo:** Utilizar frases curtas, diretas e objetivas, sem exageros publicitários.
+6. **Veracidade:** Não mencionar funcionalidades que não tenham sido efetivamente implementadas e verificadas por testes automatizados.
+7. **Separação de registros:** Manter o versionamento e registros técnicos internos necessários (como o `CHANGELOG.md` para desenvolvedores), mas apresentar ao usuário final (em `VersionService`, Modal de Novidades e Central de Ajuda) apenas textos acessíveis e compreensíveis.
+8. **Atualização nos arquivos corretos:** Atualizar o arquivo `VERSION`, o serviço `VersionService` (`historicoVersoes()`) e as telas de "Novidades" e "Ajuda & Sobre" conforme a estrutura existente no projeto.
+9. **Controle de publicação:** NÃO executar commit ou push sem autorização expressa. Esta regra deve ser aplicada quando a publicação for autorizada.
+
+### Exemplos práticos de linguagem:
+- **Evitar:** "Refatorado componente Livewire com sincronização de propriedades de estado e correção da query de agendamentos."  
+  **Preferir:** "Corrigimos a navegação da agenda semanal. Agora você pode alternar entre os dias e visualizar os agendamentos na data correta."
+- **Evitar:** "Implementado eager loading e eliminadas consultas N+1."  
+  **Preferir:** "Melhoramos a velocidade de carregamento da agenda e da lista de pacientes."
+- **Evitar:** "Implementado relacionamento entre agendamentos e evoluções clínicas por profissional."  
+  **Preferir:** "Os profissionais agora podem visualizar os pacientes que chegaram à recepção e abrir seus prontuários com mais facilidade."

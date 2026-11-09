@@ -49,6 +49,10 @@ class AgendaOperacional extends Component
 
     public ?string $semanaInicio = null;
 
+    public string $visaoGrade = 'SALA'; // 'SALA', 'SEMANA_COMPLETA'
+
+    public string $filtroSalaGrade = '';
+
     // --- Aba Mapa Mensal ---
     public int $mes = 0;
 
@@ -144,6 +148,25 @@ class AgendaOperacional extends Component
     {
         if (in_array($novaAba, ['dia', 'grade', 'mensal'], true)) {
             $this->aba = $novaAba;
+            if ($novaAba === 'grade') {
+                $parsed = CarbonImmutable::parse($this->data);
+                $this->semanaInicio = $parsed->startOfWeek(CarbonImmutable::MONDAY)->toDateString();
+                $mapa = [
+                    1 => 'SEGUNDA',
+                    2 => 'TERCA',
+                    3 => 'QUARTA',
+                    4 => 'QUINTA',
+                    5 => 'SEXTA',
+                    6 => 'SEGUNDA',
+                    7 => 'SEGUNDA',
+                ];
+                $this->diaSemana = $mapa[$parsed->dayOfWeekIso] ?? 'SEGUNDA';
+                $this->data = $this->calcularDataDoDiaDaSemana($this->diaSemana);
+                $this->novo_data = $this->data;
+                $this->novo_dia_semana = $this->diaSemana;
+            } elseif ($novaAba === 'dia') {
+                $this->sincronizarDataComGradeEMensal(CarbonImmutable::parse($this->data));
+            }
         }
     }
 
@@ -495,26 +518,70 @@ class AgendaOperacional extends Component
     // --- Navegação Grade Semanal ---
     public function mudarDiaSemana(string $dia): void
     {
-        $this->diaSemana = $dia;
+        $diasPermitidos = ['SEGUNDA', 'TERCA', 'QUARTA', 'QUINTA', 'SEXTA'];
+        $diaUpper = strtoupper(trim($dia));
+        if (! in_array($diaUpper, $diasPermitidos, true)) {
+            return;
+        }
+
+        $this->diaSemana = $diaUpper;
+
+        if (empty($this->semanaInicio)) {
+            $baseData = ! empty($this->data) ? CarbonImmutable::parse($this->data) : CarbonImmutable::now();
+            $this->semanaInicio = $baseData->startOfWeek(CarbonImmutable::MONDAY)->toDateString();
+        }
+
+        $this->data = $this->calcularDataDoDiaDaSemana($this->diaSemana);
+
+        $parsed = CarbonImmutable::parse($this->data);
+        $this->mes = (int) $parsed->format('n');
+        $this->ano = (int) $parsed->format('Y');
+        $this->novo_data = $this->data;
+        $this->novo_dia_semana = $this->diaSemana;
     }
 
     public function semanaAnterior(): void
     {
-        $base = $this->semanaInicio !== null ? CarbonImmutable::parse($this->semanaInicio) : CarbonImmutable::now()->startOfWeek();
+        $base = $this->semanaInicio !== null
+            ? CarbonImmutable::parse($this->semanaInicio)->startOfWeek(CarbonImmutable::MONDAY)
+            : (! empty($this->data) ? CarbonImmutable::parse($this->data)->startOfWeek(CarbonImmutable::MONDAY) : CarbonImmutable::now()->startOfWeek(CarbonImmutable::MONDAY));
+
         $novaSemana = $base->subWeek();
         $this->semanaInicio = $novaSemana->toDateString();
         $this->data = $this->calcularDataDoDiaDaSemana($this->diaSemana);
+
+        $parsed = CarbonImmutable::parse($this->data);
+        $this->mes = (int) $parsed->format('n');
+        $this->ano = (int) $parsed->format('Y');
+        $this->novo_data = $this->data;
+        $this->novo_dia_semana = $this->diaSemana;
     }
 
     public function proximaSemana(): void
     {
-        $base = $this->semanaInicio !== null ? CarbonImmutable::parse($this->semanaInicio) : CarbonImmutable::now()->startOfWeek();
+        $base = $this->semanaInicio !== null
+            ? CarbonImmutable::parse($this->semanaInicio)->startOfWeek(CarbonImmutable::MONDAY)
+            : (! empty($this->data) ? CarbonImmutable::parse($this->data)->startOfWeek(CarbonImmutable::MONDAY) : CarbonImmutable::now()->startOfWeek(CarbonImmutable::MONDAY));
+
         $novaSemana = $base->addWeek();
         $this->semanaInicio = $novaSemana->toDateString();
         $this->data = $this->calcularDataDoDiaDaSemana($this->diaSemana);
+
+        $parsed = CarbonImmutable::parse($this->data);
+        $this->mes = (int) $parsed->format('n');
+        $this->ano = (int) $parsed->format('Y');
+        $this->novo_data = $this->data;
+        $this->novo_dia_semana = $this->diaSemana;
     }
 
-    private function calcularDataDoDiaDaSemana(string $diaSemana): string
+    public function alternarVisaoGrade(string $visao): void
+    {
+        if (in_array($visao, ['SALA', 'SEMANA_COMPLETA'], true)) {
+            $this->visaoGrade = $visao;
+        }
+    }
+
+    public function calcularDataDoDiaDaSemana(string $diaSemana): string
     {
         $mapaIso = [
             'SEGUNDA' => 1,
@@ -523,8 +590,12 @@ class AgendaOperacional extends Component
             'QUINTA' => 4,
             'SEXTA' => 5,
         ];
-        $isoTarget = $mapaIso[$diaSemana] ?? 1;
-        $base = $this->semanaInicio !== null ? CarbonImmutable::parse($this->semanaInicio) : CarbonImmutable::now()->startOfWeek();
+        $diaUpper = strtoupper(trim($diaSemana));
+        $isoTarget = $mapaIso[$diaUpper] ?? 1;
+
+        $base = $this->semanaInicio !== null
+            ? CarbonImmutable::parse($this->semanaInicio)->startOfWeek(CarbonImmutable::MONDAY)
+            : (! empty($this->data) ? CarbonImmutable::parse($this->data)->startOfWeek(CarbonImmutable::MONDAY) : CarbonImmutable::now()->startOfWeek(CarbonImmutable::MONDAY));
 
         return $base->addDays($isoTarget - 1)->toDateString();
     }
@@ -652,18 +723,88 @@ class AgendaOperacional extends Component
 
         // 2. Dados da Aba Grade Semanal
         $gradeIndexada = [];
-        $dataRefGrade = $this->calcularDataDoDiaDaSemana($this->diaSemana);
-        if ($this->aba === 'grade') {
-            $agendamentosGrade = Agendamento::query()
-                ->with(['paciente:id,nome', 'profissionais:id,nome', 'sala:id,nome'])
-                ->whereDate('data_atendimento', $dataRefGrade)
-                ->where('dia_semana', $this->diaSemana)
-                ->where('status', '!=', 'CANCELADO')
-                ->get();
+        $gradeSemanaCompleta = [];
+        $semanaInicioCarbon = $this->semanaInicio !== null
+            ? CarbonImmutable::parse($this->semanaInicio)->startOfWeek(CarbonImmutable::MONDAY)
+            : (! empty($this->data) ? CarbonImmutable::parse($this->data)->startOfWeek(CarbonImmutable::MONDAY) : CarbonImmutable::now()->startOfWeek(CarbonImmutable::MONDAY));
+        $semanaFimCarbon = $semanaInicioCarbon->addDays(4); // Sexta-feira
 
-            foreach ($agendamentosGrade as $ag) {
-                $horaSlot = substr((string) $ag->hora_inicio, 0, 5);
-                $gradeIndexada[$ag->sala_id][$horaSlot][] = $ag;
+        $diasSemanaInfo = [
+            'SEGUNDA' => [
+                'sigla' => 'SEGUNDA',
+                'label' => 'Segunda',
+                'data' => $semanaInicioCarbon->addDays(0)->toDateString(),
+                'dia_mes' => $semanaInicioCarbon->addDays(0)->format('d/m'),
+                'dia_numero' => $semanaInicioCarbon->addDays(0)->format('d'),
+            ],
+            'TERCA' => [
+                'sigla' => 'TERCA',
+                'label' => 'Terça',
+                'data' => $semanaInicioCarbon->addDays(1)->toDateString(),
+                'dia_mes' => $semanaInicioCarbon->addDays(1)->format('d/m'),
+                'dia_numero' => $semanaInicioCarbon->addDays(1)->format('d'),
+            ],
+            'QUARTA' => [
+                'sigla' => 'QUARTA',
+                'label' => 'Quarta',
+                'data' => $semanaInicioCarbon->addDays(2)->toDateString(),
+                'dia_mes' => $semanaInicioCarbon->addDays(2)->format('d/m'),
+                'dia_numero' => $semanaInicioCarbon->addDays(2)->format('d'),
+            ],
+            'QUINTA' => [
+                'sigla' => 'QUINTA',
+                'label' => 'Quinta',
+                'data' => $semanaInicioCarbon->addDays(3)->toDateString(),
+                'dia_mes' => $semanaInicioCarbon->addDays(3)->format('d/m'),
+                'dia_numero' => $semanaInicioCarbon->addDays(3)->format('d'),
+            ],
+            'SEXTA' => [
+                'sigla' => 'SEXTA',
+                'label' => 'Sexta',
+                'data' => $semanaInicioCarbon->addDays(4)->toDateString(),
+                'dia_mes' => $semanaInicioCarbon->addDays(4)->format('d/m'),
+                'dia_numero' => $semanaInicioCarbon->addDays(4)->format('d'),
+            ],
+        ];
+
+        $dataRefGrade = $this->calcularDataDoDiaDaSemana($this->diaSemana);
+
+        if ($this->aba === 'grade') {
+            if ($this->visaoGrade === 'SEMANA_COMPLETA') {
+                $querySemana = Agendamento::query()
+                    ->with(['paciente:id,nome', 'profissionais:id,nome', 'sala:id,nome'])
+                    ->whereBetween('data_atendimento', [$semanaInicioCarbon->toDateString(), $semanaFimCarbon->toDateString()])
+                    ->where('status', '!=', 'CANCELADO');
+
+                if ($this->filtroSalaGrade !== '') {
+                    $querySemana->where('sala_id', (int) $this->filtroSalaGrade);
+                }
+
+                foreach ($querySemana->get() as $ag) {
+                    $dataStr = $ag->data_atendimento->toDateString();
+                    $horaSlot = substr((string) $ag->hora_inicio, 0, 5);
+                    $gradeSemanaCompleta[$dataStr][$horaSlot][] = $ag;
+                }
+            } else {
+                $agendamentosGrade = Agendamento::query()
+                    ->with(['paciente:id,nome', 'profissionais:id,nome', 'sala:id,nome'])
+                    ->where(function ($q) use ($dataRefGrade, $semanaInicioCarbon, $semanaFimCarbon): void {
+                        $q->whereDate('data_atendimento', $dataRefGrade)
+                            ->orWhere(function ($sub) use ($semanaInicioCarbon, $semanaFimCarbon): void {
+                                $sub->where('dia_semana', $this->diaSemana)
+                                    ->whereBetween('data_atendimento', [
+                                        $semanaInicioCarbon->toDateString(),
+                                        $semanaFimCarbon->toDateString(),
+                                    ]);
+                            });
+                    })
+                    ->where('status', '!=', 'CANCELADO')
+                    ->get();
+
+                foreach ($agendamentosGrade as $ag) {
+                    $horaSlot = substr((string) $ag->hora_inicio, 0, 5);
+                    $gradeIndexada[$ag->sala_id][$horaSlot][] = $ag;
+                }
             }
         }
 
@@ -720,6 +861,10 @@ class AgendaOperacional extends Component
             'contadoresDia' => $contadoresDia,
             'alertasAbsenteismo' => $alertasAbsenteismo,
             'gradeIndexada' => $gradeIndexada,
+            'gradeSemanaCompleta' => $gradeSemanaCompleta,
+            'diasSemanaInfo' => $diasSemanaInfo,
+            'semanaInicioCarbon' => $semanaInicioCarbon,
+            'semanaFimCarbon' => $semanaFimCarbon,
             'slotsGrade' => $this->obterSlotsHorarioGrade(),
             'dataRefGrade' => $dataRefGrade,
             'diasCalendarioMensal' => $diasCalendarioMensal,
