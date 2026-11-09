@@ -10,6 +10,7 @@ use App\Models\Paciente;
 use App\Models\ProcedimentoSigtap;
 use App\Services\ChamadaPacienteService;
 use App\Services\EvolucaoService;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
@@ -254,6 +255,51 @@ class ProntuarioPaciente extends Component
         $this->dispatch('toast', tipo: 'sucesso', titulo: 'Diagnóstico atualizado', mensagem: $mensagem);
     }
 
+    public function abrirProntuarioAtendimento(int $agendamentoId): void
+    {
+        $agendamento = Agendamento::with(['paciente', 'sala', 'profissionais'])->findOrFail($agendamentoId);
+
+        $profissional = auth()->user()?->profissional;
+        $ehParticipante = $profissional !== null && $agendamento->profissionais->contains('id', $profissional->id);
+        $ehCoordenacao = auth()->user()?->hasRole('coordenacao');
+
+        abort_unless($ehParticipante || $ehCoordenacao, 403, 'Acesso não autorizado para este agendamento.');
+
+        Gate::authorize('viewProntuario', $agendamento->paciente);
+
+        $this->pacienteId = (int) $agendamento->paciente_id;
+        $this->agendamento_id = (int) $agendamento->id;
+        $this->pesquisaPaciente = '';
+        $this->reset(['queixa_estado_atual', 'conduta_terapeutica', 'intercorrencias', 'pin_assinatura']);
+        $this->resetValidation();
+
+        if ($profissional?->cbo_padrao) {
+            $cbo = $profissional->cbo_padrao;
+            $procedimentoCompativel = ProcedimentoSigtap::query()
+                ->ativos()
+                ->whereJsonContains('cbos_permitidos', $cbo)
+                ->first();
+
+            if ($procedimentoCompativel) {
+                $this->procedimento_id = (int) $procedimentoCompativel->id;
+            }
+        }
+
+        if ($this->procedimento_id === null || $this->procedimento_id === 0) {
+            $primeiroAtivo = ProcedimentoSigtap::query()->ativos()->first();
+            if ($primeiroAtivo) {
+                $this->procedimento_id = (int) $primeiroAtivo->id;
+            }
+        }
+
+        $this->dispatch(
+            'toast',
+            tipo: 'sucesso',
+            titulo: 'Prontuário aberto',
+            mensagem: "Paciente {$agendamento->paciente->nome} carregado para atendimento."
+        );
+    }
+
     public function chamarPaciente(int $agendamentoId, ChamadaPacienteService $chamadaService): void
     {
         $agendamento = Agendamento::with(['paciente', 'sala', 'profissionais'])->findOrFail($agendamentoId);
@@ -328,12 +374,55 @@ class ProntuarioPaciente extends Component
 
         $procedimentos = ProcedimentoSigtap::query()->ativos()->orderBy('codigo')->get();
 
+        $profissional = auth()->user()?->profissional;
+        $filaAtendimentosHoje = collect();
+
+        if ($profissional !== null) {
+            $hoje = CarbonImmutable::now()->toDateString();
+            $filaAtendimentosHoje = Agendamento::query()
+                ->whereDate('data_atendimento', $hoje)
+                ->whereHas('profissionais', fn ($q) => $q->where('profissionais.id', $profissional->id))
+                ->where(function ($q): void {
+                    $q->whereIn('status', ['PRESENTE', 'ATENDIDO'])
+                        ->orWhereNotNull('chegada_em');
+                })
+                ->with([
+                    'paciente:id,nome,cns,cpf,data_nascimento,cid_principal',
+                    'sala:id,nome',
+                    'profissionais:id,nome,especialidade',
+                    'evolucoes:id,agendamento_id,profissional_id,assinado_em',
+                    'chamadas',
+                ])
+                ->orderBy('hora_inicio')
+                ->get()
+                ->map(function (Agendamento $ag) use ($profissional): array {
+                    $evolucaoAssinada = $ag->evolucoes->first(
+                        fn ($ev): bool => (int) $ev->profissional_id === (int) $profissional->id && $ev->assinado_em !== null
+                    );
+
+                    $estadoFila = match (true) {
+                        $evolucaoAssinada !== null => 'EVOLUCAO_REGISTRADA',
+                        $ag->chamadas->isNotEmpty() => 'CHAMADO',
+                        default => 'AGUARDANDO',
+                    };
+
+                    return [
+                        'agendamento' => $ag,
+                        'estado_fila' => $estadoFila,
+                        'evolucao_assinada' => $evolucaoAssinada,
+                        'ultima_chamada' => $ag->chamadas->sortByDesc('id')->first(),
+                    ];
+                });
+        }
+
         return view('livewire.prontuario-paciente', [
             'pacientesResultados' => $this->buscarPacientes(),
             'pacienteSelecionado' => $pacienteSelecionado,
             'evolucoes' => $evolucoes,
             'agendamentosPaciente' => $agendamentosPaciente,
             'procedimentos' => $procedimentos,
+            'profissionalAutenticado' => $profissional,
+            'filaAtendimentosHoje' => $filaAtendimentosHoje,
         ]);
     }
 }

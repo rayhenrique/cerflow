@@ -44,6 +44,20 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.19.0',
+                'data' => '09/11/2026',
+                'titulo' => 'Agenda Operacional Unificada e Fila Automática no PEP',
+                'tipo' => 'Funcionalidade e Fluxo',
+                'destaques' => [
+                    'Nova Agenda Operacional unificando a Visualização Diária, Grade Semanal e Mapa Mensal em tela única com alternância rápida.',
+                    'Filtros inteligentes por turno (Manhã, Tarde, Noite, Todos) com contadores em tempo real inspirados no layout CEO Digital.',
+                    'Fila automática de atendimento no PEP ("Meus Pacientes / Atendimentos de Hoje") com abertura direta sem necessidade de busca manual.',
+                    'Registro do carimbo de chegada do paciente (chegada_em) na recepção com auditoria LGPD.',
+                    'Regra crítica de Atendimento Compartilhado: status só transita para ATENDIDO após todos os profissionais escalados assinarem suas evoluções.',
+                    'Otimização de alta performance para detecção de absenteísmo em lote, prevenindo queries N+1.',
+                ],
+            ],
+            [
                 'versao' => '1.18.1',
                 'data' => '09/11/2026',
                 'titulo' => 'Blindagem de Segurança e Otimização do Pareamento de Smart TV',

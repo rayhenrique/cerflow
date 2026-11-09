@@ -27,6 +27,7 @@ class Agendamento extends Model
         'dia_semana',
         'tipo_atendimento',
         'status',
+        'chegada_em',
         'recorrente',
         'observacao',
     ];
@@ -35,6 +36,7 @@ class Agendamento extends Model
     {
         return [
             'data_atendimento' => 'date',
+            'chegada_em' => 'datetime',
             'recorrente' => 'boolean',
         ];
     }

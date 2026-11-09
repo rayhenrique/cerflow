@@ -105,8 +105,23 @@ class EvolucaoService
                 ]
             );
 
-            if ($agendamento->status !== 'ATENDIDO') {
-                $agendamento->update(['status' => 'ATENDIDO']);
+            // Atualização do status do agendamento (RN Atendimento Compartilhado)
+            $profissionaisIds = $agendamento->profissionais()->pluck('profissionais.id')->all();
+            if (count($profissionaisIds) <= 1) {
+                if ($agendamento->status !== 'ATENDIDO') {
+                    $agendamento->update(['status' => 'ATENDIDO']);
+                }
+            } else {
+                $totalAssinados = EvolucaoClinica::query()
+                    ->where('agendamento_id', $agendamento->id)
+                    ->whereNotNull('assinado_em')
+                    ->whereIn('profissional_id', $profissionaisIds)
+                    ->distinct('profissional_id')
+                    ->count('profissional_id');
+
+                if ($totalAssinados >= count($profissionaisIds)) {
+                    $agendamento->update(['status' => 'ATENDIDO']);
+                }
             }
 
             if ($profissional->user_id !== null) {

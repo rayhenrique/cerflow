@@ -87,34 +87,26 @@
                                 <span>Painel Inicial</span>
                             </a>
 
-                            <a href="{{ route('grade.semanal') }}"
+                            <a href="{{ route('agenda.operacional') }}"
                                @click="mobileMenuOpen = false"
-                               class="group flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition {{ request()->routeIs('grade.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
-                                <svg class="h-5 w-5 shrink-0 {{ request()->routeIs('grade.*') ? 'text-teal-400' : 'text-slate-400 group-hover:text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
-                                </svg>
-                                <span>Grade Semanal</span>
-                            </a>
-
-                            <a href="{{ route('agenda.mensal') }}"
-                               @click="mobileMenuOpen = false"
-                               class="group flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition {{ request()->routeIs('agenda.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
-                                <svg class="h-5 w-5 shrink-0 {{ request()->routeIs('agenda.*') ? 'text-teal-400' : 'text-slate-400 group-hover:text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                               class="group flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition {{ request()->routeIs('agenda.operacional') || request()->routeIs('grade.*') || request()->routeIs('recepcao.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
+                                <svg class="h-5 w-5 shrink-0 {{ request()->routeIs('agenda.operacional') || request()->routeIs('grade.*') || request()->routeIs('recepcao.*') ? 'text-teal-400' : 'text-slate-400 group-hover:text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm3-3h.008v.008H15V12zm0 3h.008v.008H15V15zm-6-3h.008v.008H9V12zm0 3h.008v.008H9V15z"/>
                                 </svg>
-                                <span>Mapa Mensal</span>
+                                <span>Agenda Operacional</span>
                             </a>
+
+                            <div class="pl-8 pr-2 py-0.5 space-y-0.5 text-xs">
+                                <a href="{{ route('agenda.mensal') }}"
+                                   @click="mobileMenuOpen = false"
+                                   class="flex items-center gap-2 py-1 px-2 rounded font-medium transition {{ request()->routeIs('agenda.mensal') ? 'text-teal-400 font-semibold' : 'text-slate-400 hover:text-white' }}">
+                                    <span class="text-[10px]">🗓</span>
+                                    <span>Mapa Mensal</span>
+                                </a>
+                            </div>
                         @endif
 
                         @if(auth()->user()->hasAnyRole(['recepcao', 'terapeuta', 'coordenacao']))
-                            <a href="{{ route('recepcao.checkin') }}"
-                               @click="mobileMenuOpen = false"
-                               class="group flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium transition {{ request()->routeIs('recepcao.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
-                                <svg class="h-5 w-5 shrink-0 {{ request()->routeIs('recepcao.*') ? 'text-teal-400' : 'text-slate-400 group-hover:text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                                <span>Recepção & Check-in</span>
-                            </a>
 
                             <a href="{{ route('painel.chamadas') }}"
                                target="_blank"
@@ -337,37 +329,27 @@
                             <span x-show="!sidebarCollapsed" class="truncate">Painel Inicial</span>
                         </a>
 
-                        <a href="{{ route('grade.semanal') }}"
-                           title="Grade Semanal"
+                        <a href="{{ route('agenda.operacional') }}"
+                           title="Agenda Operacional do CER (Dia, Grade e Mês)"
                            :class="sidebarCollapsed ? 'justify-center px-2' : 'px-3'"
-                           class="group flex items-center gap-3 rounded-lg py-2.5 font-medium transition {{ request()->routeIs('grade.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
-                            <svg class="h-5 w-5 shrink-0 {{ request()->routeIs('grade.*') ? 'text-teal-400' : 'text-slate-400 group-hover:text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
-                            </svg>
-                            <span x-show="!sidebarCollapsed" class="truncate">Grade Semanal</span>
-                        </a>
-
-                        <a href="{{ route('agenda.mensal') }}"
-                           title="Mapa Mensal da Agenda"
-                           :class="sidebarCollapsed ? 'justify-center px-2' : 'px-3'"
-                           class="group flex items-center gap-3 rounded-lg py-2.5 font-medium transition {{ request()->routeIs('agenda.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
-                            <svg class="h-5 w-5 shrink-0 {{ request()->routeIs('agenda.*') ? 'text-teal-400' : 'text-slate-400 group-hover:text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           class="group flex items-center gap-3 rounded-lg py-2.5 font-medium transition {{ request()->routeIs('agenda.operacional') || request()->routeIs('grade.*') || request()->routeIs('recepcao.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
+                            <svg class="h-5 w-5 shrink-0 {{ request()->routeIs('agenda.operacional') || request()->routeIs('grade.*') || request()->routeIs('recepcao.*') ? 'text-teal-400' : 'text-slate-400 group-hover:text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm3-3h.008v.008H15V12zm0 3h.008v.008H15V15zm-6-3h.008v.008H9V12zm0 3h.008v.008H9V15z"/>
                             </svg>
-                            <span x-show="!sidebarCollapsed" class="truncate">Mapa Mensal</span>
+                            <span x-show="!sidebarCollapsed" class="truncate">Agenda Operacional</span>
                         </a>
+
+                        <div x-show="!sidebarCollapsed" class="pl-8 pr-2 py-0.5 space-y-0.5 text-xs">
+                            <a href="{{ route('agenda.mensal') }}"
+                               title="Mapa Mensal da Agenda"
+                               class="flex items-center gap-2 py-1 px-2 rounded font-medium transition {{ request()->routeIs('agenda.mensal') ? 'text-teal-400 font-semibold' : 'text-slate-400 hover:text-white' }}">
+                                <span class="text-[10px]">🗓</span>
+                                <span>Mapa Mensal</span>
+                            </a>
+                        </div>
                     @endif
 
                     @if(auth()->user()->hasAnyRole(['recepcao', 'terapeuta', 'coordenacao']))
-                        <a href="{{ route('recepcao.checkin') }}"
-                           title="Recepção & Check-in"
-                           :class="sidebarCollapsed ? 'justify-center px-2' : 'px-3'"
-                           class="group flex items-center gap-3 rounded-lg py-2.5 font-medium transition {{ request()->routeIs('recepcao.*') ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white' }}">
-                            <svg class="h-5 w-5 shrink-0 {{ request()->routeIs('recepcao.*') ? 'text-teal-400' : 'text-slate-400 group-hover:text-white' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                            <span x-show="!sidebarCollapsed" class="truncate">Recepção & Check-in</span>
-                        </a>
 
                         <a href="{{ route('painel.chamadas') }}"
                            target="_blank"

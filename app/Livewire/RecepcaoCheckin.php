@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Models\Agendamento;
+use App\Models\LogAuditoria;
 use App\Services\AgendamentoService;
 use App\Services\ChamadaPacienteService;
 use Carbon\CarbonImmutable;
@@ -39,7 +40,31 @@ class RecepcaoCheckin extends Component
             ['status' => ['required', Rule::in(['AGENDADO', 'PRESENTE', 'ATENDIDO', 'FALTA_JUSTIFICADA', 'FALTA_INJUSTIFICADA', 'CANCELADO'])]],
         )->validate();
 
-        $agendamento->update(['status' => $novoStatus]);
+        $statusAnterior = $agendamento->status;
+        $dadosUpdate = ['status' => $novoStatus];
+        if (in_array($novoStatus, ['PRESENTE', 'ATENDIDO'], true) && $agendamento->chegada_em === null) {
+            $dadosUpdate['chegada_em'] = now();
+        }
+
+        $agendamento->update($dadosUpdate);
+
+        if (auth()->check()) {
+            LogAuditoria::create([
+                'user_id' => auth()->id(),
+                'acao' => $novoStatus === 'PRESENTE' ? 'CHECKIN_PRESENCA' : 'ALTERACAO_STATUS_AGENDAMENTO',
+                'tabela_afetada' => 'agendamentos',
+                'registro_id' => $agendamento->id,
+                'ip_address' => request()->ip() ?? '127.0.0.1',
+                'detalhes' => [
+                    'agendamento_id' => $agendamento->id,
+                    'paciente_id' => $agendamento->paciente_id,
+                    'status_anterior' => $statusAnterior,
+                    'novo_status' => $novoStatus,
+                    'chegada_em' => $agendamento->chegada_em?->toIso8601String(),
+                ],
+                'created_at' => now(),
+            ]);
+        }
 
         $tipoToast = match ($novoStatus) {
             'PRESENTE', 'ATENDIDO' => 'sucesso',
@@ -113,10 +138,8 @@ class RecepcaoCheckin extends Component
             ->orderBy('hora_inicio')
             ->get();
 
-        $alertasPorPaciente = [];
-        foreach ($agendamentos->pluck('paciente_id')->unique()->filter() as $pacienteId) {
-            $alertasPorPaciente[(int) $pacienteId] = $agendamentoService->verificarAlertaAbsenteismo((int) $pacienteId);
-        }
+        $pacientesIds = $agendamentos->pluck('paciente_id')->unique()->filter()->map(fn ($id): int => (int) $id)->values()->all();
+        $alertasPorPaciente = $agendamentoService->verificarAlertasAbsenteismoEmLote($pacientesIds);
 
         return view('livewire.recepcao-checkin', [
             'agendamentos' => $agendamentos,

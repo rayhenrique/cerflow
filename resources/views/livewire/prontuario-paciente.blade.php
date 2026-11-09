@@ -1,4 +1,144 @@
 <div class="space-y-4 sm:space-y-6">
+    @if($profissionalAutenticado)
+        <!-- Fila de Atendimento do Profissional Autenticado -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+            <div class="p-4 border-b border-slate-100 bg-linear-to-r from-slate-900 via-slate-800 to-teal-950 text-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-sm sm:text-base font-bold tracking-tight text-white">Meus Pacientes / Atendimentos de Hoje</h2>
+                            <span class="rounded-full bg-teal-500/30 px-2 py-0.5 text-[11px] font-bold text-teal-200 border border-teal-400/30">
+                                {{ $filaAtendimentosHoje->count() }}
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-300">
+                            Fila de espera de <strong class="text-white">{{ $profissionalAutenticado->nome }}</strong> • {{ $profissionalAutenticado->especialidade }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 text-xs">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800/80 text-slate-300 border border-slate-700">
+                        <span class="h-2 w-2 rounded-full bg-teal-400 animate-pulse"></span>
+                        Presença confirmada na recepção
+                    </span>
+                </div>
+            </div>
+
+            @if($filaAtendimentosHoje->isEmpty())
+                <div class="p-6 text-center text-xs text-slate-500 bg-slate-50/50">
+                    <svg class="mx-auto h-8 w-8 text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p class="font-medium text-slate-700">Nenhum paciente aguardando ou atendido para você hoje até o momento.</p>
+                    <p class="text-slate-400 mt-0.5">Assim que a recepção confirmar a chegada do paciente, ele aparecerá automaticamente aqui. Você também pode pesquisar qualquer prontuário no seletor abaixo.</p>
+                </div>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-600">
+                        <thead class="bg-slate-50 text-[11px] font-bold text-slate-700 uppercase tracking-wider border-b border-slate-200">
+                            <tr>
+                                <th class="px-4 py-3">Horário / Chegada</th>
+                                <th class="px-4 py-3">Paciente</th>
+                                <th class="px-4 py-3">Sala</th>
+                                <th class="px-4 py-3">Atendimento & Equipe</th>
+                                <th class="px-4 py-3">Estado Operacional</th>
+                                <th class="px-4 py-3 text-right">Ações Rápidas</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 font-sans">
+                            @foreach($filaAtendimentosHoje as $item)
+                                @php
+                                    $ag = $item['agendamento'];
+                                    $selecionado = $agendamento_id === $ag->id;
+                                @endphp
+                                <tr class="hover:bg-slate-50/80 transition-colors {{ $selecionado ? 'bg-teal-50/60 font-semibold text-slate-900' : '' }}" wire:key="fila-pep-{{ $ag->id }}">
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <div class="font-bold text-slate-800">
+                                            {{ substr((string) $ag->hora_inicio, 0, 5) }} - {{ substr((string) $ag->hora_fim, 0, 5) }}
+                                        </div>
+                                        @if($ag->chegada_em)
+                                            <div class="text-[11px] text-teal-600 font-medium flex items-center gap-1 mt-0.5">
+                                                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2"/></svg>
+                                                Chegada: {{ $ag->chegada_em->format('H:i') }}
+                                            </div>
+                                        @endif
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="font-bold text-slate-900 text-xs">{{ $ag->paciente->nome }}</div>
+                                        <div class="text-[11px] text-slate-500">
+                                            Nasc: {{ $ag->paciente->data_nascimento?->format('d/m/Y') ?? '—' }}
+                                            @if($ag->paciente->cid_principal)
+                                                • <span class="font-mono text-slate-600">CID {{ $ag->paciente->cid_principal }}</span>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-800 border border-slate-200">
+                                            {{ $ag->sala->nome }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold {{ $ag->tipo_atendimento === 'COMPARTILHADO' ? 'bg-purple-100 text-purple-800' : 'bg-slate-100 text-slate-700' }}">
+                                            {{ $ag->tipo_atendimento }}
+                                        </span>
+                                        <div class="text-[11px] text-slate-500 truncate max-w-xs mt-0.5" title="{{ $ag->profissionais->pluck('nome')->implode(', ') }}">
+                                            {{ $ag->profissionais->pluck('nome')->implode(', ') }}
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        @if($item['estado_fila'] === 'EVOLUCAO_REGISTRADA')
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>
+                                                Evolução registrada
+                                            </span>
+                                        @elseif($item['estado_fila'] === 'CHAMADO')
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-100 text-sky-800 border border-sky-200">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-sky-600 animate-pulse"></span>
+                                                Chamado na TV
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-amber-600"></span>
+                                                Aguardando
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-right">
+                                        <div class="inline-flex items-center gap-1.5">
+                                            <button
+                                                type="button"
+                                                wire:click="chamarPaciente({{ $ag->id }})"
+                                                class="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-teal-700 hover:border-teal-300 transition-colors cursor-pointer"
+                                                title="Chamar paciente na TV da recepção"
+                                            >
+                                                <svg class="h-3.5 w-3.5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                                                <span>Chamar</span>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                wire:click="abrirProntuarioAtendimento({{ $ag->id }})"
+                                                class="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-xs transition-colors cursor-pointer {{ $selecionado ? 'bg-teal-600 text-white hover:bg-teal-700' : 'bg-slate-900 text-white hover:bg-teal-600' }}"
+                                            >
+                                                <span>Abrir Prontuário →</span>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </div>
+    @endif
+
     <!-- Cabeçalho do PEP e Seletor de Paciente -->
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
         <div>

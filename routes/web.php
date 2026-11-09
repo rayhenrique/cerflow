@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Livewire\AgendaMensal;
+use App\Livewire\AgendaOperacional;
 use App\Livewire\AjudaSobre;
 use App\Livewire\ConfiguracoesSistema;
 use App\Livewire\DashboardInicial;
@@ -22,6 +23,10 @@ Route::middleware(['auth'])->group(function (): void {
     Route::get('/dashboard', DashboardInicial::class)
         ->middleware('role:recepcao|terapeuta|faturamento|coordenacao')
         ->name('dashboard');
+
+    Route::get('/agenda', AgendaOperacional::class)
+        ->middleware('role:recepcao|terapeuta|faturamento|coordenacao')
+        ->name('agenda.operacional');
 
     Route::get('/grade', GradeSemanal::class)
         ->middleware('role:recepcao|terapeuta|faturamento|coordenacao')

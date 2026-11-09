@@ -170,6 +170,75 @@ class AgendamentoService
     }
 
     /**
+     * Otimização: Verifica em lote o alerta de absenteísmo para múltiplos pacientes (evita N+1).
+     *
+     * @param  array<int, int>  $pacientesIds
+     * @return array<int, array{alerta: bool, faltas_mes: int, faltas_consecutivas: int, motivo: ?string}>
+     */
+    public function verificarAlertasAbsenteismoEmLote(array $pacientesIds, ?CarbonImmutable $referencia = null): array
+    {
+        $pacientesIds = array_values(array_filter(array_unique($pacientesIds)));
+        if (empty($pacientesIds)) {
+            return [];
+        }
+
+        $ref = $referencia ?? CarbonImmutable::now();
+        $inicioMes = $ref->startOfMonth()->toDateString();
+        $fimMes = $ref->endOfMonth()->toDateString();
+        $statusesFalta = ['FALTA_JUSTIFICADA', 'FALTA_INJUSTIFICADA'];
+
+        $faltasMesAgrupadas = Agendamento::query()
+            ->whereIn('paciente_id', $pacientesIds)
+            ->whereBetween('data_atendimento', [$inicioMes, $fimMes])
+            ->whereIn('status', $statusesFalta)
+            ->selectRaw('paciente_id, COUNT(*) as total')
+            ->groupBy('paciente_id')
+            ->pluck('total', 'paciente_id')
+            ->all();
+
+        $ultimosAgendamentos = Agendamento::query()
+            ->whereIn('paciente_id', $pacientesIds)
+            ->whereIn('status', ['PRESENTE', 'ATENDIDO', 'FALTA_JUSTIFICADA', 'FALTA_INJUSTIFICADA'])
+            ->orderByDesc('data_atendimento')
+            ->orderByDesc('hora_inicio')
+            ->select(['id', 'paciente_id', 'status'])
+            ->get()
+            ->groupBy('paciente_id');
+
+        $resultado = [];
+        foreach ($pacientesIds as $id) {
+            $faltasMes = (int) ($faltasMesAgrupadas[$id] ?? 0);
+            $historico = $ultimosAgendamentos->get($id, collect());
+
+            $consecutivas = 0;
+            foreach ($historico as $ag) {
+                if (in_array($ag->status, $statusesFalta, true)) {
+                    $consecutivas++;
+                } else {
+                    break;
+                }
+            }
+
+            $alerta = $consecutivas >= 3 || $faltasMes >= 5;
+            $motivo = null;
+            if ($consecutivas >= 3) {
+                $motivo = "{$consecutivas} faltas consecutivas";
+            } elseif ($faltasMes >= 5) {
+                $motivo = "{$faltasMes} faltas acumuladas no mês";
+            }
+
+            $resultado[$id] = [
+                'alerta' => $alerta,
+                'faltas_mes' => $faltasMes,
+                'faltas_consecutivas' => $consecutivas,
+                'motivo' => $motivo,
+            ];
+        }
+
+        return $resultado;
+    }
+
+    /**
      * RF2.5 - Verifica se o paciente atingiu 3 faltas consecutivas ou 5 faltas alternadas no mês vigente.
      *
      * @return array{alerta: bool, faltas_mes: int, faltas_consecutivas: int, motivo: ?string}
