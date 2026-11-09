@@ -6,11 +6,12 @@ namespace App\Livewire;
 
 use App\Models\ChamadaPainel;
 use App\Models\ConfiguracaoEstabelecimento;
-use App\Models\DispositivoTv;
 use App\Services\TvPairingService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -22,25 +23,34 @@ class PainelChamadas extends Component
     #[Url]
     public ?string $token = null;
 
+    #[Locked]
     public ?int $ultimaChamadaId = null;
 
+    #[Locked]
     public bool $autorizado = false;
 
+    #[Locked]
     public bool $revogado = false;
 
+    #[Locked]
     public ?string $dispositivoNome = null;
 
     // --- Dados do Pareamento / Ativação ---
+    #[Locked]
     public ?string $solicitacaoUid = null;
 
+    #[Locked]
     public ?string $codigoAtivacao = null;
 
+    #[Locked]
     public ?string $segredoTemporario = null;
 
+    #[Locked]
     public ?string $expiraEmFormatado = null;
 
     public int $segundosRestantes = 600;
 
+    #[Locked]
     public bool $codigoExpirado = false;
 
     public function mount(TvPairingService $pairingService, ?string $token = null): void
@@ -63,68 +73,77 @@ class PainelChamadas extends Component
      */
     public function atualizarPainel(TvPairingService $pairingService): void
     {
-        if ($this->autorizado) {
-            // Revalidação periódica da credencial (detecta revogação imediata pela Coordenação)
-            $cookieToken = request()->cookie(TvPairingService::COOKIE_NAME);
-            if (! empty($cookieToken)) {
-                $disp = $pairingService->autenticarPorCookie((string) $cookieToken);
-                if ($disp === null) {
-                    $this->autorizado = false;
-                    $this->revogado = true;
-                    cookie()->queue(cookie()->forget(TvPairingService::COOKIE_NAME));
+        // Se já está autorizado no servidor, mantém status ativo
+        if ($this->verificarAutorizacao($pairingService)) {
+            $this->autorizado = true;
+            $this->revogado = false;
 
-                    return;
-                }
-            }
-        } else {
-            // Se estiver na tela de ativação, consulta se a Coordenação já autorizou o código
-            if ($this->solicitacaoUid !== null && $this->segredoTemporario !== null && ! $this->codigoExpirado) {
-                $resultado = $pairingService->verificarStatusPareamento($this->solicitacaoUid, $this->segredoTemporario);
+            return;
+        }
 
-                if ($resultado['status'] === 'APROVADO' && $resultado['token'] !== null) {
-                    // Entrega da credencial definitiva por Cookie persistente HttpOnly
-                    cookie()->queue(
-                        TvPairingService::COOKIE_NAME,
-                        $resultado['token'],
-                        TvPairingService::TEMPO_EXPIRACAO_COOKIE_MINUTOS,
-                        '/',
-                        null,
-                        request()->secure(),
-                        true,
-                        false,
-                        'Lax'
-                    );
+        // Não autorizado no servidor
+        $this->autorizado = false;
 
-                    $this->autorizado = true;
-                    $this->revogado = false;
-                    $this->dispositivoNome = $resultado['dispositivo']?->nome ?? 'Smart TV';
-                    $this->dispatch('tv-autorizada', ['nome' => $this->dispositivoNome]);
-                } elseif ($resultado['status'] === 'EXPIRADO') {
-                    $this->codigoExpirado = true;
-                }
+        // Se estiver na tela de ativação, consulta se a Coordenação já autorizou o código
+        if ($this->solicitacaoUid !== null && $this->segredoTemporario !== null && ! $this->codigoExpirado) {
+            $resultado = $pairingService->verificarStatusPareamento($this->solicitacaoUid, $this->segredoTemporario);
+
+            if ($resultado['status'] === 'APROVADO' && $resultado['token'] !== null) {
+                // Entrega da credencial definitiva por Cookie persistente HttpOnly
+                cookie()->queue(
+                    TvPairingService::COOKIE_NAME,
+                    $resultado['token'],
+                    TvPairingService::TEMPO_EXPIRACAO_COOKIE_MINUTOS,
+                    '/',
+                    null,
+                    request()->secure(),
+                    true,
+                    false,
+                    'Lax'
+                );
+
+                // Define no request atual para que a autorização imediata nesta mesma requisição funcione
+                request()->cookies->set(TvPairingService::COOKIE_NAME, $resultado['token']);
+
+                $this->autorizado = true;
+                $this->revogado = false;
+                $this->dispositivoNome = $resultado['dispositivo']?->nome ?? 'Smart TV';
+
+                // Limpa segredos temporários da memória
+                $this->solicitacaoUid = null;
+                $this->codigoAtivacao = null;
+                $this->segredoTemporario = null;
+
+                $this->dispatch('tv-autorizada', ['nome' => $this->dispositivoNome]);
+            } elseif ($resultado['status'] === 'EXPIRADO') {
+                $this->codigoExpirado = true;
             }
         }
     }
 
     public function gerarNovoCodigo(TvPairingService $pairingService): void
     {
-        $dados = $pairingService->iniciarSolicitacaoPareamento(
-            request()->ip(),
-            request()->userAgent()
-        );
+        try {
+            $dados = $pairingService->iniciarSolicitacaoPareamento(
+                request()->ip(),
+                request()->userAgent()
+            );
 
-        $this->solicitacaoUid = $dados['solicitacao']->solicitacao_uid;
-        $this->codigoAtivacao = $dados['codigo'];
-        $this->segredoTemporario = $dados['segredo_temporario'];
-        $this->expiraEmFormatado = $dados['solicitacao']->expira_em->format('H:i');
-        $this->segundosRestantes = 600;
-        $this->codigoExpirado = false;
-        $this->revogado = false;
-        $this->autorizado = false;
+            $this->solicitacaoUid = $dados['solicitacao']->solicitacao_uid;
+            $this->codigoAtivacao = $dados['codigo'];
+            $this->segredoTemporario = $dados['segredo_temporario'];
+            $this->expiraEmFormatado = $dados['solicitacao']->expira_em->format('H:i');
+            $this->segundosRestantes = 600;
+            $this->codigoExpirado = false;
+            $this->revogado = false;
+            $this->autorizado = false;
+        } catch (ValidationException) {
+            $this->codigoExpirado = true;
+        }
     }
 
     /**
-     * Valida os 3 métodos de autorização admitidos:
+     * Valida os 3 métodos de autorização admitidos exclusivamente no servidor:
      * 1. Cookie individual persistente HttpOnly de TV pareada;
      * 2. Sessão autenticada de funcionário do CER;
      * 3. Token legado na URL (se habilitado pela Coordenação).
@@ -137,25 +156,23 @@ class PainelChamadas extends Component
             $dispositivo = $pairingService->autenticarPorCookie((string) $cookieToken);
             if ($dispositivo !== null) {
                 $this->dispositivoNome = $dispositivo->nome;
+                $this->revogado = false;
 
                 return true;
             }
 
-            // Se o cookie existe mas não autentica, checa se foi expressamente revogado
-            $tokenHash = hash('sha256', (string) $cookieToken);
-            $dispRevogado = DispositivoTv::query()->where('token_hash', $tokenHash)->first();
-            if ($dispRevogado !== null && $dispRevogado->status === 'REVOGADO') {
-                $this->revogado = true;
-                $this->dispositivoNome = $dispRevogado->nome;
-                cookie()->queue(cookie()->forget(TvPairingService::COOKIE_NAME));
+            // Se o cookie foi fornecido mas não autentica, a TV foi revogada ou a credencial é inválida
+            $this->revogado = true;
+            $this->autorizado = false;
+            cookie()->queue(cookie()->forget(TvPairingService::COOKIE_NAME));
 
-                return false;
-            }
+            return false;
         }
 
         // 2. Usuário interno autenticado (médico, terapeuta, recepção ou coordenação)
         if (auth()->check() && auth()->user()->hasAnyRole(['recepcao', 'terapeuta', 'faturamento', 'coordenacao'])) {
             $this->dispositivoNome = auth()->user()->name.' (Sessão Web)';
+            $this->revogado = false;
 
             return true;
         }
@@ -167,6 +184,7 @@ class PainelChamadas extends Component
         if ($permitirLegado && ! empty($configuracao->painel_token_acesso) && ! empty($this->token)) {
             if (hash_equals((string) $configuracao->painel_token_acesso, (string) $this->token)) {
                 $this->dispositivoNome = 'Acesso Transitório por URL';
+                $this->revogado = false;
 
                 return true;
             }
@@ -182,12 +200,19 @@ class PainelChamadas extends Component
         });
     }
 
-    public function render(): View
+    public function render(TvPairingService $pairingService): View
     {
         $configuracao = $this->obterConfiguracao();
 
-        // Se o dispositivo ainda não está autorizado, exibe a tela de ativação por código (sem dados clínicos)
-        if (! $this->autorizado) {
+        // VALIDAÇÃO CRÍTICA DE SEGURANÇA:
+        // O servidor NUNCA confia no estado de $this->autorizado vindo do cliente ou requisições anteriores.
+        // A autorização é revalidada no servidor antes de consultar qualquer informação de paciente.
+        $estaRealmenteAutorizado = $this->verificarAutorizacao($pairingService);
+        $this->autorizado = $estaRealmenteAutorizado;
+
+        if (! $estaRealmenteAutorizado) {
+            // Dispositivo não autorizado: exibe exclusivamente a tela de pareamento ou de revogação.
+            // Nenhum registro de paciente é consultado ou retornado.
             return view('livewire.painel-chamadas', [
                 'autorizado' => false,
                 'revogado' => $this->revogado,
@@ -196,58 +221,83 @@ class PainelChamadas extends Component
                 'codigoExpirado' => $this->codigoExpirado,
                 'dispositivoNome' => $this->dispositivoNome,
                 'configuracao' => $configuracao,
+                'chamadaAtual' => null,
+                'pacienteNomeAtual' => '',
+                'historico' => collect(),
             ]);
         }
 
-        // Dispositivo autorizado: renderiza o painel ativo de chamadas
+        // --- DISPOSITIVO AUTORIZADO NO SERVIDOR ---
+        // Otimização de Performance VPS: verifica se houve nova chamada antes de carregar o histórico completo
         $limiteHistorico = max(1, min(15, (int) ($configuracao->painel_quantidade_historico ?? 5)));
 
-        $chamadaAtual = ChamadaPainel::query()
+        // Consulta leve de 1 coluna (índice primário) para saber o ID da última chamada do dia
+        $ultimoIdHoje = (int) (ChamadaPainel::query()
             ->doDia()
-            ->orderByDesc('chamado_em')
-            ->orderByDesc('id')
-            ->first();
+            ->latest('id')
+            ->value('id') ?? 0);
 
-        $historico = collect();
+        $chamadaAtual = null;
         $pacienteNomeAtual = '';
         $textoVoz = '';
+        $historico = collect();
 
-        if ($chamadaAtual !== null) {
-            $pacienteNomeAtual = $configuracao->formatarNomePaciente($chamadaAtual->paciente_nome);
-            $textoVoz = "Paciente {$pacienteNomeAtual}, dirigir-se à sala {$chamadaAtual->sala_nome}";
+        if ($ultimoIdHoje > 0) {
+            // Cache leve compartilhado entre todas as TVs conectadas para evitar queries repetidas a cada 4s
+            $dadosChamadas = Cache::remember("painel_tv_payload_chamada_{$ultimoIdHoje}_{$limiteHistorico}", 15, function () use ($ultimoIdHoje, $limiteHistorico, $configuracao) {
+                $atual = ChamadaPainel::query()->find($ultimoIdHoje);
+                if ($atual === null) {
+                    return null;
+                }
 
-            $historico = ChamadaPainel::query()
-                ->doDia()
-                ->where('id', '!=', $chamadaAtual->id)
-                ->orderByDesc('chamado_em')
-                ->orderByDesc('id')
-                ->limit($limiteHistorico)
-                ->get()
-                ->map(function (ChamadaPainel $item) use ($configuracao): array {
-                    return [
-                        'id' => $item->id,
-                        'paciente_nome' => $configuracao->formatarNomePaciente($item->paciente_nome),
-                        'sala_nome' => $item->sala_nome,
-                        'profissional_nome' => $item->profissional_nome,
-                        'tipo' => $item->tipo,
-                        'hora' => $item->chamado_em->format('H:i'),
-                        'segundos_atras' => max(0, $item->chamado_em->diffInSeconds(now())),
-                    ];
-                });
+                $nomeFormatado = $configuracao->formatarNomePaciente($atual->paciente_nome);
+                $hist = ChamadaPainel::query()
+                    ->doDia()
+                    ->where('id', '!=', $atual->id)
+                    ->orderByDesc('chamado_em')
+                    ->orderByDesc('id')
+                    ->limit($limiteHistorico)
+                    ->get()
+                    ->map(function (ChamadaPainel $item) use ($configuracao): array {
+                        return [
+                            'id' => $item->id,
+                            'paciente_nome' => $configuracao->formatarNomePaciente($item->paciente_nome),
+                            'sala_nome' => $item->sala_nome,
+                            'profissional_nome' => $item->profissional_nome,
+                            'tipo' => $item->tipo,
+                            'hora' => $item->chamado_em->format('H:i'),
+                            'segundos_atras' => max(0, $item->chamado_em->diffInSeconds(now())),
+                        ];
+                    })->all();
 
-            // Dispara evento sonoro e anúncio por voz quando há nova chamada ou repetição
-            if ($chamadaAtual->id !== $this->ultimaChamadaId) {
-                $this->ultimaChamadaId = $chamadaAtual->id;
-                $this->dispatch('nova-chamada-painel', [
-                    'id' => $chamadaAtual->id,
-                    'paciente' => $pacienteNomeAtual,
-                    'sala' => $chamadaAtual->sala_nome,
-                    'profissional' => $chamadaAtual->profissional_nome,
-                    'tipo' => $chamadaAtual->tipo,
-                    'textoVoz' => $textoVoz,
-                    'vozAtiva' => (bool) ($configuracao->painel_voz_ativa ?? true),
-                    'volume' => ((int) ($configuracao->painel_volume ?? 80)) / 100,
-                ]);
+                return [
+                    'chamadaAtual' => $atual,
+                    'pacienteNomeAtual' => $nomeFormatado,
+                    'textoVoz' => "Paciente {$nomeFormatado}, dirigir-se à sala {$atual->sala_nome}",
+                    'historico' => $hist,
+                ];
+            });
+
+            if ($dadosChamadas !== null) {
+                $chamadaAtual = $dadosChamadas['chamadaAtual'];
+                $pacienteNomeAtual = $dadosChamadas['pacienteNomeAtual'];
+                $textoVoz = $dadosChamadas['textoVoz'];
+                $historico = collect($dadosChamadas['historico']);
+
+                // Dispara evento sonoro e anúncio por voz quando há nova chamada ou repetição
+                if ($chamadaAtual->id !== $this->ultimaChamadaId) {
+                    $this->ultimaChamadaId = $chamadaAtual->id;
+                    $this->dispatch('nova-chamada-painel', [
+                        'id' => $chamadaAtual->id,
+                        'paciente' => $pacienteNomeAtual,
+                        'sala' => $chamadaAtual->sala_nome,
+                        'profissional' => $chamadaAtual->profissional_nome,
+                        'tipo' => $chamadaAtual->tipo,
+                        'textoVoz' => $textoVoz,
+                        'vozAtiva' => (bool) ($configuracao->painel_voz_ativa ?? true),
+                        'volume' => ((int) ($configuracao->painel_volume ?? 80)) / 100,
+                    ]);
+                }
             }
         }
 

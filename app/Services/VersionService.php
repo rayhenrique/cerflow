@@ -44,6 +44,19 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.18.1',
+                'data' => '09/11/2026',
+                'titulo' => 'Blindagem de Segurança e Otimização do Pareamento de Smart TV',
+                'tipo' => 'Segurança e Performance',
+                'destaques' => [
+                    'Revalidação estrita de autorização no servidor em todas as renderizações e requisições Livewire, impedindo visualização não autorizada de dados de pacientes.',
+                    'Anotações de segurança #[Locked] em propriedades sensíveis do painel e controle de permissões no ciclo de vida do componente.',
+                    'Revogação definitiva com invalidação irreversível do hash de token e obrigatoriedade de novo pareamento para reautorização.',
+                    'Proteção contra flooding e concorrência na emissão de credenciais com rate limiting e transações com bloqueio pessimista (lockForUpdate).',
+                    'Otimização de alta performance para VPS Hostinger com cache compartilhado de chamadas entre múltiplos televisores e throttling de registro de acesso.',
+                ],
+            ],
+            [
                 'versao' => '1.18.0',
                 'data' => '08/11/2026',
                 'titulo' => 'Pareamento Seguro de Smart TVs por Código de Ativação',

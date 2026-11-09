@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class DispositivoTv extends Model
 {
@@ -88,6 +90,7 @@ class DispositivoTv extends Model
     {
         $this->update([
             'status' => 'REVOGADO',
+            'token_hash' => hash('sha256', 'REVOGADO_'.Str::random(64)),
             'revogado_em' => now(),
             'revogado_por_id' => $usuario->id,
         ]);
@@ -95,15 +98,14 @@ class DispositivoTv extends Model
 
     public function registrarAcesso(?string $ip = null, ?string $userAgent = null): void
     {
-        // Throttled update: se já acessou nos últimos 5 minutos, não faz escrita no banco
-        if ($this->ultimo_acesso_em !== null && $this->ultimo_acesso_em->diffInMinutes(now()) < 5) {
-            return;
+        // Throttled update com cache de 15 minutos: impede UPDATEs no MySQL a cada 4 segundos na VPS
+        $chaveAcesso = "tv_access_touch_{$this->id}";
+        if (Cache::add($chaveAcesso, true, now()->addMinutes(15))) {
+            $this->update([
+                'ultimo_acesso_em' => now(),
+                'ip_origem' => $ip ?? $this->ip_origem,
+                'user_agent' => $userAgent ?? $this->user_agent,
+            ]);
         }
-
-        $this->update([
-            'ultimo_acesso_em' => now(),
-            'ip_origem' => $ip ?? $this->ip_origem,
-            'user_agent' => $userAgent ?? $this->user_agent,
-        ]);
     }
 }

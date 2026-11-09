@@ -69,6 +69,8 @@ class ConfiguracoesSistema extends Component
 
     public bool $modalRenomearTvAberto = false;
 
+    public bool $modalReautorizarTvAberto = false;
+
     public string $tv_codigo_ativacao = '';
 
     public string $tv_nome_dispositivo = '';
@@ -76,6 +78,12 @@ class ConfiguracoesSistema extends Component
     public ?int $tv_renomear_id = null;
 
     public string $tv_novo_nome = '';
+
+    public ?int $tvReautorizarId = null;
+
+    public string $tvNomeReautorizacao = '';
+
+    public string $tvCodigoReautorizacao = '';
 
     public ?array $solicitacaoPrevia = null;
 
@@ -649,19 +657,68 @@ class ConfiguracoesSistema extends Component
         );
     }
 
-    public function reautorizarTv(int $id, TvPairingService $service): void
+    public function abrirModalReautorizarTv(int $id): void
     {
         abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
 
         $disp = DispositivoTv::findOrFail($id);
-        $service->reautorizarDispositivo($disp, auth()->user());
+        $this->tvReautorizarId = $disp->id;
+        $this->tvNomeReautorizacao = $disp->nome;
+        $this->tvCodigoReautorizacao = '';
+        $this->resetErrorBag(['tvCodigoReautorizacao']);
+        $this->modalReautorizarTvAberto = true;
+    }
 
-        $this->dispatch(
-            'toast',
-            tipo: 'sucesso',
-            titulo: 'Dispositivo Reautorizado',
-            mensagem: "A TV '{$disp->nome}' foi reativada com sucesso."
-        );
+    public function fecharModalReautorizarTv(): void
+    {
+        $this->modalReautorizarTvAberto = false;
+        $this->tvReautorizarId = null;
+        $this->tvCodigoReautorizacao = '';
+        $this->resetErrorBag(['tvCodigoReautorizacao']);
+    }
+
+    public function reautorizarTv(int $id): void
+    {
+        $this->abrirModalReautorizarTv($id);
+    }
+
+    public function reautorizarTvConfirmado(TvPairingService $service): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $this->validate([
+            'tvCodigoReautorizacao' => ['required', 'string', 'min:6', 'max:12'],
+        ], [
+            'tvCodigoReautorizacao.required' => 'Informe o novo código de ativação exibido na TV.',
+            'tvCodigoReautorizacao.min' => 'O código de ativação deve conter ao menos 6 caracteres.',
+        ]);
+
+        if ($this->tvReautorizarId === null) {
+            return;
+        }
+
+        $disp = DispositivoTv::findOrFail($this->tvReautorizarId);
+
+        try {
+            $service->reautorizarDispositivo(
+                $disp,
+                $this->tvCodigoReautorizacao,
+                auth()->user(),
+                request()->ip(),
+                request()->userAgent()
+            );
+
+            $this->fecharModalReautorizarTv();
+
+            $this->dispatch(
+                'toast',
+                tipo: 'sucesso',
+                titulo: 'Dispositivo Reautorizado',
+                mensagem: "A TV '{$disp->nome}' foi reconectada e reautorizada com uma nova credencial segura."
+            );
+        } catch (ValidationException $e) {
+            $this->addError('tvCodigoReautorizacao', $e->validator->errors()->first() ?: 'Código de ativação inválido.');
+        }
     }
 
     public function excluirTv(int $id, TvPairingService $service): void

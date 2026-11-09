@@ -278,7 +278,7 @@
                                                 Revogar
                                             </button>
                                         @else
-                                            <button type="button" wire:click="reautorizarTv({{ $disp->id }})"
+                                            <button type="button" wire:click="abrirModalReautorizarTv({{ $disp->id }})"
                                                 class="inline-flex items-center px-2.5 py-1 rounded-md border border-emerald-200 bg-emerald-50 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 cursor-pointer">
                                                 Reautorizar
                                             </button>
@@ -562,6 +562,55 @@
                             <button type="button" wire:click="renomearTv"
                                 class="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
                                 Salvar Nome
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            <!-- MODAL 3: REAUTORIZAR SMART TV (COM NOVO CÓDIGO DE PAREAMENTO) -->
+            @if ($modalReautorizarTvAberto)
+                <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div class="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <div class="flex items-center gap-2.5">
+                                <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-700 font-bold text-lg">📺</span>
+                                <div>
+                                    <h3 class="text-sm font-bold text-slate-900">Reautorizar Televisor: {{ $tvNomeReautorizacao }}</h3>
+                                    <p class="text-xs text-slate-500">Reconexão segura com emissão de nova credencial</p>
+                                </div>
+                            </div>
+                            <button type="button" wire:click="fecharModalReautorizarTv" class="text-slate-400 hover:text-slate-600 cursor-pointer">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div class="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-900">
+                                <strong>Atenção:</strong> A credencial anterior foi permanentemente revogada. A Smart TV deve estar na tela de ativação exibindo um <strong>novo código de 6 caracteres</strong>.
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">
+                                    Novo Código de Ativação exibido na TV <span class="text-rose-600">*</span>
+                                </label>
+                                <input type="text"
+                                    wire:model="tvCodigoReautorizacao"
+                                    placeholder="Ex: 4K7-9PX ou ABC-123"
+                                    class="w-full uppercase font-mono tracking-wider font-bold text-center text-lg rounded-lg border border-slate-300 px-3 py-2.5 text-slate-800 focus:border-teal-600 focus:ring-1 focus:ring-teal-600 focus:outline-none">
+                                <p class="text-[11px] text-slate-400 mt-1">Informe o novo código exibido na tela do televisor.</p>
+                                @error('tvCodigoReautorizacao') <span class="text-xs text-rose-600 block mt-1 font-medium">{{ $message }}</span> @enderror
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
+                            <button type="button" wire:click="fecharModalReautorizarTv"
+                                class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer">
+                                Cancelar
+                            </button>
+                            <button type="button" wire:click="reautorizarTvConfirmado"
+                                class="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
+                                <span>Reautorizar e Conectar</span>
                             </button>
                         </div>
                     </div>

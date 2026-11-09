@@ -9,6 +9,7 @@ use App\Models\LogAuditoria;
 use App\Models\SolicitacaoPareamentoTv;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -24,14 +25,36 @@ class TvPairingService
      * Gera um código de 6 caracteres legível e um segredo temporário para verificação mútua.
      *
      * @return array{solicitacao: SolicitacaoPareamentoTv, segredo_temporario: string, codigo: string}
+     *
+     * @throws ValidationException
      */
     public function iniciarSolicitacaoPareamento(?string $ip = null, ?string $userAgent = null): array
     {
+        $ipChave = $ip ?? '127.0.0.1';
+        $limiterKey = "tv_pairing_req_{$ipChave}";
+
+        // Limita a 10 criações de código por IP a cada 10 minutos para impedir flooding/DoS
+        if (RateLimiter::tooManyAttempts($limiterKey, 10)) {
+            $segundos = RateLimiter::availableIn($limiterKey);
+            throw ValidationException::withMessages([
+                'rate_limit' => "Limite de solicitações de pareamento excedido. Aguarde {$segundos} segundos antes de tentar novamente.",
+            ]);
+        }
+        RateLimiter::hit($limiterKey, 600);
+
         // Expira solicitações antigas pendentes que ultrapassaram o tempo limite de 10 minutos
         SolicitacaoPareamentoTv::query()
             ->where('status', 'PENDENTE')
             ->where('expira_em', '<', now())
             ->update(['status' => 'EXPIRADO']);
+
+        // Cancela solicitações pendentes anteriores da mesma origem para não poluir a base
+        if (! empty($ip)) {
+            SolicitacaoPareamentoTv::query()
+                ->where('ip_origem', $ip)
+                ->where('status', 'PENDENTE')
+                ->update(['status' => 'CANCELADO']);
+        }
 
         $codigo = SolicitacaoPareamentoTv::gerarCodigoLegivel();
         $segredoTemporario = Str::random(64);
@@ -57,55 +80,59 @@ class TvPairingService
 
     /**
      * Consulta o estado do pareamento. Se aprovado pela coordenação, emite o token permanente e consome a solicitação.
+     * Utiliza transação com lock pessimista para evitar concorrência e condições de corrida na emissão da credencial.
      *
      * @return array{status: string, token: ?string, dispositivo: ?DispositivoTv}
      */
     public function verificarStatusPareamento(string $solicitacaoUid, string $segredoTemporario): array
     {
-        $solicitacao = SolicitacaoPareamentoTv::query()
-            ->with('dispositivo')
-            ->where('solicitacao_uid', $solicitacaoUid)
-            ->first();
+        return DB::transaction(function () use ($solicitacaoUid, $segredoTemporario) {
+            $solicitacao = SolicitacaoPareamentoTv::query()
+                ->with('dispositivo')
+                ->where('solicitacao_uid', $solicitacaoUid)
+                ->lockForUpdate()
+                ->first();
 
-        if ($solicitacao === null) {
-            return ['status' => 'INVALIDO', 'token' => null, 'dispositivo' => null];
-        }
-
-        if (! hash_equals($solicitacao->segredo_temporario_hash, hash('sha256', $segredoTemporario))) {
-            return ['status' => 'INVALIDO', 'token' => null, 'dispositivo' => null];
-        }
-
-        if ($solicitacao->status === 'APROVADO' && $solicitacao->dispositivo !== null) {
-            // Gera a credencial definitiva que será entregue apenas neste momento via Cookie HttpOnly
-            $tokenPermanente = Str::random(64);
-            $tokenHash = hash('sha256', $tokenPermanente);
-
-            $solicitacao->dispositivo->update([
-                'token_hash' => $tokenHash,
-                'ultimo_acesso_em' => now(),
-            ]);
-
-            $solicitacao->update(['status' => 'CONCLUIDO']);
-            Cache::forget("tv_auth_{$tokenHash}");
-
-            return [
-                'status' => 'APROVADO',
-                'token' => $tokenPermanente,
-                'dispositivo' => $solicitacao->dispositivo,
-            ];
-        }
-
-        if ($solicitacao->status === 'PENDENTE') {
-            if ($solicitacao->estaExpirada()) {
-                $solicitacao->update(['status' => 'EXPIRADO']);
-
-                return ['status' => 'EXPIRADO', 'token' => null, 'dispositivo' => null];
+            if ($solicitacao === null) {
+                return ['status' => 'INVALIDO', 'token' => null, 'dispositivo' => null];
             }
 
-            return ['status' => 'PENDENTE', 'token' => null, 'dispositivo' => null];
-        }
+            if (! hash_equals($solicitacao->segredo_temporario_hash, hash('sha256', $segredoTemporario))) {
+                return ['status' => 'INVALIDO', 'token' => null, 'dispositivo' => null];
+            }
 
-        return ['status' => $solicitacao->status, 'token' => null, 'dispositivo' => null];
+            if ($solicitacao->status === 'APROVADO' && $solicitacao->dispositivo !== null) {
+                // Gera a credencial definitiva que será entregue apenas neste momento via Cookie HttpOnly
+                $tokenPermanente = Str::random(64);
+                $tokenHash = hash('sha256', $tokenPermanente);
+
+                $solicitacao->dispositivo->update([
+                    'token_hash' => $tokenHash,
+                    'ultimo_acesso_em' => now(),
+                ]);
+
+                $solicitacao->update(['status' => 'CONCLUIDO']);
+                Cache::forget("tv_auth_{$tokenHash}");
+
+                return [
+                    'status' => 'APROVADO',
+                    'token' => $tokenPermanente,
+                    'dispositivo' => $solicitacao->dispositivo,
+                ];
+            }
+
+            if ($solicitacao->status === 'PENDENTE') {
+                if ($solicitacao->estaExpirada()) {
+                    $solicitacao->update(['status' => 'EXPIRADO']);
+
+                    return ['status' => 'EXPIRADO', 'token' => null, 'dispositivo' => null];
+                }
+
+                return ['status' => 'PENDENTE', 'token' => null, 'dispositivo' => null];
+            }
+
+            return ['status' => $solicitacao->status, 'token' => null, 'dispositivo' => null];
+        });
     }
 
     /**
@@ -133,57 +160,60 @@ class TvPairingService
 
         $codNormalizado = SolicitacaoPareamentoTv::normalizarCodigo($codigo);
 
-        $solicitacao = SolicitacaoPareamentoTv::query()
-            ->validas()
-            ->where('codigo', $codNormalizado)
-            ->first();
+        return DB::transaction(function () use ($codNormalizado, $nomeDispositivo, $autorizadoPor, $ip, $userAgent, $limiterKey) {
+            $solicitacao = SolicitacaoPareamentoTv::query()
+                ->validas()
+                ->where('codigo', $codNormalizado)
+                ->lockForUpdate()
+                ->first();
 
-        if ($solicitacao === null) {
-            RateLimiter::hit($limiterKey, 600);
-            throw ValidationException::withMessages([
-                'tv_codigo_ativacao' => 'Código de ativação inválido ou já expirado. Certifique-se de que a TV está na tela de pareamento.',
+            if ($solicitacao === null) {
+                RateLimiter::hit($limiterKey, 600);
+                throw ValidationException::withMessages([
+                    'tv_codigo_ativacao' => 'Código de ativação inválido ou já expirado. Certifique-se de que a TV está na tela de pareamento.',
+                ]);
+            }
+
+            RateLimiter::clear($limiterKey);
+
+            $nomeFinal = trim($nomeDispositivo);
+            if ($nomeFinal === '') {
+                $nomeFinal = "Smart TV ({$codNormalizado})";
+            }
+
+            $dispositivo = DispositivoTv::create([
+                'nome' => $nomeFinal,
+                'identificador' => 'tv_'.Str::lower(Str::random(16)),
+                'token_hash' => hash('sha256', Str::random(64)), // Hash provisório até a entrega na finalização
+                'status' => 'ATIVO',
+                'autorizado_por_id' => $autorizadoPor->id,
+                'autorizado_em' => now(),
+                'expira_em' => now()->addYear(),
+                'ip_origem' => $solicitacao->ip_origem ?? $ip,
+                'user_agent' => $solicitacao->user_agent ?? $userAgent,
             ]);
-        }
 
-        RateLimiter::clear($limiterKey);
+            $solicitacao->update([
+                'status' => 'APROVADO',
+                'dispositivo_tv_id' => $dispositivo->id,
+            ]);
 
-        $nomeFinal = trim($nomeDispositivo);
-        if ($nomeFinal === '') {
-            $nomeFinal = "Smart TV ({$codNormalizado})";
-        }
+            LogAuditoria::create([
+                'user_id' => $autorizadoPor->id,
+                'acao' => 'AUTORIZACAO_DISPOSITIVO_TV',
+                'tabela_afetada' => 'dispositivos_tv',
+                'registro_id' => $dispositivo->id,
+                'ip_address' => $ip ?? '127.0.0.1',
+                'detalhes' => [
+                    'nome' => $dispositivo->nome,
+                    'codigo' => $codNormalizado,
+                    'identificador' => $dispositivo->identificador,
+                ],
+                'created_at' => now(),
+            ]);
 
-        $dispositivo = DispositivoTv::create([
-            'nome' => $nomeFinal,
-            'identificador' => 'tv_'.Str::lower(Str::random(16)),
-            'token_hash' => hash('sha256', Str::random(64)), // Hash provisório até a entrega na finalização
-            'status' => 'ATIVO',
-            'autorizado_por_id' => $autorizadoPor->id,
-            'autorizado_em' => now(),
-            'expira_em' => now()->addYear(),
-            'ip_origem' => $solicitacao->ip_origem ?? $ip,
-            'user_agent' => $solicitacao->user_agent ?? $userAgent,
-        ]);
-
-        $solicitacao->update([
-            'status' => 'APROVADO',
-            'dispositivo_tv_id' => $dispositivo->id,
-        ]);
-
-        LogAuditoria::create([
-            'user_id' => $autorizadoPor->id,
-            'acao' => 'AUTORIZACAO_DISPOSITIVO_TV',
-            'tabela_afetada' => 'dispositivos_tv',
-            'registro_id' => $dispositivo->id,
-            'ip_address' => $ip ?? '127.0.0.1',
-            'detalhes' => [
-                'nome' => $dispositivo->nome,
-                'codigo' => $codNormalizado,
-                'identificador' => $dispositivo->identificador,
-            ],
-            'created_at' => now(),
-        ]);
-
-        return $dispositivo;
+            return $dispositivo;
+        });
     }
 
     /**
@@ -215,15 +245,16 @@ class TvPairingService
     }
 
     /**
-     * Revoga imediatamente um dispositivo autorizado.
+     * Revoga imediatamente e em definitivo um dispositivo autorizado.
+     * Destrói a credencial anterior do banco e limpa o cache.
      */
     public function revogarDispositivo(DispositivoTv $dispositivo, User $usuario): void
     {
         $dispositivo->refresh();
-        $hash = $dispositivo->token_hash;
+        $hashAntigo = $dispositivo->token_hash;
         $dispositivo->revogar($usuario);
 
-        Cache::forget("tv_auth_{$hash}");
+        Cache::forget("tv_auth_{$hashAntigo}");
 
         LogAuditoria::create([
             'user_id' => $usuario->id,
@@ -234,39 +265,81 @@ class TvPairingService
             'detalhes' => [
                 'nome' => $dispositivo->nome,
                 'identificador' => $dispositivo->identificador,
-                'motivo' => 'Revogação manual executada pela Coordenação.',
+                'motivo' => 'Revogação manual definitiva executada pela Coordenação.',
             ],
             'created_at' => now(),
         ]);
     }
 
     /**
-     * Reautoriza um dispositivo que foi previamente revogado.
+     * Reautoriza um televisor previamente revogado, EXIGINDO OBRIGATORIAMENTE um novo pareamento.
+     * A credencial anterior continua permanentemente revogada e uma nova credencial única será emitida.
+     *
+     * @throws ValidationException
      */
-    public function reautorizarDispositivo(DispositivoTv $dispositivo, User $usuario): void
-    {
-        $dispositivo->refresh();
-        $dispositivo->update([
-            'status' => 'ATIVO',
-            'revogado_em' => null,
-            'revogado_por_id' => null,
-            'expira_em' => now()->addYear(),
-        ]);
+    public function reautorizarDispositivo(
+        DispositivoTv $dispositivo,
+        string $novoCodigo,
+        User $usuario,
+        ?string $ip = null,
+        ?string $userAgent = null
+    ): DispositivoTv {
+        $codNormalizado = SolicitacaoPareamentoTv::normalizarCodigo($novoCodigo);
 
-        Cache::forget("tv_auth_{$dispositivo->token_hash}");
+        return DB::transaction(function () use ($dispositivo, $codNormalizado, $usuario, $ip, $userAgent) {
+            $solicitacao = SolicitacaoPareamentoTv::query()
+                ->validas()
+                ->where('codigo', $codNormalizado)
+                ->lockForUpdate()
+                ->first();
 
-        LogAuditoria::create([
-            'user_id' => $usuario->id,
-            'acao' => 'REAUTORIZACAO_DISPOSITIVO_TV',
-            'tabela_afetada' => 'dispositivos_tv',
-            'registro_id' => $dispositivo->id,
-            'ip_address' => request()->ip() ?? '127.0.0.1',
-            'detalhes' => [
-                'nome' => $dispositivo->nome,
-                'identificador' => $dispositivo->identificador,
-            ],
-            'created_at' => now(),
-        ]);
+            if ($solicitacao === null) {
+                throw ValidationException::withMessages([
+                    'tv_codigo_reautorizacao' => 'Código de ativação inválido ou já expirado. Certifique-se de que a TV está na tela de pareamento com este código.',
+                ]);
+            }
+
+            $dispositivo->refresh();
+            $hashAntigo = $dispositivo->token_hash;
+            Cache::forget("tv_auth_{$hashAntigo}");
+
+            // Gera hash provisório novo (substituindo o antigo definitivamente)
+            $novoHashProvisorio = hash('sha256', Str::random(64));
+
+            $dispositivo->update([
+                'token_hash' => $novoHashProvisorio,
+                'status' => 'ATIVO',
+                'revogado_em' => null,
+                'revogado_por_id' => null,
+                'autorizado_por_id' => $usuario->id,
+                'autorizado_em' => now(),
+                'expira_em' => now()->addYear(),
+                'ip_origem' => $solicitacao->ip_origem ?? $ip ?? $dispositivo->ip_origem,
+                'user_agent' => $solicitacao->user_agent ?? $userAgent ?? $dispositivo->user_agent,
+            ]);
+
+            $solicitacao->update([
+                'status' => 'APROVADO',
+                'dispositivo_tv_id' => $dispositivo->id,
+            ]);
+
+            LogAuditoria::create([
+                'user_id' => $usuario->id,
+                'acao' => 'REAUTORIZACAO_DISPOSITIVO_TV',
+                'tabela_afetada' => 'dispositivos_tv',
+                'registro_id' => $dispositivo->id,
+                'ip_address' => $ip ?? request()->ip() ?? '127.0.0.1',
+                'detalhes' => [
+                    'nome' => $dispositivo->nome,
+                    'codigo' => $codNormalizado,
+                    'identificador' => $dispositivo->identificador,
+                    'mensagem' => 'Reautorização concluída com exigência de novo pareamento e descarte da credencial anterior.',
+                ],
+                'created_at' => now(),
+            ]);
+
+            return $dispositivo;
+        });
     }
 
     /**
