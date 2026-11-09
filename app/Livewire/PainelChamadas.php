@@ -8,7 +8,6 @@ use App\Models\ChamadaPainel;
 use App\Models\ConfiguracaoEstabelecimento;
 use App\Services\TvPairingService;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -195,9 +194,7 @@ class PainelChamadas extends Component
 
     protected function obterConfiguracao(): ConfiguracaoEstabelecimento
     {
-        return Cache::remember('configuracao_estabelecimento_painel', 60, function (): ConfiguracaoEstabelecimento {
-            return ConfiguracaoEstabelecimento::atual();
-        });
+        return ConfiguracaoEstabelecimento::atual();
     }
 
     public function render(TvPairingService $pairingService): View
@@ -243,15 +240,12 @@ class PainelChamadas extends Component
         $historico = collect();
 
         if ($ultimoIdHoje > 0) {
-            // Cache leve compartilhado entre todas as TVs conectadas para evitar queries repetidas a cada 4s
-            $dadosChamadas = Cache::remember("painel_tv_payload_chamada_{$ultimoIdHoje}_{$limiteHistorico}", 15, function () use ($ultimoIdHoje, $limiteHistorico, $configuracao) {
-                $atual = ChamadaPainel::query()->find($ultimoIdHoje);
-                if ($atual === null) {
-                    return null;
-                }
-
-                $nomeFormatado = $configuracao->formatarNomePaciente($atual->paciente_nome);
-                $hist = ChamadaPainel::query()
+            $atual = ChamadaPainel::query()->find($ultimoIdHoje);
+            if ($atual !== null) {
+                $chamadaAtual = $atual;
+                $pacienteNomeAtual = $configuracao->formatarNomePaciente($atual->paciente_nome);
+                $textoVoz = "Paciente {$pacienteNomeAtual}, dirigir-se à sala {$atual->sala_nome}";
+                $historico = ChamadaPainel::query()
                     ->doDia()
                     ->where('id', '!=', $atual->id)
                     ->orderByDesc('chamado_em')
@@ -268,21 +262,7 @@ class PainelChamadas extends Component
                             'hora' => $item->chamado_em->format('H:i'),
                             'segundos_atras' => max(0, $item->chamado_em->diffInSeconds(now())),
                         ];
-                    })->all();
-
-                return [
-                    'chamadaAtual' => $atual,
-                    'pacienteNomeAtual' => $nomeFormatado,
-                    'textoVoz' => "Paciente {$nomeFormatado}, dirigir-se à sala {$atual->sala_nome}",
-                    'historico' => $hist,
-                ];
-            });
-
-            if ($dadosChamadas !== null) {
-                $chamadaAtual = $dadosChamadas['chamadaAtual'];
-                $pacienteNomeAtual = $dadosChamadas['pacienteNomeAtual'];
-                $textoVoz = $dadosChamadas['textoVoz'];
-                $historico = collect($dadosChamadas['historico']);
+                    });
 
                 // Dispara evento sonoro e anúncio por voz quando há nova chamada ou repetição
                 if ($chamadaAtual->id !== $this->ultimaChamadaId) {

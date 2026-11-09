@@ -227,13 +227,19 @@ class TvPairingService
 
         $tokenHash = hash('sha256', $tokenCookie);
 
-        // Cache leve de 60 segundos para evitar hits excessivos ao MySQL durante o polling da TV
-        /** @var ?DispositivoTv $dispositivo */
-        $dispositivo = Cache::remember("tv_auth_{$tokenHash}", 60, function () use ($tokenHash) {
+        // Cache leve do ID do dispositivo por 60 segundos evitando a serialização de Modelos Eloquent no cache
+        $dispositivoId = Cache::remember("tv_auth_id_{$tokenHash}", 60, function () use ($tokenHash): ?int {
             return DispositivoTv::query()
                 ->where('token_hash', $tokenHash)
-                ->first();
+                ->value('id');
         });
+
+        if (! $dispositivoId) {
+            return null;
+        }
+
+        /** @var ?DispositivoTv $dispositivo */
+        $dispositivo = DispositivoTv::query()->find($dispositivoId);
 
         if ($dispositivo === null || ! $dispositivo->estaAtivo()) {
             return null;
@@ -255,6 +261,7 @@ class TvPairingService
         $dispositivo->revogar($usuario);
 
         Cache::forget("tv_auth_{$hashAntigo}");
+        Cache::forget("tv_auth_id_{$hashAntigo}");
 
         LogAuditoria::create([
             'user_id' => $usuario->id,
@@ -302,6 +309,7 @@ class TvPairingService
             $dispositivo->refresh();
             $hashAntigo = $dispositivo->token_hash;
             Cache::forget("tv_auth_{$hashAntigo}");
+            Cache::forget("tv_auth_id_{$hashAntigo}");
 
             // Gera hash provisório novo (substituindo o antigo definitivamente)
             $novoHashProvisorio = hash('sha256', Str::random(64));
@@ -378,6 +386,7 @@ class TvPairingService
         $dispositivo->refresh();
         $hash = $dispositivo->token_hash;
         Cache::forget("tv_auth_{$hash}");
+        Cache::forget("tv_auth_id_{$hash}");
 
         LogAuditoria::create([
             'user_id' => $usuario->id,

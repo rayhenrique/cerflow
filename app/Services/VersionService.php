@@ -44,6 +44,19 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.19.1',
+                'data' => '09/11/2026',
+                'titulo' => 'Correção do Painel de Chamadas e Eliminação de Serialização no Cache',
+                'tipo' => 'Correção e Confiabilidade',
+                'destaques' => [
+                    'Eliminação definitiva do erro HTTP 500 no carregamento inicial e polling do Painel de Chamadas da Smart TV.',
+                    'Remoção de serialização de models Eloquent no cache persistente (prevenção de __PHP_Incomplete_Class em drivers database/file/redis).',
+                    'Otimização do cache de autenticação de Smart TV armazenando exclusivamente identificadores escalares.',
+                    'Preservação do estado de revogação para apresentação da tela informativa de televisor não autorizado sem vazamento de dados.',
+                    'Nova suíte de testes de diagnóstico cobrindo 100% dos 10 cenários operacionais e teste de regressão de cache.',
+                ],
+            ],
+            [
                 'versao' => '1.19.0',
                 'data' => '09/11/2026',
                 'titulo' => 'Agenda Operacional Unificada e Fila Automática no PEP',

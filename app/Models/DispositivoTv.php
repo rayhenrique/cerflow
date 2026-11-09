@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Str;
 
 class DispositivoTv extends Model
 {
@@ -90,7 +89,6 @@ class DispositivoTv extends Model
     {
         $this->update([
             'status' => 'REVOGADO',
-            'token_hash' => hash('sha256', 'REVOGADO_'.Str::random(64)),
             'revogado_em' => now(),
             'revogado_por_id' => $usuario->id,
         ]);
