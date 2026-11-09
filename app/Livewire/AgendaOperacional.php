@@ -54,13 +54,20 @@ class AgendaOperacional extends Component
     public string $filtroSalaGrade = '';
 
     // --- Aba Mapa Mensal ---
+    #[Url]
     public int $mes = 0;
 
+    #[Url]
     public int $ano = 0;
 
+    #[Url(as: 'esp_mensal')]
     public string $filtroEspecialidadeMensal = '';
 
+    #[Url(as: 'prof_mensal')]
     public string $filtroProfissionalIdMensal = '';
+
+    #[Url(as: 'turno_mensal')]
+    public string $filtroTurnoMensal = '';
 
     // --- Modal Novo Agendamento ---
     public bool $modalNovoAgendamentoAberto = false;
@@ -133,8 +140,20 @@ class AgendaOperacional extends Component
         $this->diaSemana = $mapaDiaSemana[$parsedData->dayOfWeekIso] ?? 'SEGUNDA';
         $this->semanaInicio = $parsedData->startOfWeek(CarbonImmutable::MONDAY)->toDateString();
 
-        $this->mes = (int) $parsedData->format('n');
-        $this->ano = (int) $parsedData->format('Y');
+        $mesQuery = (int) request()->query('mes', $this->mes);
+        $anoQuery = (int) request()->query('ano', $this->ano);
+
+        if ($mesQuery >= 1 && $mesQuery <= 12) {
+            $this->mes = $mesQuery;
+        } else {
+            $this->mes = (int) $parsedData->format('n');
+        }
+
+        if ($anoQuery >= 2000 && $anoQuery <= 2100) {
+            $this->ano = $anoQuery;
+        } else {
+            $this->ano = (int) $parsedData->format('Y');
+        }
 
         $this->novo_data = $this->data;
         $this->novo_dia_semana = $this->diaSemana;
@@ -634,11 +653,38 @@ class AgendaOperacional extends Component
         $this->ano = (int) $hoje->format('Y');
     }
 
-    public function selecionarDiaDoMes(string $dataStr): void
+    public function selecionarDiaDoMes(string $dataStr, string $destinoAba = 'dia'): void
     {
         $this->data = $dataStr;
         $this->sincronizarDataComGradeEMensal(CarbonImmutable::parse($dataStr));
-        $this->aba = 'dia';
+        $this->definirAba(in_array($destinoAba, ['dia', 'grade'], true) ? $destinoAba : 'dia');
+    }
+
+    public function limparFiltrosMensal(): void
+    {
+        $this->filtroEspecialidadeMensal = '';
+        $this->filtroProfissionalIdMensal = '';
+        $this->filtroTurnoMensal = '';
+    }
+
+    public function nomeMesPtBr(int $mes): string
+    {
+        $nomes = [
+            1 => 'Janeiro',
+            2 => 'Fevereiro',
+            3 => 'Março',
+            4 => 'Abril',
+            5 => 'Maio',
+            6 => 'Junho',
+            7 => 'Julho',
+            8 => 'Agosto',
+            9 => 'Setembro',
+            10 => 'Outubro',
+            11 => 'Novembro',
+            12 => 'Dezembro',
+        ];
+
+        return $nomes[$mes] ?? 'Mês '.$mes;
     }
 
     // --- Render Principal ---
@@ -649,77 +695,94 @@ class AgendaOperacional extends Component
         $salas = Sala::query()->ativas()->orderBy('nome')->get(['id', 'nome']);
         $profissionais = Profissional::query()->ativos()->orderBy('nome')->get(['id', 'nome', 'especialidade', 'cbo_padrao']);
 
-        // 1. Dados da Agenda do Dia
-        $agendamentosDiaTodos = Agendamento::query()
-            ->with([
-                'paciente:id,nome,cns,cpf,data_nascimento,cid_principal',
-                'sala:id,nome',
-                'profissionais:id,nome,especialidade',
-                'evolucoes:id,agendamento_id,profissional_id,assinado_em',
-                'chamadas',
-            ])
-            ->whereDate('data_atendimento', $this->data)
-            ->orderBy('hora_inicio')
-            ->get();
-
-        // Contadores Globais do Dia
+        // 1. Dados da Agenda do Dia (carregados EXCLUSIVAMENTE se aba ativa for 'dia')
+        $agendamentosDiaTodos = collect();
+        $agendamentosDiaFiltrados = collect();
         $contadoresDia = [
-            'total' => $agendamentosDiaTodos->count(),
-            'agendados' => $agendamentosDiaTodos->where('status', 'AGENDADO')->count(),
-            'presentes' => $agendamentosDiaTodos->where('status', 'PRESENTE')->count(),
-            'atendidos' => $agendamentosDiaTodos->where('status', 'ATENDIDO')->count(),
-            'faltas' => $agendamentosDiaTodos->whereIn('status', ['FALTA_JUSTIFICADA', 'FALTA_INJUSTIFICADA'])->count(),
-            'cancelados' => $agendamentosDiaTodos->where('status', 'CANCELADO')->count(),
-            'manha' => $agendamentosDiaTodos->filter(fn ($ag) => $ag->hora_inicio >= '07:00' && $ag->hora_inicio < '13:00')->count(),
-            'tarde' => $agendamentosDiaTodos->filter(fn ($ag) => $ag->hora_inicio >= '13:00' && $ag->hora_inicio < '18:00')->count(),
-            'noite' => $agendamentosDiaTodos->filter(fn ($ag) => $ag->hora_inicio >= '18:00' && $ag->hora_inicio <= '22:00')->count(),
+            'total' => 0,
+            'agendados' => 0,
+            'presentes' => 0,
+            'atendidos' => 0,
+            'faltas' => 0,
+            'cancelados' => 0,
+            'manha' => 0,
+            'tarde' => 0,
+            'noite' => 0,
         ];
+        $alertasAbsenteismo = [];
 
-        // Filtros da Agenda do Dia
-        $agendamentosDiaFiltrados = $agendamentosDiaTodos->filter(function (Agendamento $ag): bool {
-            // Filtro por Período
-            if ($this->periodo === 'MANHA') {
-                if ($ag->hora_inicio < '07:00' || $ag->hora_inicio >= '13:00') {
-                    return false;
-                }
-            } elseif ($this->periodo === 'TARDE') {
-                if ($ag->hora_inicio < '13:00' || $ag->hora_inicio >= '18:00') {
-                    return false;
-                }
-            } elseif ($this->periodo === 'NOITE') {
-                if ($ag->hora_inicio < '18:00' || $ag->hora_inicio > '22:00') {
-                    return false;
-                }
-            }
+        if ($this->aba === 'dia') {
+            $agendamentosDiaTodos = Agendamento::query()
+                ->with([
+                    'paciente:id,nome,cns,cpf,data_nascimento,cid_principal',
+                    'sala:id,nome',
+                    'profissionais:id,nome,especialidade',
+                    'evolucoes:id,agendamento_id,profissional_id,assinado_em',
+                    'chamadas',
+                ])
+                ->whereDate('data_atendimento', $this->data)
+                ->orderBy('hora_inicio')
+                ->get();
 
-            // Filtro por Profissional
-            if ($this->filtroProfissionalId !== '') {
-                $profId = (int) $this->filtroProfissionalId;
-                if (! $ag->profissionais->contains('id', $profId)) {
-                    return false;
+            // Contadores Globais do Dia
+            $contadoresDia = [
+                'total' => $agendamentosDiaTodos->count(),
+                'agendados' => $agendamentosDiaTodos->where('status', 'AGENDADO')->count(),
+                'presentes' => $agendamentosDiaTodos->where('status', 'PRESENTE')->count(),
+                'atendidos' => $agendamentosDiaTodos->where('status', 'ATENDIDO')->count(),
+                'faltas' => $agendamentosDiaTodos->whereIn('status', ['FALTA_JUSTIFICADA', 'FALTA_INJUSTIFICADA'])->count(),
+                'cancelados' => $agendamentosDiaTodos->where('status', 'CANCELADO')->count(),
+                'manha' => $agendamentosDiaTodos->filter(fn ($ag) => $ag->hora_inicio >= '07:00' && $ag->hora_inicio < '13:00')->count(),
+                'tarde' => $agendamentosDiaTodos->filter(fn ($ag) => $ag->hora_inicio >= '13:00' && $ag->hora_inicio < '18:00')->count(),
+                'noite' => $agendamentosDiaTodos->filter(fn ($ag) => $ag->hora_inicio >= '18:00' && $ag->hora_inicio <= '22:00')->count(),
+            ];
+
+            // Filtros da Agenda do Dia
+            $agendamentosDiaFiltrados = $agendamentosDiaTodos->filter(function (Agendamento $ag): bool {
+                // Filtro por Período
+                if ($this->periodo === 'MANHA') {
+                    if ($ag->hora_inicio < '07:00' || $ag->hora_inicio >= '13:00') {
+                        return false;
+                    }
+                } elseif ($this->periodo === 'TARDE') {
+                    if ($ag->hora_inicio < '13:00' || $ag->hora_inicio >= '18:00') {
+                        return false;
+                    }
+                } elseif ($this->periodo === 'NOITE') {
+                    if ($ag->hora_inicio < '18:00' || $ag->hora_inicio > '22:00') {
+                        return false;
+                    }
                 }
-            }
 
-            // Filtro por Sala
-            if ($this->filtroSalaId !== '') {
-                if ((int) $ag->sala_id !== (int) $this->filtroSalaId) {
-                    return false;
+                // Filtro por Profissional
+                if ($this->filtroProfissionalId !== '') {
+                    $profId = (int) $this->filtroProfissionalId;
+                    if (! $ag->profissionais->contains('id', $profId)) {
+                        return false;
+                    }
                 }
-            }
 
-            // Filtro por Status
-            if ($this->filtroStatus !== '') {
-                if ($ag->status !== $this->filtroStatus) {
-                    return false;
+                // Filtro por Sala
+                if ($this->filtroSalaId !== '') {
+                    if ((int) $ag->sala_id !== (int) $this->filtroSalaId) {
+                        return false;
+                    }
                 }
-            }
 
-            return true;
-        })->values();
+                // Filtro por Status
+                if ($this->filtroStatus !== '') {
+                    if ($ag->status !== $this->filtroStatus) {
+                        return false;
+                    }
+                }
 
-        // Alertas de absenteísmo em lote para evitar N+1
-        $pacientesIds = $agendamentosDiaFiltrados->pluck('paciente_id')->unique()->filter()->map(fn ($id): int => (int) $id)->values()->all();
-        $alertasAbsenteismo = $agendamentoService->verificarAlertasAbsenteismoEmLote($pacientesIds);
+                return true;
+            })->values();
+
+            // Alertas de absenteísmo em lote para evitar N+1
+            $pacientesIds = $agendamentosDiaFiltrados->pluck('paciente_id')->unique()->filter()->map(fn ($id): int => (int) $id)->values()->all();
+            $alertasAbsenteismo = $agendamentoService->verificarAlertasAbsenteismoEmLote($pacientesIds);
+        }
 
         // 2. Dados da Aba Grade Semanal
         $gradeIndexada = [];
@@ -786,22 +849,16 @@ class AgendaOperacional extends Component
                     $gradeSemanaCompleta[$dataStr][$horaSlot][] = $ag;
                 }
             } else {
-                $agendamentosGrade = Agendamento::query()
+                $queryGrade = Agendamento::query()
                     ->with(['paciente:id,nome', 'profissionais:id,nome', 'sala:id,nome'])
-                    ->where(function ($q) use ($dataRefGrade, $semanaInicioCarbon, $semanaFimCarbon): void {
-                        $q->whereDate('data_atendimento', $dataRefGrade)
-                            ->orWhere(function ($sub) use ($semanaInicioCarbon, $semanaFimCarbon): void {
-                                $sub->where('dia_semana', $this->diaSemana)
-                                    ->whereBetween('data_atendimento', [
-                                        $semanaInicioCarbon->toDateString(),
-                                        $semanaFimCarbon->toDateString(),
-                                    ]);
-                            });
-                    })
-                    ->where('status', '!=', 'CANCELADO')
-                    ->get();
+                    ->whereDate('data_atendimento', $dataRefGrade)
+                    ->where('status', '!=', 'CANCELADO');
 
-                foreach ($agendamentosGrade as $ag) {
+                if ($this->filtroSalaGrade !== '') {
+                    $queryGrade->where('sala_id', (int) $this->filtroSalaGrade);
+                }
+
+                foreach ($queryGrade->get() as $ag) {
                     $horaSlot = substr((string) $ag->hora_inicio, 0, 5);
                     $gradeIndexada[$ag->sala_id][$horaSlot][] = $ag;
                 }
@@ -809,10 +866,26 @@ class AgendaOperacional extends Component
         }
 
         // 3. Dados da Aba Mapa Mensal
-        $diasCalendarioMensal = collect();
+        $metricasMes = [
+            'total' => 0,
+            'realizados' => 0,
+            'agendados' => 0,
+            'faltas' => 0,
+            'faltasJustificadas' => 0,
+            'faltasInjustificadas' => 0,
+            'cancelados' => 0,
+            'diasComAgenda' => 0,
+            'mediaDiaria' => 0.0,
+            'taxaComparecimento' => 0,
+            'taxaAbsenteismo' => 0,
+        ];
+        $diasCalendarioMensal = [];
+        $especialidadesDisponiveis = collect();
+        $profissionaisDisponiveisMensal = collect();
+        $inicioMes = CarbonImmutable::create($this->ano, $this->mes, 1)->startOfMonth();
+        $fimMes = $inicioMes->endOfMonth();
+
         if ($this->aba === 'mensal') {
-            $inicioMes = CarbonImmutable::create($this->ano, $this->mes, 1)->startOfMonth();
-            $fimMes = $inicioMes->endOfMonth();
             $inicioCalendario = $inicioMes->startOfWeek(CarbonImmutable::MONDAY);
             $fimCalendario = $fimMes->endOfWeek(CarbonImmutable::SUNDAY);
 
@@ -826,32 +899,43 @@ class AgendaOperacional extends Component
             }
 
             if ($this->filtroProfissionalIdMensal !== '') {
-                $queryMensal->whereHas('profissionais', function ($q): void {
-                    $q->where('profissionais.id', (int) $this->filtroProfissionalIdMensal);
+                $profId = (int) $this->filtroProfissionalIdMensal;
+                $queryMensal->whereHas('profissionais', function ($q) use ($profId): void {
+                    $q->where('profissionais.id', $profId);
                 });
             }
 
-            $agendamentosDoMes = $queryMensal->get(['id', 'data_atendimento', 'status', 'tipo_atendimento']);
-            $agrupadosPorDia = $agendamentosDoMes->groupBy(fn ($ag) => $ag->data_atendimento->toDateString());
-
-            $cursor = $inicioCalendario;
-            while ($cursor->lessThanOrEqualTo($fimCalendario)) {
-                $diaStr = $cursor->toDateString();
-                $doDia = $agrupadosPorDia->get($diaStr, collect());
-
-                $diasCalendarioMensal->push([
-                    'data' => $diaStr,
-                    'dia_numero' => (int) $cursor->format('j'),
-                    'no_mes_atual' => $cursor->month === $this->mes,
-                    'eh_hoje' => $cursor->isToday(),
-                    'total' => $doDia->count(),
-                    'presentes' => $doDia->where('status', 'PRESENTE')->count(),
-                    'atendidos' => $doDia->where('status', 'ATENDIDO')->count(),
-                    'faltas' => $doDia->whereIn('status', ['FALTA_JUSTIFICADA', 'FALTA_INJUSTIFICADA'])->count(),
-                ]);
-
-                $cursor = $cursor->addDay();
+            if ($this->filtroTurnoMensal === 'MANHA') {
+                $queryMensal->whereTime('hora_inicio', '<', '12:00:00');
+            } elseif ($this->filtroTurnoMensal === 'TARDE') {
+                $queryMensal->whereTime('hora_inicio', '>=', '12:00:00');
             }
+
+            $agendamentosMes = $queryMensal->get([
+                'id',
+                'data_atendimento',
+                'hora_inicio',
+                'hora_fim',
+                'status',
+                'tipo_atendimento',
+                'sala_id',
+            ]);
+
+            $metricasMes = $agendamentoService->calcularMetricasMes($agendamentosMes, $inicioMes, $fimMes);
+            $diasCalendarioMensal = $agendamentoService->montarDiasCalendario($agendamentosMes, $inicioCalendario, $fimCalendario, $this->mes);
+
+            $especialidadesDisponiveis = Profissional::query()
+                ->ativos()
+                ->whereNotNull('especialidade')
+                ->where('especialidade', '!=', '')
+                ->distinct()
+                ->orderBy('especialidade')
+                ->pluck('especialidade');
+
+            $profissionaisDisponiveisMensal = Profissional::query()
+                ->ativos()
+                ->orderBy('nome')
+                ->get(['id', 'nome', 'especialidade']);
         }
 
         return view('livewire.agenda-operacional', [
@@ -867,7 +951,13 @@ class AgendaOperacional extends Component
             'semanaFimCarbon' => $semanaFimCarbon,
             'slotsGrade' => $this->obterSlotsHorarioGrade(),
             'dataRefGrade' => $dataRefGrade,
+            'metricasMes' => $metricasMes,
             'diasCalendarioMensal' => $diasCalendarioMensal,
+            'especialidadesDisponiveis' => $especialidadesDisponiveis,
+            'profissionaisDisponiveisMensal' => $profissionaisDisponiveisMensal,
+            'mesNome' => $this->nomeMesPtBr($this->mes),
+            'inicioMes' => $inicioMes,
+            'fimMes' => $fimMes,
             'pacientesResultados' => $this->modalNovoAgendamentoAberto ? $this->buscarPacientes() : [],
         ]);
     }

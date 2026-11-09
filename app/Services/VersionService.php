@@ -44,6 +44,19 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.19.3',
+                'data' => '09/11/2026',
+                'titulo' => 'Consolidação da Agenda Operacional e Precisão nos Agendamentos',
+                'tipo' => 'Correções e Praticidade',
+                'destaques' => [
+                    'Correções: Cada paciente agendado agora aparece estritamente no dia correto da semana. Agendamentos de quarta-feira não aparecem mais na segunda-feira.',
+                    'Melhorias: A navegação da agenda foi unificada em um único local no menu, permitindo alternar entre o dia, a semana e o mês com apenas um clique.',
+                    'Melhorias: O Mapa Mensal agora conta com painéis informativos de atendimentos realizados, faltas e dias com agenda ativa, além de filtros por especialidade, profissional e turno.',
+                    'Melhorias: Ao cadastrar um novo horário na visão de semana completa, você pode escolher a sala desejada com total liberdade, sem seleções automáticas.',
+                    'Melhorias: Navegação mais rápida e ágil ao alternar entre os dias e meses de atendimento.',
+                ],
+            ],
+            [
                 'versao' => '1.19.2',
                 'data' => '09/11/2026',
                 'titulo' => 'Navegação por Dias na Grade Semanal e Visualização Completa',

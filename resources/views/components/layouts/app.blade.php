@@ -96,14 +96,7 @@
                                 <span>Agenda Operacional</span>
                             </a>
 
-                            <div class="pl-8 pr-2 py-0.5 space-y-0.5 text-xs">
-                                <a href="{{ route('agenda.mensal') }}"
-                                   @click="mobileMenuOpen = false"
-                                   class="flex items-center gap-2 py-1 px-2 rounded font-medium transition {{ request()->routeIs('agenda.mensal') ? 'text-teal-400 font-semibold' : 'text-slate-400 hover:text-white' }}">
-                                    <span class="text-[10px]">🗓</span>
-                                    <span>Mapa Mensal</span>
-                                </a>
-                            </div>
+
                         @endif
 
                         @if(auth()->user()->hasAnyRole(['recepcao', 'terapeuta', 'coordenacao']))
@@ -339,14 +332,7 @@
                             <span x-show="!sidebarCollapsed" class="truncate">Agenda Operacional</span>
                         </a>
 
-                        <div x-show="!sidebarCollapsed" class="pl-8 pr-2 py-0.5 space-y-0.5 text-xs">
-                            <a href="{{ route('agenda.mensal') }}"
-                               title="Mapa Mensal da Agenda"
-                               class="flex items-center gap-2 py-1 px-2 rounded font-medium transition {{ request()->routeIs('agenda.mensal') ? 'text-teal-400 font-semibold' : 'text-slate-400 hover:text-white' }}">
-                                <span class="text-[10px]">🗓</span>
-                                <span>Mapa Mensal</span>
-                            </a>
-                        </div>
+
                     @endif
 
                     @if(auth()->user()->hasAnyRole(['recepcao', 'terapeuta', 'coordenacao']))

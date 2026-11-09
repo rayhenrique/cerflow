@@ -2,16 +2,14 @@
 
 declare(strict_types=1);
 
-use App\Livewire\AgendaMensal;
 use App\Livewire\AgendaOperacional;
 use App\Livewire\AjudaSobre;
 use App\Livewire\ConfiguracoesSistema;
 use App\Livewire\DashboardInicial;
 use App\Livewire\FaturamentoBpai;
-use App\Livewire\GradeSemanal;
 use App\Livewire\PainelChamadas;
 use App\Livewire\ProntuarioPaciente;
-use App\Livewire\RecepcaoCheckin;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard');
@@ -28,17 +26,27 @@ Route::middleware(['auth'])->group(function (): void {
         ->middleware('role:recepcao|terapeuta|faturamento|coordenacao')
         ->name('agenda.operacional');
 
-    Route::get('/grade', GradeSemanal::class)
-        ->middleware('role:recepcao|terapeuta|faturamento|coordenacao')
-        ->name('grade.semanal');
+    // Redirecionamentos autenticados para consolidação da Agenda Operacional
+    Route::get('/grade', function (Request $request) {
+        $params = $request->query();
+        $params['aba'] = 'grade';
 
-    Route::get('/agenda/mensal', AgendaMensal::class)
-        ->middleware('role:recepcao|terapeuta|faturamento|coordenacao')
-        ->name('agenda.mensal');
+        return redirect()->route('agenda.operacional', $params);
+    })->middleware('role:recepcao|terapeuta|faturamento|coordenacao')->name('grade.semanal');
 
-    Route::get('/recepcao', RecepcaoCheckin::class)
-        ->middleware('role:recepcao|terapeuta|coordenacao')
-        ->name('recepcao.checkin');
+    Route::get('/agenda/mensal', function (Request $request) {
+        $params = $request->query();
+        $params['aba'] = 'mensal';
+
+        return redirect()->route('agenda.operacional', $params);
+    })->middleware('role:recepcao|terapeuta|faturamento|coordenacao')->name('agenda.mensal');
+
+    Route::get('/recepcao', function (Request $request) {
+        $params = $request->query();
+        $params['aba'] = 'dia';
+
+        return redirect()->route('agenda.operacional', $params);
+    })->middleware('role:recepcao|terapeuta|coordenacao')->name('recepcao.checkin');
 
     Route::get('/prontuario/{paciente?}', ProntuarioPaciente::class)
         ->middleware(['role:terapeuta|coordenacao', 'audit.access:ACESSO_PEP'])

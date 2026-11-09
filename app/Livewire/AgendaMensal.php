@@ -6,9 +6,9 @@ namespace App\Livewire;
 
 use App\Models\Agendamento;
 use App\Models\Profissional;
+use App\Services\AgendamentoService;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -79,7 +79,7 @@ class AgendaMensal extends Component
         $this->filtroTurno = '';
     }
 
-    public function render(): View
+    public function render(AgendamentoService $agendamentoService): View
     {
         Gate::authorize('viewAny', Agendamento::class);
 
@@ -123,8 +123,8 @@ class AgendaMensal extends Component
             'sala_id',
         ]);
 
-        $metricasMes = $this->calcularMetricasMes($agendamentos, $inicioMes, $fimMes);
-        $diasCalendario = $this->montarDiasCalendario($agendamentos, $inicioCalendario, $fimCalendario);
+        $metricasMes = $agendamentoService->calcularMetricasMes($agendamentos, $inicioMes, $fimMes);
+        $diasCalendario = $agendamentoService->montarDiasCalendario($agendamentos, $inicioCalendario, $fimCalendario, $this->mes);
 
         $especialidadesDisponiveis = Profissional::query()
             ->ativos()
@@ -148,128 +148,6 @@ class AgendaMensal extends Component
             'especialidadesDisponiveis' => $especialidadesDisponiveis,
             'profissionaisDisponiveis' => $profissionaisDisponiveis,
         ]);
-    }
-
-    /**
-     * @param  Collection<int, Agendamento>  $agendamentos
-     * @return array{
-     *     total: int,
-     *     realizados: int,
-     *     agendados: int,
-     *     faltas: int,
-     *     faltasJustificadas: int,
-     *     faltasInjustificadas: int,
-     *     cancelados: int,
-     *     diasComAgenda: int,
-     *     mediaDiaria: float,
-     *     taxaComparecimento: int,
-     *     taxaAbsenteismo: int
-     * }
-     */
-    private function calcularMetricasMes(Collection $agendamentos, CarbonImmutable $inicioMes, CarbonImmutable $fimMes): array
-    {
-        $agendamentosMes = $agendamentos->filter(function (Agendamento $a) use ($inicioMes, $fimMes): bool {
-            return $a->data_atendimento !== null && $a->data_atendimento->betweenIncluded($inicioMes, $fimMes);
-        });
-
-        $ativosMes = $agendamentosMes->where('status', '!=', 'CANCELADO');
-        $total = $ativosMes->count();
-        $realizados = $ativosMes->whereIn('status', ['PRESENTE', 'ATENDIDO'])->count();
-        $faltasJustificadas = $ativosMes->where('status', 'FALTA_JUSTIFICADA')->count();
-        $faltasInjustificadas = $ativosMes->where('status', 'FALTA_INJUSTIFICADA')->count();
-        $faltas = $faltasJustificadas + $faltasInjustificadas;
-        $agendados = $ativosMes->where('status', 'AGENDADO')->count();
-        $cancelados = $agendamentosMes->where('status', 'CANCELADO')->count();
-
-        $diasComAgenda = $ativosMes->pluck('data_atendimento')
-            ->map(fn ($d) => $d->toDateString())
-            ->unique()
-            ->count();
-
-        $mediaDiaria = $diasComAgenda > 0 ? round($total / $diasComAgenda, 1) : 0.0;
-
-        $concluidos = $realizados + $faltas;
-        $taxaComparecimento = $concluidos > 0 ? (int) round(($realizados / $concluidos) * 100) : 0;
-        $taxaAbsenteismo = $concluidos > 0 ? (int) round(($faltas / $concluidos) * 100) : 0;
-
-        return [
-            'total' => $total,
-            'realizados' => $realizados,
-            'agendados' => $agendados,
-            'faltas' => $faltas,
-            'faltasJustificadas' => $faltasJustificadas,
-            'faltasInjustificadas' => $faltasInjustificadas,
-            'cancelados' => $cancelados,
-            'diasComAgenda' => $diasComAgenda,
-            'mediaDiaria' => $mediaDiaria,
-            'taxaComparecimento' => $taxaComparecimento,
-            'taxaAbsenteismo' => $taxaAbsenteismo,
-        ];
-    }
-
-    /**
-     * @param  Collection<int, Agendamento>  $agendamentos
-     * @return array<int, array{
-     *     data: string,
-     *     dia: int,
-     *     diaSemana: int,
-     *     ehMesAtual: bool,
-     *     ehHoje: bool,
-     *     ehFimDeSemana: bool,
-     *     total: int,
-     *     realizados: int,
-     *     agendados: int,
-     *     faltas: int,
-     *     cancelados: int,
-     *     nivelIntensidade: int
-     * }>
-     */
-    private function montarDiasCalendario(Collection $agendamentos, CarbonImmutable $inicioCalendario, CarbonImmutable $fimCalendario): array
-    {
-        $agrupadosPorData = $agendamentos->groupBy(fn (Agendamento $a) => $a->data_atendimento?->format('Y-m-d') ?? '');
-
-        $dias = [];
-        $cursor = $inicioCalendario;
-
-        while ($cursor->lte($fimCalendario)) {
-            $dataStr = $cursor->toDateString();
-            $itensDia = $agrupadosPorData->get($dataStr, collect());
-            $ativosDia = $itensDia->where('status', '!=', 'CANCELADO');
-
-            $totalDia = $ativosDia->count();
-            $realizadosDia = $ativosDia->whereIn('status', ['PRESENTE', 'ATENDIDO'])->count();
-            $agendadosDia = $ativosDia->where('status', 'AGENDADO')->count();
-            $faltasDia = $ativosDia->whereIn('status', ['FALTA_JUSTIFICADA', 'FALTA_INJUSTIFICADA'])->count();
-            $canceladosDia = $itensDia->where('status', 'CANCELADO')->count();
-
-            $nivelIntensidade = 0;
-            if ($totalDia > 25) {
-                $nivelIntensidade = 3;
-            } elseif ($totalDia > 10) {
-                $nivelIntensidade = 2;
-            } elseif ($totalDia > 0) {
-                $nivelIntensidade = 1;
-            }
-
-            $dias[] = [
-                'data' => $dataStr,
-                'dia' => (int) $cursor->format('j'),
-                'diaSemana' => $cursor->dayOfWeekIso,
-                'ehMesAtual' => $cursor->month === $this->mes,
-                'ehHoje' => $cursor->isToday(),
-                'ehFimDeSemana' => $cursor->isWeekend(),
-                'total' => $totalDia,
-                'realizados' => $realizadosDia,
-                'agendados' => $agendadosDia,
-                'faltas' => $faltasDia,
-                'cancelados' => $canceladosDia,
-                'nivelIntensidade' => $nivelIntensidade,
-            ];
-
-            $cursor = $cursor->addDay();
-        }
-
-        return $dias;
     }
 
     private function nomeMesPtBr(int $mes): string

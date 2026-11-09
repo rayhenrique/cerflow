@@ -70,7 +70,7 @@ class GradeSemanal extends Component
                     5 => 'SEXTA',
                 ];
                 $this->diaSemana = $mapa[$parsed->dayOfWeekIso] ?? 'SEGUNDA';
-                $this->semanaInicio = $parsed->startOfWeek()->toDateString();
+                $this->semanaInicio = $parsed->startOfWeek(CarbonImmutable::MONDAY)->toDateString();
                 $this->dataReferencia = $parsed->toDateString();
 
                 if (request()->boolean('novo')) {
@@ -92,7 +92,7 @@ class GradeSemanal extends Component
             5 => 'SEXTA',
         ];
         $this->diaSemana = $mapa[$hoje->dayOfWeekIso] ?? 'SEGUNDA';
-        $this->semanaInicio = $hoje->startOfWeek()->toDateString();
+        $this->semanaInicio = $hoje->startOfWeek(CarbonImmutable::MONDAY)->toDateString();
         $this->dataReferencia = $this->calcularDataDoDiaDaSemana($this->diaSemana);
 
         if (request()->boolean('novo')) {
@@ -313,7 +313,7 @@ class GradeSemanal extends Component
             'SEXTA' => 5,
         ];
         $isoTarget = $mapaIso[$diaSemana] ?? 1;
-        $base = $this->semanaInicio !== null ? CarbonImmutable::parse($this->semanaInicio) : CarbonImmutable::now()->startOfWeek();
+        $base = $this->semanaInicio !== null ? CarbonImmutable::parse($this->semanaInicio)->startOfWeek(CarbonImmutable::MONDAY) : CarbonImmutable::now()->startOfWeek(CarbonImmutable::MONDAY);
 
         return $base->addDays($isoTarget - 1)->toDateString();
     }

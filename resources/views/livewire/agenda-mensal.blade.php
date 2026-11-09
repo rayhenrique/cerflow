@@ -1,22 +1,4 @@
 <div class="space-y-5 sm:space-y-6">
-    <!-- Sub-abas de Navegação da Agenda (Grade Operacional vs Mapa Mensal) -->
-    <div class="flex items-center gap-2 border-b border-slate-200">
-        <a href="{{ route('grade.semanal') }}"
-           class="inline-flex items-center gap-2 border-b-2 border-transparent px-4 py-2.5 text-xs sm:text-sm font-medium text-slate-500 hover:border-slate-300 hover:text-slate-700 transition">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12"/>
-            </svg>
-            <span>Visualização Diária (Operacional)</span>
-        </a>
-        <a href="{{ route('agenda.mensal') }}"
-           class="inline-flex items-center gap-2 border-b-2 border-teal-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-teal-700 transition">
-            <svg class="h-4 w-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm3-3h.008v.008H15V12zm0 3h.008v.008H15V15zm-6-3h.008v.008H9V12zm0 3h.008v.008H9V15z"/>
-            </svg>
-            <span>Mapa Mensal (Gestão & Ocupação)</span>
-        </a>
-    </div>
-
     <!-- Cabeçalho Principal com Título e Ações Rápidas -->
     <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs">
         <div class="flex items-start gap-3">

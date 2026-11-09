@@ -54,10 +54,10 @@ class AgendaMensalTest extends TestCase
 
         $usuarioSemPermissao = User::factory()->create(['ativo' => true]);
 
-        $this->actingAs($coordenador)->get('/agenda/mensal')->assertOk();
-        $this->actingAs($recepcao)->get('/agenda/mensal')->assertOk();
-        $this->actingAs($terapeuta)->get('/agenda/mensal')->assertOk();
-        $this->actingAs($faturamento)->get('/agenda/mensal')->assertOk();
+        $this->actingAs($coordenador)->get('/agenda/mensal')->assertRedirect('/agenda?aba=mensal');
+        $this->actingAs($recepcao)->get('/agenda/mensal')->assertRedirect('/agenda?aba=mensal');
+        $this->actingAs($terapeuta)->get('/agenda/mensal')->assertRedirect('/agenda?aba=mensal');
+        $this->actingAs($faturamento)->get('/agenda/mensal')->assertRedirect('/agenda?aba=mensal');
         $this->actingAs($usuarioSemPermissao)->get('/agenda/mensal')->assertForbidden();
     }
 
@@ -66,15 +66,15 @@ class AgendaMensalTest extends TestCase
         $coordenador = User::factory()->create(['ativo' => true]);
         $coordenador->assignRole('coordenacao');
 
-        $response = $this->actingAs($coordenador)->get('/agenda/mensal');
+        $response = $this->actingAs($coordenador)->followingRedirects()->get('/agenda/mensal');
         $response->assertOk();
-        $response->assertSee('Mapa Mensal da Agenda');
+        $response->assertSee('Mapa Mensal');
         $response->assertSee('Volume de Agendamentos');
         $response->assertSee('Atendimentos Realizados');
         $response->assertSee('Faltas &amp; Absenteísmo', false);
         $response->assertSee('Dias com Agenda');
         $response->assertSee('Visualização Diária (Operacional)');
-        $response->assertSee('Grade Operacional');
+        $response->assertSee('Grade Semanal (Planejamento)');
     }
 
     public function test_agendamentos_cancelados_sao_excluidos_dos_totais_ativos(): void
@@ -360,7 +360,7 @@ class AgendaMensalTest extends TestCase
             'recorrente' => false,
         ]);
 
-        $response = $this->actingAs($coordenador)->get('/agenda/mensal?mes=11&ano=2026');
+        $response = $this->actingAs($coordenador)->followingRedirects()->get('/agenda/mensal?mes=11&ano=2026');
 
         $response->assertOk();
         // Não deve exibir dados sensíveis do paciente no mapa gerencial
@@ -375,7 +375,7 @@ class AgendaMensalTest extends TestCase
         $coordenador->assignRole('coordenacao');
 
         // Ao abrir a grade semanal com data específica de quarta-feira (18/11/2026)
-        $response = $this->actingAs($coordenador)->get('/grade?data=2026-11-18');
+        $response = $this->actingAs($coordenador)->followingRedirects()->get('/grade?data=2026-11-18');
         $response->assertOk();
         $response->assertSee('18/11/2026');
 
@@ -391,14 +391,14 @@ class AgendaMensalTest extends TestCase
             ->assertSet('modalAberto', true);
     }
 
-    public function test_menu_lateral_exibe_mapa_mensal(): void
+    public function test_menu_lateral_exibe_agenda_operacional_unificada(): void
     {
         $coordenador = User::factory()->create(['ativo' => true]);
         $coordenador->assignRole('coordenacao');
 
         $response = $this->actingAs($coordenador)->get('/dashboard');
         $response->assertOk();
-        $response->assertSee('Mapa Mensal');
-        $response->assertSee(route('agenda.mensal'));
+        $response->assertSee('Agenda Operacional');
+        $response->assertSee(route('agenda.operacional'));
     }
 }

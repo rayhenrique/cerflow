@@ -25,14 +25,14 @@ class ModulosAcessoLocalTest extends TestCase
         // 1. Dashboard Inicial (Coordenação)
         $this->actingAs($coordenacao)->get('/dashboard')->assertOk();
 
-        // 2. Recepção e Check-in
-        $this->actingAs($recepcao)->get('/recepcao')->assertOk();
+        // 2. Recepção e Check-in (redireciona para /agenda?aba=dia)
+        $this->actingAs($recepcao)->followingRedirects()->get('/recepcao')->assertOk();
 
-        // 3. Grade Semanal
-        $this->actingAs($coordenacao)->get('/grade')->assertOk();
+        // 3. Grade Semanal (redireciona para /agenda?aba=grade)
+        $this->actingAs($coordenacao)->followingRedirects()->get('/grade')->assertOk();
 
-        // 4. Agenda Mensal
-        $this->actingAs($coordenacao)->get('/agenda/mensal')->assertOk();
+        // 4. Agenda Mensal (redireciona para /agenda?aba=mensal)
+        $this->actingAs($coordenacao)->followingRedirects()->get('/agenda/mensal')->assertOk();
 
         // 5. Prontuário Multiprofissional PEP (Terapeuta)
         $this->actingAs($fisioterapeuta)->get('/prontuario')->assertOk();
