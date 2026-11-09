@@ -257,10 +257,14 @@ class OtimizacaoConsultasPacientesTest extends TestCase
             ->set('pac_nome', 'Novo Paciente Cadastrado')
             ->set('pac_data_nascimento', '2000-01-01')
             ->set('pac_sexo', 'M')
+            ->set('pac_municipio_ibge', '270430')
             ->set('pac_ubs_referencia', 'UBS Bairro Novo 2026')
-            ->call('salvarPaciente');
+            ->call('salvarPaciente')
+            ->assertHasNoErrors();
 
-        $this->assertFalse(Cache::has('pacientes_lista_ubs_dropdown'), 'Cache de UBS deve ser invalidado após salvar paciente');
+        // Ao salvar um novo paciente, o cache antigo é invalidado e o novo render inclui a nova UBS
+        $this->assertTrue(Cache::has('pacientes_lista_ubs_dropdown'));
+        $this->assertContains('UBS Bairro Novo 2026', Cache::get('pacientes_lista_ubs_dropdown'));
     }
 
     public function test_dashboard_contagem_modalidades_e_metricas_possuem_cache(): void

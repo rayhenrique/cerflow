@@ -253,11 +253,17 @@ class PainelChamadasTest extends TestCase
         $configuracao = ConfiguracaoEstabelecimento::atual();
         $token = $configuracao->painel_token_acesso;
 
-        // Acesso anônimo sem token -> 403
-        $this->get('/painel-chamadas')->assertStatus(403);
+        // Acesso anônimo sem token -> exibe tela de ativação de Smart TV (200) sem expor chamadas
+        $this->get('/painel-chamadas')
+            ->assertStatus(200)
+            ->assertSee('Conectar este Televisor')
+            ->assertDontSee('Chamada Atual');
 
-        // Acesso anônimo com token incorreto -> 403
-        $this->get('/painel-chamadas?token=token_invalido_xyz')->assertStatus(403);
+        // Acesso anônimo com token incorreto -> exibe tela de ativação (200)
+        $this->get('/painel-chamadas?token=token_invalido_xyz')
+            ->assertStatus(200)
+            ->assertSee('Conectar este Televisor')
+            ->assertDontSee('Chamada Atual');
 
         // Acesso anônimo com token correto -> 200
         $this->get("/painel-chamadas?token={$token}")->assertStatus(200);

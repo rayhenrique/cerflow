@@ -7,15 +7,18 @@ namespace App\Livewire;
 use App\Jobs\SincronizarEsusPecJob;
 use App\Models\ConfiguracaoEstabelecimento;
 use App\Models\ConfiguracaoEsusPec;
+use App\Models\DispositivoTv;
 use App\Models\HistoricoSincronizacaoEsus;
 use App\Models\LogAuditoria;
 use App\Models\Paciente;
 use App\Models\ProcedimentoSigtap;
 use App\Models\Profissional;
 use App\Models\Sala;
+use App\Models\SolicitacaoPareamentoTv;
 use App\Models\User;
 use App\Rules\CnsValido;
 use App\Services\EsusPecIntegrationService;
+use App\Services\TvPairingService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
@@ -58,6 +61,23 @@ class ConfiguracoesSistema extends Component
     public string $painel_modo_exibicao_nome = 'COMPLETO';
 
     public ?string $painel_token_acesso = null;
+
+    public bool $painel_permitir_token_legado = true;
+
+    // --- Gestão e Pareamento de Smart TVs (Coordenação) ---
+    public bool $modalAutorizarTvAberto = false;
+
+    public bool $modalRenomearTvAberto = false;
+
+    public string $tv_codigo_ativacao = '';
+
+    public string $tv_nome_dispositivo = '';
+
+    public ?int $tv_renomear_id = null;
+
+    public string $tv_novo_nome = '';
+
+    public ?array $solicitacaoPrevia = null;
 
     public string $abaAtiva = 'pacientes';
 
@@ -271,6 +291,7 @@ class ConfiguracoesSistema extends Component
             $this->painel_quantidade_historico = (int) ($configuracao->painel_quantidade_historico ?? 5);
             $this->painel_modo_exibicao_nome = (string) ($configuracao->painel_modo_exibicao_nome ?? 'COMPLETO');
             $this->painel_token_acesso = $configuracao->painel_token_acesso;
+            $this->painel_permitir_token_legado = (bool) ($configuracao->painel_permitir_token_legado ?? true);
             $this->carregarConfiguracaoEsus();
         }
 
@@ -421,6 +442,7 @@ class ConfiguracoesSistema extends Component
             'painel_tempo_destaque_segundos' => ['required', 'integer', 'min:5', 'max:120'],
             'painel_quantidade_historico' => ['required', 'integer', 'min:1', 'max:15'],
             'painel_modo_exibicao_nome' => ['required', Rule::in(['COMPLETO', 'PRIMEIRO_NOME', 'PRIMEIRO_E_ULTIMO', 'ABREVIADO'])],
+            'painel_permitir_token_legado' => ['required', 'boolean'],
         ]);
 
         $configuracao = ConfiguracaoEstabelecimento::atual();
@@ -430,7 +452,10 @@ class ConfiguracoesSistema extends Component
             'painel_tempo_destaque_segundos' => $this->painel_tempo_destaque_segundos,
             'painel_quantidade_historico' => $this->painel_quantidade_historico,
             'painel_modo_exibicao_nome' => $this->painel_modo_exibicao_nome,
+            'painel_permitir_token_legado' => $this->painel_permitir_token_legado,
         ]);
+
+        Cache::forget('configuracao_estabelecimento_painel');
 
         LogAuditoria::create([
             'user_id' => auth()->id(),
@@ -444,6 +469,7 @@ class ConfiguracoesSistema extends Component
                 'painel_tempo_destaque_segundos' => $this->painel_tempo_destaque_segundos,
                 'painel_quantidade_historico' => $this->painel_quantidade_historico,
                 'painel_modo_exibicao_nome' => $this->painel_modo_exibicao_nome,
+                'painel_permitir_token_legado' => $this->painel_permitir_token_legado,
             ],
             'created_at' => now(),
         ]);
@@ -463,6 +489,7 @@ class ConfiguracoesSistema extends Component
         $configuracao = ConfiguracaoEstabelecimento::atual();
         $novoToken = $configuracao->gerarTokenTv();
         $this->painel_token_acesso = $novoToken;
+        Cache::forget('configuracao_estabelecimento_painel');
 
         LogAuditoria::create([
             'user_id' => auth()->id(),
@@ -480,7 +507,175 @@ class ConfiguracoesSistema extends Component
             'toast',
             tipo: 'alerta',
             titulo: 'Novo Token da TV Gerado',
-            mensagem: 'O link de acesso à TV foi renovado. Acesse a TV utilizando o novo link.'
+            mensagem: 'O link transitório foi renovado. Para máxima segurança, prefira parear as TVs por código de ativação.'
+        );
+    }
+
+    // --- Dispositivos de TV Autorizados (Pareamento Individual) ---
+    public function abrirModalAutorizarTv(?string $codigo = null): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $this->resetValidation();
+        $this->tv_codigo_ativacao = $codigo ?? '';
+        $this->tv_nome_dispositivo = '';
+        $this->solicitacaoPrevia = null;
+
+        if (! empty($codigo)) {
+            $this->consultarCodigoTv();
+        }
+
+        $this->modalAutorizarTvAberto = true;
+    }
+
+    public function fecharModalAutorizarTv(): void
+    {
+        $this->modalAutorizarTvAberto = false;
+        $this->solicitacaoPrevia = null;
+        $this->resetValidation();
+    }
+
+    public function consultarCodigoTv(): void
+    {
+        $codNormalizado = SolicitacaoPareamentoTv::normalizarCodigo($this->tv_codigo_ativacao);
+        $sol = SolicitacaoPareamentoTv::query()->validas()->where('codigo', $codNormalizado)->first();
+
+        if ($sol !== null) {
+            $this->solicitacaoPrevia = [
+                'codigo' => $sol->codigo,
+                'expira_em' => $sol->expira_em->format('H:i'),
+                'ip' => $sol->ip_origem ?? 'Desconhecido',
+                'user_agent' => $sol->user_agent ? Str::limit($sol->user_agent, 45) : 'Navegador Web TV',
+            ];
+
+            if ($this->tv_nome_dispositivo === '') {
+                $this->tv_nome_dispositivo = "Smart TV ({$sol->codigo})";
+            }
+        } else {
+            $this->solicitacaoPrevia = null;
+        }
+    }
+
+    public function autorizarTv(TvPairingService $service): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $this->validate([
+            'tv_codigo_ativacao' => ['required', 'string', 'min:4', 'max:20'],
+            'tv_nome_dispositivo' => ['required', 'string', 'max:100'],
+        ]);
+
+        try {
+            $dispositivo = $service->autorizarCodigo(
+                $this->tv_codigo_ativacao,
+                $this->tv_nome_dispositivo,
+                auth()->user(),
+                request()->ip(),
+                request()->userAgent()
+            );
+
+            $this->modalAutorizarTvAberto = false;
+            $this->solicitacaoPrevia = null;
+            $this->tv_codigo_ativacao = '';
+            $this->tv_nome_dispositivo = '';
+
+            $this->dispatch(
+                'toast',
+                tipo: 'sucesso',
+                titulo: 'Smart TV Autorizada',
+                mensagem: "O televisor '{$dispositivo->nome}' foi autorizado com sucesso e já está conectado ao painel."
+            );
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            $this->addError('tv_codigo_ativacao', $e->getMessage());
+        }
+    }
+
+    public function abrirModalRenomearTv(int $id): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $this->resetValidation();
+        $disp = DispositivoTv::findOrFail($id);
+        $this->tv_renomear_id = $disp->id;
+        $this->tv_novo_nome = $disp->nome;
+        $this->modalRenomearTvAberto = true;
+    }
+
+    public function fecharModalRenomearTv(): void
+    {
+        $this->modalRenomearTvAberto = false;
+        $this->resetValidation();
+    }
+
+    public function renomearTv(TvPairingService $service): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $this->validate([
+            'tv_novo_nome' => ['required', 'string', 'max:100'],
+        ]);
+
+        if ($this->tv_renomear_id === null) {
+            return;
+        }
+
+        $disp = DispositivoTv::findOrFail($this->tv_renomear_id);
+        $service->renomearDispositivo($disp, $this->tv_novo_nome, auth()->user());
+
+        $this->modalRenomearTvAberto = false;
+
+        $this->dispatch(
+            'toast',
+            tipo: 'sucesso',
+            titulo: 'Dispositivo Renomeado',
+            mensagem: "O televisor foi renomeado para '{$disp->nome}'."
+        );
+    }
+
+    public function revogarTv(int $id, TvPairingService $service): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $disp = DispositivoTv::findOrFail($id);
+        $service->revogarDispositivo($disp, auth()->user());
+
+        $this->dispatch(
+            'toast',
+            tipo: 'alerta',
+            titulo: 'Dispositivo Revogado',
+            mensagem: "O acesso da TV '{$disp->nome}' foi revogado imediatamente."
+        );
+    }
+
+    public function reautorizarTv(int $id, TvPairingService $service): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $disp = DispositivoTv::findOrFail($id);
+        $service->reautorizarDispositivo($disp, auth()->user());
+
+        $this->dispatch(
+            'toast',
+            tipo: 'sucesso',
+            titulo: 'Dispositivo Reautorizado',
+            mensagem: "A TV '{$disp->nome}' foi reativada com sucesso."
+        );
+    }
+
+    public function excluirTv(int $id, TvPairingService $service): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $disp = DispositivoTv::findOrFail($id);
+        $service->excluirDispositivo($disp, auth()->user());
+
+        $this->dispatch(
+            'toast',
+            tipo: 'info',
+            titulo: 'Dispositivo Removido',
+            mensagem: 'O registro do televisor foi excluído do sistema.'
         );
     }
 
@@ -1702,6 +1897,20 @@ class ConfiguracoesSistema extends Component
                 ->get();
         }
 
+        $dispositivosTv = collect();
+        $solicitacoesTvPendentes = collect();
+        if ($isCoordenacao && $this->abaAtiva === 'chamadas') {
+            $dispositivosTv = DispositivoTv::query()
+                ->with(['autorizadoPor', 'revogadoPor'])
+                ->orderByDesc('created_at')
+                ->get();
+
+            $solicitacoesTvPendentes = SolicitacaoPareamentoTv::query()
+                ->validas()
+                ->orderByDesc('created_at')
+                ->get();
+        }
+
         // Carrega lista de UBS exclusivamente sob demanda (aba pacientes ou modal aberto) com cache de 1 hora
         $listaUbs = [];
         if ($podePacientes && ($this->abaAtiva === 'pacientes' || $this->modalPacienteAberto)) {
@@ -1737,6 +1946,8 @@ class ConfiguracoesSistema extends Component
             'logInspecionado' => $logInspecionado,
             'historicoEsus' => $historicoEsus,
             'listaUbs' => $listaUbs,
+            'dispositivosTv' => $dispositivosTv,
+            'solicitacoesTvPendentes' => $solicitacoesTvPendentes,
         ]);
     }
 }

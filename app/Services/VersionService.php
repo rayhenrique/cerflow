@@ -44,6 +44,19 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.18.0',
+                'data' => '08/11/2026',
+                'titulo' => 'Pareamento Seguro de Smart TVs por Código de Ativação',
+                'tipo' => 'Novidade / Integração TV',
+                'destaques' => [
+                    'Substituição de senhas manuais e URLs compartilhadas por ativação individual de Smart TVs via código de pareamento de 6 a 7 dígitos (RFC 8628).',
+                    'Entrega segura da credencial criptográfica por Cookie persistente HttpOnly, Secure, Lax com isolamento estrito de rotas e conformidade LGPD.',
+                    'Gestão centralizada pela Coordenação em Configurações para autorizar, renomear, consultar últimos acessos e revogar televisores em tempo real.',
+                    'Proteção contra adivinhação de códigos por força bruta (rate limiting), expiração de 10 minutos e descarte após uso único.',
+                    'Compatibilidade transitória com opção de manter painéis legados via URL enquanto a transição de dispositivos é concluída.',
+                ],
+            ],
+            [
                 'versao' => '1.17.1',
                 'data' => '08/11/2026',
                 'titulo' => 'Otimização de Alta Performance e Consultas no Banco de Dados',

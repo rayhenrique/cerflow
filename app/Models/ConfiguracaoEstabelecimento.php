@@ -23,6 +23,7 @@ class ConfiguracaoEstabelecimento extends Model
         'painel_quantidade_historico',
         'painel_modo_exibicao_nome',
         'painel_token_acesso',
+        'painel_permitir_token_legado',
     ];
 
     protected function casts(): array
@@ -32,6 +33,7 @@ class ConfiguracaoEstabelecimento extends Model
             'painel_volume' => 'integer',
             'painel_tempo_destaque_segundos' => 'integer',
             'painel_quantidade_historico' => 'integer',
+            'painel_permitir_token_legado' => 'boolean',
         ];
     }
 
@@ -50,6 +52,7 @@ class ConfiguracaoEstabelecimento extends Model
             'painel_quantidade_historico' => 5,
             'painel_modo_exibicao_nome' => 'COMPLETO',
             'painel_token_acesso' => null,
+            'painel_permitir_token_legado' => true,
         ]);
         $padrao->id = 1;
 

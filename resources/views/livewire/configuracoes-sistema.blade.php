@@ -173,50 +173,144 @@
     {{-- ===================================================================== --}}
     @if ($abaAtiva === 'chamadas' && in_array('chamadas', $abasPermitidas, true))
         <div class="space-y-6">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Informações e Acesso à TV -->
-                <div class="lg:col-span-1 space-y-6">
-                    <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-600">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                            </div>
-                            <div>
-                                <h3 class="text-sm font-bold text-slate-900">Acesso da Smart TV</h3>
-                                <p class="text-xs text-slate-500">URL e autenticação via token</p>
-                            </div>
+            <!-- 1. Seção: Dispositivos de TV Autorizados (Pareamento por Código) -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+                <div class="p-5 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-base font-bold text-slate-900">Dispositivos de Smart TV Autorizados</h2>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-teal-50 text-teal-700 border border-teal-200">
+                                Pareamento Seguro por Código
+                            </span>
                         </div>
-
-                        <p class="text-xs text-slate-600 leading-relaxed">
-                            O painel da TV foi projetado para exibição contínua em proporção 16:9 de televisores e monitores de recepção, sem menus administrativos ou dados clínicos sensíveis.
+                        <p class="text-xs text-slate-500 mt-1">
+                            Autorize e gerencie televisores de salas de espera sem necessidade de login ou URLs longas. Cada TV recebe uma credencial criptográfica individual HttpOnly.
                         </p>
-
-                        <div class="rounded-lg bg-slate-50 border border-slate-200 p-3 space-y-2">
-                            <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider">URL com Token de Segurança</label>
-                            <div class="flex items-center gap-2">
-                                <input type="text" readonly value="{{ route('painel.chamadas', ['token' => $painel_token_acesso]) }}"
-                                    class="w-full text-xs font-mono bg-white border border-slate-300 rounded px-2.5 py-1.5 text-slate-700 select-all focus:outline-none">
-                            </div>
-                            <p class="text-[11px] text-slate-500">
-                                Cole esta URL no navegador da Smart TV. Dispositivos autenticados no CER Digital também podem acessar diretamente por <code class="text-teal-700 font-mono">/painel-chamadas</code>.
-                            </p>
-                        </div>
-
-                        <div class="pt-2 flex flex-col sm:flex-row items-center gap-2">
-                            <a href="{{ route('painel.chamadas', ['token' => $painel_token_acesso]) }}" target="_blank"
-                                class="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-lg transition">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                                Testar Painel TV
-                            </a>
-                            <button type="button" wire:click="regenerarTokenTv" wire:confirm="Tem certeza de que deseja regenerar o token da TV? Todas as TVs conectadas com o token anterior precisarão da nova URL."
-                                class="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition cursor-pointer">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                                Regenerar Token
-                            </button>
-                        </div>
                     </div>
+
+                    <button type="button" wire:click="abrirModalAutorizarTv"
+                        class="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        <span>Autorizar Nova TV</span>
+                    </button>
                 </div>
 
+                @if ($solicitacoesTvPendentes->isNotEmpty())
+                    <!-- Alerta de TVs aguardando ativação agora -->
+                    <div class="bg-teal-50/70 border-b border-teal-100 px-6 py-3 flex flex-wrap items-center justify-between gap-3 text-xs text-teal-800">
+                        <div class="flex items-center gap-2">
+                            <span class="h-2 w-2 rounded-full bg-teal-500 animate-ping"></span>
+                            <span class="font-bold">Solicitação pendente detectada:</span>
+                            <span>Há televisor(es) aguardando autorização na tela inicial do painel.</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            @foreach ($solicitacoesTvPendentes as $solPendente)
+                                <button type="button" wire:click="abrirModalAutorizarTv('{{ $solPendente->codigo }}')"
+                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-teal-700 text-white font-mono font-bold text-xs hover:bg-teal-800 transition shadow-xs cursor-pointer">
+                                    <span>Código {{ $solPendente->codigo }}</span>
+                                    <span class="text-[10px] opacity-80">(Aprovar)</span>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200 text-sm">
+                        <thead class="bg-slate-50 text-xs font-bold uppercase text-slate-500">
+                            <tr>
+                                <th class="px-5 py-3 text-left">Dispositivo / Local</th>
+                                <th class="px-5 py-3 text-center">Status</th>
+                                <th class="px-5 py-3 text-left">Autorização</th>
+                                <th class="px-5 py-3 text-left">Último Acesso</th>
+                                <th class="px-5 py-3 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @forelse ($dispositivosTv as $disp)
+                                <tr class="hover:bg-slate-50/80 transition">
+                                    <td class="px-5 py-3.5">
+                                        <div class="font-bold text-slate-800 flex items-center gap-2">
+                                            <span>📺 {{ $disp->nome }}</span>
+                                        </div>
+                                        <div class="text-[11px] font-mono text-slate-400 mt-0.5">
+                                            ID: {{ $disp->identificador }}
+                                            @if ($disp->ip_origem)
+                                                • IP: {{ $disp->ip_origem }}
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="px-5 py-3.5 text-center whitespace-nowrap">
+                                        @if ($disp->estaAtivo())
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                                                Ativo
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
+                                                Revogado
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td class="px-5 py-3.5 text-xs text-slate-600">
+                                        <div>{{ $disp->autorizado_em->format('d/m/Y H:i') }}</div>
+                                        <div class="text-[11px] text-slate-400">Por: {{ $disp->autorizadoPor?->name ?? 'Coordenação' }}</div>
+                                    </td>
+                                    <td class="px-5 py-3.5 text-xs text-slate-600 whitespace-nowrap">
+                                        @if ($disp->ultimo_acesso_em)
+                                            <span class="font-medium text-slate-700">{{ $disp->ultimo_acesso_em->diffForHumans() }}</span>
+                                            <span class="block text-[11px] text-slate-400">{{ $disp->ultimo_acesso_em->format('d/m/Y H:i') }}</span>
+                                        @else
+                                            <span class="text-slate-400 italic">Nunca acessou</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-5 py-3.5 text-right whitespace-nowrap space-x-1">
+                                        <button type="button" wire:click="abrirModalRenomearTv({{ $disp->id }})"
+                                            class="inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
+                                            Renomear
+                                        </button>
+
+                                        @if ($disp->estaAtivo())
+                                            <button type="button" wire:click="revogarTv({{ $disp->id }})"
+                                                wire:confirm="Tem certeza de que deseja revogar o acesso deste televisor? O painel será desconectado imediatamente."
+                                                class="inline-flex items-center px-2.5 py-1 rounded-md border border-amber-200 bg-amber-50 text-xs font-semibold text-amber-700 hover:bg-amber-100 cursor-pointer">
+                                                Revogar
+                                            </button>
+                                        @else
+                                            <button type="button" wire:click="reautorizarTv({{ $disp->id }})"
+                                                class="inline-flex items-center px-2.5 py-1 rounded-md border border-emerald-200 bg-emerald-50 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 cursor-pointer">
+                                                Reautorizar
+                                            </button>
+                                        @endif
+
+                                        <button type="button" wire:click="excluirTv({{ $disp->id }})"
+                                            wire:confirm="Tem certeza de que deseja excluir o cadastro desta TV?"
+                                            class="inline-flex items-center px-2.5 py-1 rounded-md border border-rose-200 bg-rose-50 text-xs font-semibold text-rose-700 hover:bg-rose-100 cursor-pointer">
+                                            Excluir
+                                        </button>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="px-6 py-10 text-center text-slate-400 text-xs">
+                                        <div class="flex flex-col items-center justify-center gap-2">
+                                            <span class="text-3xl">📺</span>
+                                            <span class="font-bold text-slate-600 text-sm">Nenhum televisor pareado no momento</span>
+                                            <span class="max-w-md text-slate-400">
+                                                Abra o endereço <code class="font-mono text-teal-700 font-bold">/painel-chamadas</code> no navegador da Smart TV e anote o código exibido na tela para autorizá-la aqui.
+                                            </span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 2. Parâmetros de Exibição, Áudio e Transição -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Formulário de Parâmetros -->
                 <div class="lg:col-span-2">
                     <form wire:submit="salvarConfiguracaoPainelChamadas" class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-6">
@@ -228,7 +322,7 @@
                         <!-- Chamada por Voz e Sinal Sonoro -->
                         <div class="border-t border-slate-100 pt-4 space-y-4">
                             <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Áudio & Síntese de Voz</h3>
-                            
+
                             <div class="flex items-start gap-3">
                                 <div class="flex h-5 items-center">
                                     <input id="painel_voz_ativa" type="checkbox" wire:model="painel_voz_ativa"
@@ -297,8 +391,27 @@
                             </div>
                         </div>
 
+                        <!-- Controle de Transição: Acesso Legado por URL -->
+                        <div class="border-t border-slate-100 pt-4 space-y-3">
+                            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Modo de Transição & Segurança</h3>
+                            <div class="flex items-start gap-3">
+                                <div class="flex h-5 items-center">
+                                    <input id="painel_permitir_token_legado" type="checkbox" wire:model="painel_permitir_token_legado"
+                                        class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500">
+                                </div>
+                                <div class="text-xs">
+                                    <label for="painel_permitir_token_legado" class="font-bold text-slate-800 cursor-pointer">
+                                        Permitir acesso legado por token na URL (Transição temporária)
+                                    </label>
+                                    <p class="text-slate-500 mt-0.5">
+                                        Quando desmarcado, a URL com token global é desativada e <strong>todas</strong> as TVs deverão obrigatoriamente ser pareadas pelo código de ativação individual.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
-                            <span class="text-xs text-slate-500">Alterações são refletidas automaticamente na TV em até 3 segundos.</span>
+                            <span class="text-xs text-slate-500">Alterações são refletidas automaticamente na TV em até 4 segundos.</span>
                             <button type="submit" wire:loading.attr="disabled"
                                 class="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 disabled:opacity-60 cursor-pointer">
                                 <span wire:loading.remove wire:target="salvarConfiguracaoPainelChamadas">Salvar Configurações</span>
@@ -307,7 +420,153 @@
                         </div>
                     </form>
                 </div>
+
+                <!-- Painel Lateral: Teste e Acesso Transitório -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-600">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-900">Visualizar Painel da TV</h3>
+                                <p class="text-xs text-slate-500">Abertura e teste em tempo real</p>
+                            </div>
+                        </div>
+
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            Usuários autenticados no CER Digital podem visualizar o painel a qualquer momento para testes operacionais.
+                        </p>
+
+                        <div class="pt-2">
+                            <a href="{{ route('painel.chamadas') }}" target="_blank"
+                                class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-lg transition shadow-xs">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                <span>Abrir Painel em Nova Aba</span>
+                            </a>
+                        </div>
+
+                        @if ($painel_permitir_token_legado && $painel_token_acesso)
+                            <div class="rounded-lg bg-amber-50/60 border border-amber-200 p-3 space-y-2 mt-4">
+                                <span class="block text-[11px] font-bold text-amber-800 uppercase tracking-wider">Acesso Legado Transitório</span>
+                                <input type="text" readonly value="{{ route('painel.chamadas', ['token' => $painel_token_acesso]) }}"
+                                    class="w-full text-[11px] font-mono bg-white border border-amber-200 rounded px-2 py-1 text-slate-700 select-all focus:outline-none">
+                                <div class="flex items-center justify-between pt-1">
+                                    <button type="button" wire:click="regenerarTokenTv"
+                                        wire:confirm="Tem certeza de que deseja renovar este token legado?"
+                                        class="text-[11px] font-bold text-rose-700 hover:underline cursor-pointer">
+                                        Renovar Token Global
+                                    </button>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
             </div>
+
+            <!-- MODAL 1: AUTORIZAR NOVA SMART TV -->
+            @if ($modalAutorizarTvAberto)
+                <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div class="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <div class="flex items-center gap-2.5">
+                                <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-100 text-teal-700 font-bold text-lg">📺</span>
+                                <div>
+                                    <h3 class="text-sm font-bold text-slate-900">Autorizar Nova Smart TV</h3>
+                                    <p class="text-xs text-slate-500">Pareamento individual de televisor</p>
+                                </div>
+                            </div>
+                            <button type="button" wire:click="fecharModalAutorizarTv" class="text-slate-400 hover:text-slate-600 cursor-pointer">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">
+                                    Código de Ativação exibido na TV <span class="text-rose-600">*</span>
+                                </label>
+                                <div class="flex items-center gap-2">
+                                    <input type="text"
+                                        wire:model.live.debounce.300ms="tv_codigo_ativacao"
+                                        wire:keyup="consultarCodigoTv"
+                                        placeholder="Ex: 4K7-9PX ou ABC-123"
+                                        class="w-full uppercase font-mono tracking-wider font-bold text-center text-lg rounded-lg border border-slate-300 px-3 py-2.5 text-slate-800 focus:border-teal-600 focus:ring-1 focus:ring-teal-600 focus:outline-none">
+                                </div>
+                                <p class="text-[11px] text-slate-400 mt-1">Informe os 6 caracteres exibidos na tela da TV (com ou sem traço).</p>
+                                @error('tv_codigo_ativacao') <span class="text-xs text-rose-600 block mt-1 font-medium">{{ $message }}</span> @enderror
+                            </div>
+
+                            @if ($solicitacaoPrevia)
+                                <!-- Preview da Solicitação Encontrada -->
+                                <div class="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 space-y-1.5 text-xs">
+                                    <div class="flex items-center gap-1.5 font-bold text-emerald-800">
+                                        <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <span>Código válido! Aguardando autorização.</span>
+                                    </div>
+                                    <div class="text-[11px] text-emerald-700 flex flex-wrap gap-x-3 gap-y-1">
+                                        <span>IP: <strong>{{ $solicitacaoPrevia['ip'] }}</strong></span>
+                                        <span>• Válido até: <strong>{{ $solicitacaoPrevia['expira_em'] }}</strong></span>
+                                    </div>
+                                </div>
+                            @endif
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">
+                                    Nome Amigável do Dispositivo <span class="text-rose-600">*</span>
+                                </label>
+                                <input type="text" wire:model="tv_nome_dispositivo" placeholder="Ex: TV Recepção Principal, TV Saguão Térreo..."
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-teal-600 focus:ring-1 focus:ring-teal-600 focus:outline-none">
+                                <p class="text-[11px] text-slate-400 mt-1">Identifique a sala ou andar onde o aparelho está instalado.</p>
+                                @error('tv_nome_dispositivo') <span class="text-xs text-rose-600 block mt-1 font-medium">{{ $message }}</span> @enderror
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
+                            <button type="button" wire:click="fecharModalAutorizarTv"
+                                class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer">
+                                Cancelar
+                            </button>
+                            <button type="button" wire:click="autorizarTv"
+                                class="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
+                                <span>Aprovar e Conectar TV</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            <!-- MODAL 2: RENOMEAR DISPOSITIVO -->
+            @if ($modalRenomearTvAberto)
+                <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div class="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h3 class="text-sm font-bold text-slate-900">Renomear Dispositivo de TV</h3>
+                            <button type="button" wire:click="fecharModalRenomearTv" class="text-slate-400 hover:text-slate-600 cursor-pointer">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Novo Nome do Dispositivo</label>
+                            <input type="text" wire:model="tv_novo_nome"
+                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-teal-600 focus:outline-none">
+                            @error('tv_novo_nome') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                            <button type="button" wire:click="fecharModalRenomearTv"
+                                class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer">
+                                Cancelar
+                            </button>
+                            <button type="button" wire:click="renomearTv"
+                                class="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
+                                Salvar Nome
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            @endif
         </div>
     @endif
 
