@@ -124,7 +124,7 @@
     <header class="flex items-center justify-between border-b border-slate-800 pb-4">
         <div class="flex items-center gap-3.5">
             @if ($configuracao->logo_path)
-                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($configuracao->logo_path) }}"
+                <img src="{{ $configuracao->logoUrl() }}"
                      alt="Logo do estabelecimento"
                      class="h-12 w-12 sm:h-14 sm:w-14 rounded-xl bg-white object-contain p-1 shadow-md">
             @else

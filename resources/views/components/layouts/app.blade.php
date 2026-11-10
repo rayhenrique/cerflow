@@ -58,7 +58,7 @@
                 <div class="flex h-16 shrink-0 items-center justify-between px-5 border-b border-slate-800">
                     <div class="flex items-center gap-2.5">
                         @if ($configuracaoEstabelecimento->logo_path)
-                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($configuracaoEstabelecimento->logo_path) }}" alt="Logo do estabelecimento" class="h-9 w-9 rounded-lg bg-white object-contain p-0.5">
+                            <img src="{{ $configuracaoEstabelecimento->logoUrl() }}" alt="Logo do estabelecimento" class="h-9 w-9 rounded-lg bg-white object-contain p-0.5">
                         @else
                             <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500 text-slate-950 font-bold text-sm shadow-xs">CD</span>
                         @endif
@@ -288,7 +288,7 @@
             <div class="flex h-16 shrink-0 items-center justify-between px-4 border-b border-slate-800">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 min-w-0" :class="sidebarCollapsed ? 'mx-auto' : ''">
                     @if ($configuracaoEstabelecimento->logo_path)
-                        <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($configuracaoEstabelecimento->logo_path) }}" alt="Logo do estabelecimento" class="h-9 w-9 shrink-0 rounded-lg bg-white object-contain p-0.5">
+                        <img src="{{ $configuracaoEstabelecimento->logoUrl() }}" alt="Logo do estabelecimento" class="h-9 w-9 shrink-0 rounded-lg bg-white object-contain p-0.5">
                     @else
                         <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-500 text-slate-950 font-bold text-sm shadow-xs">CD</span>
                     @endif

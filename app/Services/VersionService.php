@@ -44,6 +44,16 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.20.1',
+                'data' => '10/11/2026',
+                'titulo' => 'Estabilidade e Confiabilidade na Exibição do Logotipo Institucional',
+                'tipo' => 'Correções e Estabilidade',
+                'destaques' => [
+                    'Correções: Garantimos a exibição estável e contínua do logotipo oficial da instituição na tela de entrada, nos menus do sistema, no painel de TV e nas configurações.',
+                    'Melhorias: Aprimoramos a confiabilidade interna do carregamento de imagens institucionais em todo o sistema.',
+                ],
+            ],
+            [
                 'versao' => '1.20.0',
                 'data' => '10/11/2026',
                 'titulo' => 'Nova Página Institucional, Login Elegante e Visual Adaptado para Celulares',

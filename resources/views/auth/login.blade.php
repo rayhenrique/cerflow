@@ -39,7 +39,7 @@
 
                 <div class="pt-2">
                     @if ($configuracaoEstabelecimento->logo_path)
-                        <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($configuracaoEstabelecimento->logo_path) }}" 
+                        <img src="{{ $configuracaoEstabelecimento->logoUrl() }}" 
                              alt="Logo do estabelecimento" 
                              class="max-h-20 max-w-xs object-contain object-left filter brightness-110 drop-shadow-sm">
                     @else
@@ -130,7 +130,7 @@
                         <!-- Logo visível em telas menores (< lg) -->
                         <div class="lg:hidden pb-2 border-b border-slate-100">
                             @if ($configuracaoEstabelecimento->logo_path)
-                                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($configuracaoEstabelecimento->logo_path) }}" 
+                                <img src="{{ $configuracaoEstabelecimento->logoUrl() }}" 
                                      alt="Logo do estabelecimento" 
                                      class="max-h-14 max-w-full object-contain mb-2">
                             @else

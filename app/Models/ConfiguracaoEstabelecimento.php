@@ -6,7 +6,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ConfiguracaoEstabelecimento extends Model
@@ -111,6 +113,21 @@ class ConfiguracaoEstabelecimento extends Model
         $this->update(['painel_token_acesso' => $novoToken]);
 
         return $novoToken;
+    }
+
+    /**
+     * Retorna a URL pública da logo institucional, quando configurada.
+     */
+    public function logoUrl(): ?string
+    {
+        if (! $this->logo_path) {
+            return null;
+        }
+
+        /** @var FilesystemAdapter $disk */
+        $disk = Storage::disk('public');
+
+        return $disk->url($this->logo_path);
     }
 
     /**

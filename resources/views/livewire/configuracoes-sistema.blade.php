@@ -123,7 +123,7 @@
                     @if ($logoEstabelecimento)
                         <img src="{{ $logoEstabelecimento->temporaryUrl() }}" alt="Pré-visualização da logo" class="max-h-28 max-w-full object-contain">
                     @elseif ($configuracaoEstabelecimento->logo_path && !$removerLogoEstabelecimento)
-                        <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($configuracaoEstabelecimento->logo_path) }}" alt="Logo do estabelecimento" class="max-h-28 max-w-full object-contain">
+                        <img src="{{ $configuracaoEstabelecimento->logoUrl() }}" alt="Logo do estabelecimento" class="max-h-28 max-w-full object-contain">
                     @else
                         <div class="text-center text-slate-400">
                             <svg class="w-10 h-10 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 16.5l4.5-4.5 3 3L16.5 9 21 13.5M4.5 4.5h15A1.5 1.5 0 0121 6v12a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 18V6a1.5 1.5 0 011.5-1.5z"/></svg>

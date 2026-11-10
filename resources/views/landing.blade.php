@@ -24,7 +24,7 @@
             <!-- Logotipo e Identidade -->
             <a href="{{ url('/') }}" class="group flex items-center gap-3 transition">
                 @if ($configEstabelecimento->logo_path)
-                    <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($configEstabelecimento->logo_path) }}"
+                    <img src="{{ $configEstabelecimento->logoUrl() }}"
                          alt="Logo do estabelecimento"
                          class="h-10 max-w-[180px] object-contain">
                 @else
