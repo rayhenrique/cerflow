@@ -15,6 +15,7 @@ use App\Rules\CnsValido;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -294,7 +295,7 @@ class ConfiguracoesSistemaTest extends TestCase
             'cnes' => '9988776',
         ]);
 
-        auth()->logout();
+        Auth::logout();
 
         $this->get('/login')
             ->assertOk()
