@@ -9,6 +9,7 @@ use App\Livewire\DashboardInicial;
 use App\Livewire\FaturamentoBpai;
 use App\Livewire\PainelChamadas;
 use App\Livewire\ProntuarioPaciente;
+use App\Livewire\RelatoriosGerenciais;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -27,6 +28,10 @@ Route::middleware(['auth'])->group(function (): void {
     Route::get('/agenda', AgendaOperacional::class)
         ->middleware('role:recepcao|terapeuta|faturamento|coordenacao')
         ->name('agenda.operacional');
+
+    Route::get('/relatorios', RelatoriosGerenciais::class)
+        ->middleware('role:recepcao|terapeuta|faturamento|coordenacao')
+        ->name('relatorios.index');
 
     // Redirecionamentos autenticados para consolidação da Agenda Operacional
     Route::get('/grade', function (Request $request) {

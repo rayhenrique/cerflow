@@ -44,6 +44,19 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.21.0',
+                'data' => '10/11/2026',
+                'titulo' => 'Novo Módulo de Relatórios e Indicadores Gerenciais',
+                'tipo' => 'Novidades e Gestão',
+                'destaques' => [
+                    'Novidades: Criamos um painel completo de relatórios e indicadores para acompanhar o dia a dia da unidade, a frequência dos pacientes, o absenteísmo e a produção assistencial.',
+                    'Novidades: Adicionamos a identificação de faltas recorrentes, permitindo que a recepção e a coordenação localizem rapidamente pacientes que precisam de apoio ou busca ativa.',
+                    'Novidades: Agora você pode exportar qualquer relatório para planilha ou imprimir em formato limpo e organizado para reuniões e prestação de contas.',
+                    'Melhorias: O sistema agora diferencia com total precisão quem já realizou o check-in na recepção de quem já concluiu o atendimento com o terapeuta.',
+                    'Melhorias: Cancelamentos e horários futuros não entram mais no cálculo de faltas, garantindo indicadores justos e confiáveis para toda a equipe.',
+                ],
+            ],
+            [
                 'versao' => '1.20.1',
                 'data' => '10/11/2026',
                 'titulo' => 'Estabilidade e Confiabilidade na Exibição do Logotipo Institucional',
