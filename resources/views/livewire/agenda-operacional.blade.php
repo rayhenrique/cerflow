@@ -39,9 +39,9 @@
         </div>
     </div>
 
-    <!-- Navegação por Abas (Inspirado no CEO Digital) -->
-    <div class="border-b border-slate-200 bg-white px-4 rounded-xl shadow-xs">
-        <nav class="flex space-x-6 -mb-px" aria-label="Abas da Agenda">
+    <!-- Navegação por Abas -->
+    <div class="border-b border-slate-200 bg-white px-4 rounded-xl shadow-xs overflow-x-auto no-scrollbar">
+        <nav class="flex space-x-4 sm:space-x-6 -mb-px min-w-max" aria-label="Abas da Agenda">
             <button
                 type="button"
                 wire:click="definirAba('dia')"
@@ -234,7 +234,119 @@
                     <p class="text-slate-400 mt-1">Utilize o botão "+ Novo Agendamento" acima para registrar um horário.</p>
                 </div>
             @else
-                <div class="overflow-x-auto">
+                <!-- Visão Mobile: Lista em Cartões (< lg) -->
+                <div class="block lg:hidden divide-y divide-slate-100">
+                    @foreach($agendamentosDia as $index => $ag)
+                        @php
+                            $alerta = $alertasAbsenteismo[$ag->paciente_id] ?? ['alerta' => false, 'motivo' => null];
+                            $ultimaChamada = $ag->chamadas->sortByDesc('id')->first();
+                        @endphp
+                        <div class="p-4 space-y-3 {{ $ag->status === 'PRESENTE' ? 'bg-teal-50/40' : 'bg-white' }}" wire:key="ag-dia-mob-{{ $ag->id }}">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-mono text-slate-400 font-bold text-[11px]">#{{ $index + 1 }}</span>
+                                    <span class="font-mono font-bold text-xs text-slate-900 bg-slate-100 px-2 py-0.5 rounded">
+                                        {{ substr((string) $ag->hora_inicio, 0, 5) }} - {{ substr((string) $ag->hora_fim, 0, 5) }}
+                                    </span>
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold {{ $ag->tipo_atendimento === 'COMPARTILHADO' ? 'bg-purple-100 text-purple-800' : ($ag->tipo_atendimento === 'TRABALHO_INTERNO' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700') }}">
+                                        {{ $ag->tipo_atendimento }}
+                                    </span>
+                                </div>
+
+                                <div>
+                                    @if($ag->status === 'PRESENTE')
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-teal-100 text-teal-800">
+                                            <span class="h-1.5 w-1.5 rounded-full bg-teal-600 animate-pulse"></span>
+                                            Na Recepção
+                                        </span>
+                                    @elseif($ag->status === 'ATENDIDO')
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                                            Concluído
+                                        </span>
+                                    @elseif($ag->status === 'AGENDADO')
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700">
+                                            Agendado
+                                        </span>
+                                    @elseif(str_starts_with((string)$ag->status, 'FALTA'))
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800">
+                                            {{ $ag->status === 'FALTA_JUSTIFICADA' ? 'Falta Just.' : 'Falta' }}
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-200 text-slate-600">
+                                            {{ $ag->status }}
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-slate-900 text-sm">
+                                        {{ $ag->paciente->nome }}
+                                    </span>
+                                </div>
+                                <div class="text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-2">
+                                    <span>Nasc: {{ $ag->paciente->data_nascimento?->format('d/m/Y') ?? '—' }}</span>
+                                    @if($ag->paciente->cid_principal)
+                                        <span>• <strong class="font-mono text-slate-600">CID {{ $ag->paciente->cid_principal }}</strong></span>
+                                    @endif
+                                    @if($alerta['alerta'])
+                                        <span class="text-rose-600 font-bold block w-full mt-1">⚠️ Absenteísmo: {{ $alerta['motivo'] }}</span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap items-center justify-between text-xs text-slate-600 pt-1 border-t border-slate-100">
+                                <span class="font-medium text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                                    {{ $ag->sala->nome }}
+                                </span>
+                                <span class="text-slate-500 text-[11px]">
+                                    {{ $ag->profissionais->pluck('nome')->implode(', ') }}
+                                </span>
+                            </div>
+
+                            <!-- Ações no Mobile -->
+                            <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
+                                <div class="text-[11px]">
+                                    @if($ag->chegada_em)
+                                        <span class="text-teal-700 font-semibold font-mono">
+                                            Chegada: {{ $ag->chegada_em->format('H:i') }}
+                                        </span>
+                                    @else
+                                        <button type="button" wire:click="confirmarPresenca({{ $ag->id }})"
+                                                class="rounded-lg bg-teal-50 border border-teal-300 text-teal-800 px-2.5 py-1 text-xs font-semibold hover:bg-teal-600 hover:text-white transition touch-target">
+                                            ✓ Registrar Chegada
+                                        </button>
+                                    @endif
+                                </div>
+
+                                <div class="flex items-center gap-1.5">
+                                    @if($ag->status === 'PRESENTE')
+                                        <button type="button" wire:click="{{ $ultimaChamada ? 'repetirChamada('.$ag->id.')' : 'chamarPaciente('.$ag->id.')' }}"
+                                                class="rounded-lg bg-sky-50 border border-sky-300 text-sky-800 px-2.5 py-1 text-xs font-semibold hover:bg-sky-600 hover:text-white transition touch-target">
+                                            📺 {{ $ultimaChamada ? 'Repetir TV' : 'Chamar TV' }}
+                                        </button>
+
+                                        @if(auth()->user()->hasAnyRole(['terapeuta', 'coordenacao']))
+                                            <a href="{{ route('prontuario.index', ['paciente' => $ag->paciente_id]) }}"
+                                               class="rounded-lg bg-teal-700 text-white px-2.5 py-1 text-xs font-bold hover:bg-teal-600 transition touch-target">
+                                                Atender &rarr;
+                                            </a>
+                                        @endif
+                                    @elseif($ag->status === 'AGENDADO')
+                                        <button type="button" wire:click="confirmarPresenca({{ $ag->id }})"
+                                                class="rounded-lg bg-teal-700 text-white px-2.5 py-1 text-xs font-bold hover:bg-teal-600 transition touch-target">
+                                            Confirmar Presença
+                                        </button>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
+                <!-- Visão Desktop: Tabela Completa (>= lg) -->
+                <div class="hidden lg:block overflow-x-auto">
                     <table class="w-full text-left text-xs text-slate-600">
                         <thead class="bg-slate-50 text-[11px] font-bold text-slate-700 uppercase tracking-wider border-b border-slate-200">
                             <tr>

@@ -44,6 +44,19 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.20.0',
+                'data' => '10/11/2026',
+                'titulo' => 'Nova Página Institucional, Login Elegante e Visual Adaptado para Celulares',
+                'tipo' => 'Novidades e Visual',
+                'destaques' => [
+                    'Novidades: Criamos uma nova página inicial pública e institucional do CER Digital, apresentando com clareza o propósito do sistema, as linhas de reabilitação e o fluxo de cuidado do SUS.',
+                    'Novidades: A tela de entrada no sistema foi totalmente redesenhada, oferecendo um visual mais moderno, opção de visualizar ou ocultar a senha digitada e navegação fácil de retorno à página inicial.',
+                    'Melhorias: Todos os módulos do sistema (Painel Inicial, Agenda, Prontuário, Faturamento e Cadastros) agora se adaptam de forma perfeita a telas de celulares e tablets, com botões confortáveis para o toque.',
+                    'Melhorias: Listas e tabelas foram adaptadas para o celular em formato de cartões fáceis de ler, permitindo consultar e agir sem a necessidade de arrastar a tela para os lados.',
+                    'Melhorias: Menus e janelas de confirmação ganharam rolagem vertical automática e ajuste ao teclado do celular, facilitando o uso por recepcionistas e terapeutas em movimento na unidade.',
+                ],
+            ],
+            [
                 'versao' => '1.19.4',
                 'data' => '09/11/2026',
                 'titulo' => 'Avisos Claros sobre o Cartão SUS no Agendamento',

@@ -246,7 +246,45 @@
             </a>
         </div>
 
-        <div class="overflow-x-auto">
+        <!-- Versão Mobile: Lista de Cartões (Visível apenas em < sm) -->
+        <div class="block sm:hidden divide-y divide-slate-100">
+            @forelse($agendamentosHoje as $ag)
+                <div class="p-4 space-y-2 hover:bg-slate-50/80 transition">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded">
+                            {{ substr((string) $ag->hora_inicio, 0, 5) }} - {{ substr((string) $ag->hora_fim, 0, 5) }}
+                        </span>
+                        <span class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase
+                            {{ $ag->status === 'PRESENTE' ? 'bg-emerald-100 text-emerald-800' : '' }}
+                            {{ $ag->status === 'ATENDIDO' ? 'bg-teal-100 text-teal-800' : '' }}
+                            {{ $ag->status === 'AGENDADO' ? 'bg-slate-100 text-slate-700' : '' }}
+                            {{ str_starts_with((string) $ag->status, 'FALTA') ? 'bg-rose-100 text-rose-800' : '' }}">
+                            {{ $ag->status }}
+                        </span>
+                    </div>
+
+                    <div>
+                        <span class="font-bold text-slate-900 text-sm block">
+                            {{ $ag->tipo_atendimento === 'TRABALHO_INTERNO' ? 'TRABALHO INTERNO / EVOLUÇÃO' : $ag->paciente?->nome }}
+                        </span>
+                        <div class="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+                            <span class="text-teal-700 font-medium">{{ $ag->sala?->nome }}</span>
+                            @if($ag->profissionais->isNotEmpty())
+                                <span>•</span>
+                                <span class="truncate">{{ $ag->profissionais->pluck('nome')->join(' + ') }}</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @empty
+                <div class="p-6 text-center text-xs text-slate-400">
+                    Nenhum atendimento agendado para a data de hoje.
+                </div>
+            @endforelse
+        </div>
+
+        <!-- Versão Desktop / Tablet: Tabela Completa (Visível em >= sm) -->
+        <div class="hidden sm:block overflow-x-auto">
             <table class="min-w-full divide-y divide-slate-200 text-left text-xs">
                 <thead class="bg-slate-50 font-semibold text-slate-600">
                     <tr>

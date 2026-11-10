@@ -39,7 +39,79 @@
                     <p class="text-slate-400 mt-0.5">Assim que a recepção confirmar a chegada do paciente, ele aparecerá automaticamente aqui. Você também pode pesquisar qualquer prontuário no seletor abaixo.</p>
                 </div>
             @else
-                <div class="overflow-x-auto">
+                <!-- Visão Mobile: Fila em Cartões (< md) -->
+                <div class="block md:hidden divide-y divide-slate-100">
+                    @foreach($filaAtendimentosHoje as $item)
+                        @php
+                            $ag = $item['agendamento'];
+                            $selecionado = $agendamento_id === $ag->id;
+                        @endphp
+                        <div class="p-4 space-y-3 {{ $selecionado ? 'bg-teal-50/70 border-l-4 border-l-teal-600' : 'bg-white' }}" wire:key="fila-pep-mob-{{ $ag->id }}">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-1.5 font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded">
+                                    <span>{{ substr((string) $ag->hora_inicio, 0, 5) }} - {{ substr((string) $ag->hora_fim, 0, 5) }}</span>
+                                    @if($ag->chegada_em)
+                                        <span class="text-teal-700">({{ $ag->chegada_em->format('H:i') }})</span>
+                                    @endif
+                                </div>
+
+                                <div>
+                                    @if($item['estado_fila'] === 'EVOLUCAO_REGISTRADA')
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                            ✓ Evolução Feita
+                                        </span>
+                                    @elseif($item['estado_fila'] === 'CHAMADO')
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800">
+                                            📺 Chamado
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                                            Aguardando
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div>
+                                <span class="font-bold text-slate-900 text-sm block">{{ $ag->paciente->nome }}</span>
+                                <div class="text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-2">
+                                    <span>Nasc: {{ $ag->paciente->data_nascimento?->format('d/m/Y') ?? '—' }}</span>
+                                    @if($ag->paciente->cid_principal)
+                                        <span>• <strong class="font-mono text-slate-600">CID {{ $ag->paciente->cid_principal }}</strong></span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-between text-xs text-slate-600 pt-1 border-t border-slate-100">
+                                <span class="font-medium text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                                    {{ $ag->sala->nome }}
+                                </span>
+                                <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold {{ $ag->tipo_atendimento === 'COMPARTILHADO' ? 'bg-purple-100 text-purple-800' : 'bg-slate-100 text-slate-700' }}">
+                                    {{ $ag->tipo_atendimento }}
+                                </span>
+                            </div>
+
+                            <!-- Botões de Ação com Alvos de Toque Confortáveis -->
+                            <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
+                                <button type="button"
+                                        wire:click="chamarPaciente({{ $ag->id }})"
+                                        class="inline-flex items-center justify-center gap-1 rounded-xl border border-slate-300 bg-white py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-teal-700 hover:border-teal-300 transition touch-target">
+                                    <svg class="h-3.5 w-3.5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                                    <span>Chamar TV</span>
+                                </button>
+
+                                <button type="button"
+                                        wire:click="abrirProntuarioAtendimento({{ $ag->id }})"
+                                        class="inline-flex items-center justify-center gap-1 rounded-xl py-2.5 text-xs font-bold shadow-xs transition touch-target {{ $selecionado ? 'bg-teal-700 text-white hover:bg-teal-600' : 'bg-slate-900 text-white hover:bg-teal-700' }}">
+                                    <span>{{ $selecionado ? '✓ Prontuário Aberto' : 'Abrir Prontuário →' }}</span>
+                                </button>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
+                <!-- Visão Desktop: Tabela Completa (>= md) -->
+                <div class="hidden md:block overflow-x-auto">
                     <table class="w-full text-left text-xs text-slate-600">
                         <thead class="bg-slate-50 text-[11px] font-bold text-slate-700 uppercase tracking-wider border-b border-slate-200">
                             <tr>

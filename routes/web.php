@@ -12,7 +12,9 @@ use App\Livewire\ProntuarioPaciente;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/dashboard');
+Route::get('/', function () {
+    return view('landing');
+})->name('landing');
 
 Route::get('/painel-chamadas', PainelChamadas::class)
     ->name('painel.chamadas');

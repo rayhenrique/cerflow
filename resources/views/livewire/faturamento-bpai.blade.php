@@ -43,7 +43,33 @@
             <div class="bg-red-50 px-4 py-3 border-b border-red-200">
                 <h3 class="text-xs font-bold text-red-900">Inconsistências Detectadas pela Pré-Auditoria (Bloqueados da Remessa)</h3>
             </div>
-            <div class="overflow-x-auto">
+            
+            <!-- Mobile: Cartões de Inconsistência (< md) -->
+            <div class="block md:hidden divide-y divide-red-100">
+                @foreach($auditoria['inconsistentes'] as $inc)
+                    <div class="p-3.5 space-y-2 bg-red-50/20">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-mono font-bold text-slate-800">{{ $inc->data_atendimento?->format('d/m/Y') }}</span>
+                            <span class="font-mono text-[11px] bg-red-100 text-red-800 px-2 py-0.5 rounded font-bold">
+                                {{ $inc->procedimento?->codigo }}
+                            </span>
+                        </div>
+                        <div class="text-xs">
+                            <span class="font-bold text-slate-900 block">{{ $inc->paciente?->nome }}</span>
+                            <span class="font-mono text-[11px] text-slate-500">CNS: {{ $inc->paciente?->cns ?? 'Ausente' }}</span>
+                        </div>
+                        <div class="text-xs text-slate-600">
+                            <span>{{ $inc->profissional?->nome }} (CBO {{ $inc->cbo_executante }})</span>
+                        </div>
+                        <div class="text-xs font-medium text-red-700 bg-red-50 p-2 rounded-lg border border-red-200">
+                            ⚠️ {{ $inc->mensagem_inconsistencia }}
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+            <!-- Desktop: Tabela de Inconsistências (>= md) -->
+            <div class="hidden md:block overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-200 text-left text-xs">
                     <thead class="bg-slate-50 font-semibold text-slate-700">
                         <tr>
@@ -75,7 +101,35 @@
         <div class="bg-slate-50 px-4 py-3 border-b border-slate-200">
             <h3 class="text-xs font-bold text-slate-900">Produções Validadas para Exportação Tipo 03 (BPA-i)</h3>
         </div>
-        <div class="overflow-x-auto">
+
+        <!-- Mobile: Cartões de Produção Validada (< md) -->
+        <div class="block md:hidden divide-y divide-slate-100">
+            @forelse($auditoria['validados'] as $val)
+                <div class="p-3.5 space-y-2">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-mono font-bold text-slate-800">{{ $val->data_atendimento?->format('d/m/Y') }}</span>
+                        <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                            {{ $val->status_exportacao }}
+                        </span>
+                    </div>
+                    <div class="text-xs">
+                        <span class="font-bold text-slate-900 block">{{ $val->paciente?->nome }}</span>
+                        <span class="font-mono text-[11px] text-slate-500">CNS: {{ $val->paciente?->cns }}</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-slate-600 pt-1 border-t border-slate-100">
+                        <span>{{ $val->profissional?->nome }} (CBO {{ $val->cbo_executante }})</span>
+                        <span class="font-mono text-teal-700 font-bold">{{ $val->procedimento?->codigo }}</span>
+                    </div>
+                </div>
+            @empty
+                <div class="px-4 py-8 text-center text-xs text-slate-400">
+                    Nenhuma produção validada na competência {{ $competencia }}.
+                </div>
+            @endforelse
+        </div>
+
+        <!-- Desktop: Tabela de Produções Validadas (>= md) -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="min-w-full divide-y divide-slate-200 text-left text-xs">
                 <thead class="bg-slate-50 font-semibold text-slate-700">
                     <tr>

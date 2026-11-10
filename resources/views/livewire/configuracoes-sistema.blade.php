@@ -1109,7 +1109,67 @@
                 </div>
             </div>
 
-            <div class="overflow-x-auto">
+            <!-- Mobile: Lista de Pacientes em Cartões (< md) -->
+            <div class="block md:hidden divide-y divide-slate-100">
+                @forelse ($pacientes as $pac)
+                    <div class="p-4 space-y-2.5">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="font-bold text-slate-900 text-sm block">{{ $pac->nome }}</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 {{ $pac->ativo ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700' }}">
+                                {{ $pac->ativo ? 'Ativo' : 'Inativo' }}
+                            </span>
+                        </div>
+
+                        <div class="text-xs text-slate-500 space-y-0.5">
+                            <div>Nascimento: <strong class="text-slate-700">{{ $pac->data_nascimento?->format('d/m/Y') ?? '—' }}</strong> ({{ $pac->sexo }})</div>
+                            @if ($pac->nome_mae)
+                                <div>Mãe: <span class="text-slate-700">{{ $pac->nome_mae }}</span></div>
+                            @endif
+                            <div class="flex flex-wrap items-center gap-x-3 pt-0.5 font-mono text-[11px]">
+                                <span>CNS: <strong class="text-teal-700">{{ $pac->cns ?? 'Não informado' }}</strong></span>
+                                @if($pac->cpf)
+                                    <span>CPF: <strong class="text-slate-700">{{ $pac->cpf }}</strong></span>
+                                @endif
+                            </div>
+                        </div>
+
+                        @if (auth()->user()?->hasAnyRole(['coordenacao', 'terapeuta']))
+                            <div class="flex flex-wrap items-center gap-1.5 text-xs pt-1 border-t border-slate-100">
+                                @if($pac->cid_principal)
+                                    <span class="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-mono text-xs font-bold">CID {{ $pac->cid_principal }}</span>
+                                @endif
+                                @forelse ($pac->modalidades_reabilitacao ?? [] as $mod)
+                                    <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">{{ $mod }}</span>
+                                @empty
+                                @endforelse
+                            </div>
+                        @endif
+
+                        <!-- Ações Rápidas no Mobile -->
+                        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 text-xs">
+                            <button type="button" wire:click="editarPaciente({{ $pac->id }})"
+                                class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50 touch-target">
+                                Editar
+                            </button>
+                            <button type="button" wire:click="alternarStatusPaciente({{ $pac->id }})"
+                                class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-semibold {{ $pac->ativo ? 'text-amber-700' : 'text-emerald-700' }} touch-target">
+                                {{ $pac->ativo ? 'Inativar' : 'Ativar' }}
+                            </button>
+                            <button type="button" wire:click="confirmarExclusao('paciente', {{ $pac->id }})"
+                                class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 font-semibold text-rose-700 hover:bg-rose-100 touch-target">
+                                Excluir
+                            </button>
+                        </div>
+                    </div>
+                @empty
+                    <div class="p-6 text-center text-xs text-slate-400">
+                        Nenhum paciente encontrado para os critérios informados.
+                    </div>
+                @endforelse
+            </div>
+
+            <!-- Desktop: Tabela de Pacientes (>= md) -->
+            <div class="hidden md:block overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-xs font-bold uppercase text-slate-500">
                         <tr>
@@ -1780,9 +1840,9 @@
     {{-- MODAL 2: CRIAR / EDITAR SALA                                          --}}
     {{-- ===================================================================== --}}
     @if ($modalSalaAberto)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
-            <div class="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
-                <div class="bg-slate-900 px-6 py-4 text-white flex items-center justify-between">
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 overflow-y-auto">
+            <div class="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[90vh] flex flex-col">
+                <div class="bg-slate-900 px-6 py-4 text-white flex items-center justify-between shrink-0">
                     <div>
                         <h3 class="text-base font-bold">{{ $salaEditandoId ? 'Editar Sala / Espaço' : 'Nova Sala / Espaço Terapêutico' }}</h3>
                         <p class="text-xs text-slate-400">Infraestrutura física para alocação na Grade Semanal</p>
@@ -1790,7 +1850,7 @@
                     <button type="button" wire:click="fecharModalSala" class="text-slate-400 hover:text-white cursor-pointer">✕</button>
                 </div>
 
-                <form wire:submit="salvarSala" class="p-6 space-y-4">
+                <form wire:submit="salvarSala" class="p-6 space-y-4 overflow-y-auto">
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">Nome da Sala / Consultório *</label>
                         <input type="text" wire:model="sala_nome" placeholder="Ex.: Consultório 06 - Fonoaudiologia"
@@ -1963,9 +2023,9 @@
     {{-- MODAL 4: CRIAR / EDITAR PROCEDIMENTO SIGTAP                           --}}
     {{-- ===================================================================== --}}
     @if ($modalSigtapAberto)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
-            <div class="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
-                <div class="bg-slate-900 px-6 py-4 text-white flex items-center justify-between">
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 overflow-y-auto">
+            <div class="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[90vh] flex flex-col">
+                <div class="bg-slate-900 px-6 py-4 text-white flex items-center justify-between shrink-0">
                     <div>
                         <h3 class="text-base font-bold">
                             {{ $sigtapEditandoId ? 'Editar Procedimento SIGTAP' : 'Novo Procedimento SIGTAP' }}
@@ -1975,7 +2035,7 @@
                     <button type="button" wire:click="fecharModalSigtap" class="text-slate-400 hover:text-white cursor-pointer">✕</button>
                 </div>
 
-                <form wire:submit="salvarProcedimentoSigtap" class="p-6 space-y-4">
+                <form wire:submit="salvarProcedimentoSigtap" class="p-6 space-y-4 overflow-y-auto">
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">Código SIGTAP (10 dígitos) *</label>
                         <input type="text" wire:model="sig_codigo" maxlength="10" placeholder="0301070075"
@@ -2077,8 +2137,8 @@
     {{-- MODAL 6: CONFIRMAÇÃO PADRONIZADA DE EXCLUSÃO                          --}}
     {{-- ===================================================================== --}}
     @if ($modalExclusaoAberto)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4">
-            <div class="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-rose-200 overflow-hidden">
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 overflow-y-auto">
+            <div class="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-rose-200 overflow-hidden my-auto">
                 <div class="p-6">
                     <div class="flex items-start gap-3.5">
                         <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">

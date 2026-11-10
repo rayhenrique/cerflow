@@ -75,7 +75,7 @@ class ControleVersaoAjudaTest extends TestCase
             'email' => 'recepcao@cerflow.gov.br',
             'password' => 'secret123',
         ]);
-        $response->assertRedirect('/');
+        $response->assertRedirect('/dashboard');
 
         // Ao carregar o componente, não deve abrir
         Livewire::actingAs($user)

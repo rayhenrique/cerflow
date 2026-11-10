@@ -11,9 +11,9 @@ class ExampleTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_raiz_redireciona_para_dashboard_e_login_responde_200(): void
+    public function test_raiz_exibe_landing_page_e_login_responde_200(): void
     {
-        $this->get('/')->assertRedirect('/dashboard');
+        $this->get('/')->assertOk()->assertSee('CER Digital');
         $this->get('/login')->assertOk();
     }
 }
