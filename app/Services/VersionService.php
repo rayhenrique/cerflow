@@ -44,6 +44,19 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.23.0',
+                'data' => '10/11/2026',
+                'titulo' => 'Reorganização do Menu Lateral por Áreas Funcionais',
+                'tipo' => 'Melhorias de Usabilidade',
+                'destaques' => [
+                    'Melhorias: Reorganizamos o menu lateral em áreas funcionais intuitivas (Início, Atendimento, Gestão, Cadastros, Administração e Conta & Suporte), reduzindo a poluição visual.',
+                    'Melhorias: Os grupos de Cadastros e Administração iniciam recolhidos para economizar espaço e abrem automaticamente ao navegar para qualquer tela dessas categorias.',
+                    'Melhorias: Aprimoramos a experiência em celulares e tablets com gaveta lateral que bloqueia a rolagem indevida do fundo e fecha automaticamente após escolher uma rotina.',
+                    'Melhorias: No computador, o menu compacto exibe identificadores e descrições acessíveis para cada item, mantendo o destaque verde-água da rotina ativa.',
+                    'Segurança: Cada colaborador visualiza apenas as opções autorizadas para seu perfil, preservando todas as regras e bloqueios de acesso do sistema.',
+                ],
+            ],
+            [
                 'versao' => '1.22.0',
                 'data' => '10/11/2026',
                 'titulo' => 'Cadastros Dinâmicos de CBOs, Especialidades e Unidades Básicas de Saúde (UBS)',

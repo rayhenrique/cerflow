@@ -172,12 +172,43 @@ O CER Digital protege os dados dos pacientes por meio de controle rigoroso de pa
 | **Faturamento** (`faturamento`) | Audita a produção ambulatorial do mês; revisa consistências SIGTAP; consulta tabelas de procedimentos; exporta arquivo magnético BPA-i (.txt) para o Datasus. | Não assina evoluções clínicas nem tem acesso de edição a anotações terapêuticas. |
 | **Coordenação** (`coordenacao`) | Acesso integral: relatórios e indicadores gerenciais, gestão de usuários, salas, profissionais, pacientes, auditoria LGPD e integração com o e-SUS PEC. | Acesso total com trilha de auditoria contínua de todas as ações. |
 
-### 2.6 Navegação Adaptada para Celulares e Tablets (Mobile-First)
+### 2.6 Estrutura do Menu Lateral por Áreas Funcionais
+
+Para proporcionar uma experiência de uso ágil, intuitiva e sem sobrecarga visual, o menu lateral do CER Digital organiza suas rotinas em seis áreas de trabalho bem delimitadas:
+
+1. **INÍCIO**
+   - **Painel Inicial:** Visão executiva diária, taxa de ocupação, sessões confirmadas e absenteísmo.
+2. **ATENDIMENTO**
+   - **Agenda Operacional:** Acesso consolidado aos modos Dia (Check-in), Grade Semanal e Mapa Mensal.
+   - **Pacientes:** Prontuário cadastral demográfico, validação Módulo 11 do Cartão SUS e UBS de referência.
+   - **Prontuário Eletrônico:** Prontuário Multiprofissional (PEP Multi), histórico unificado e evoluções clínicas.
+   - **Painel de Chamadas:** Painel de chamada de pacientes na TV da sala de espera (abertura em nova aba).
+3. **GESTÃO**
+   - **Relatórios e Indicadores:** Relatórios gerenciais de atendimentos, pacientes, profissionais, salas e BPA-i.
+   - **Faturamento BPA-i:** Auditoria prévia, validação SIGTAP e geração do arquivo magnético SUS.
+4. **CADASTROS** (recolhido inicialmente para poupar espaço)
+   - **Equipe e Profissionais:** Gestão de usuários, senhas, papéis RBAC e CBOs vinculados.
+   - **Salas e Espaços:** Consultórios e ginásios da unidade.
+   - **CBOs e Especialidades:** Classificação Brasileira de Ocupações e especialidades clínicas.
+   - **Unidades de Saúde (UBS):** Rede de atenção primária de referência da região.
+   - **Procedimentos SIGTAP:** Parametrização da tabela SUS e matriz de compatibilidade CBO.
+5. **ADMINISTRAÇÃO** (recolhido inicialmente para poupar espaço)
+   - **Dados do Estabelecimento:** CNES, código IBGE municipal e logotipo da unidade.
+   - **Integração e-SUS PEC:** Conexão segura somente-leitura com PostgreSQL para sincronização de cadastros.
+   - **Configuração do Painel TV:** Parâmetros de síntese de voz, áudio, privacidade e token de smart TV.
+   - **Auditoria e Segurança:** Trilha de auditoria imutável (LGPD) com hash SHA-256 e rastreabilidade total.
+6. **RODAPÉ — CONTA E SUPORTE**
+   - **Minha Conta e PIN:** Troca pessoal de senha de login e definição do PIN eletrônico de assinatura clínica.
+   - **Ajuda e Manual:** Manual interativo, atalhos de navegação e histórico detalhado de versões.
+   - **Identificação do Usuário e Sair:** Exibição do perfil ativo e botão de encerramento seguro de sessão.
+
+> 💡 **Comportamento Inteligente dos Grupos:** Os grupos **Cadastros** e **Administração** permanecem recolhidos por padrão para manter a tela limpa. No entanto, ao acessar diretamente uma tela pertencente a esses grupos (como `/configuracoes/salas` ou `/configuracoes/esus`), o sistema expande automaticamente o grupo correspondente e destaca o item ativo em verde-água.
+
+### 2.7 Navegação Adaptada para Celulares e Tablets (Mobile-First)
 Todas as telas do CER Digital foram aprimoradas para operar de maneira perfeita em dispositivos móveis (smartphones e tablets):
-- **Barra de Navegação Inferior (Mobile Bottom Nav):** No celular, os principais atalhos operacionais ficam acessíveis ao alcance do polegar na parte inferior da tela.
-- **Menu Lateral Retrátil (Drawer):** Deslize ou toque no menu para acessar as opções completas sem perda de espaço útil.
+- **Menu Lateral Retrátil (Drawer):** Gaveta lateral deslizante que trava a rolagem do fundo da página enquanto aberta e fecha automaticamente ao tocar em qualquer opção de navegação.
 - **Tabelas em Formato de Cartões:** As listas de agendamentos, pacientes e relatórios adaptam-se automaticamente em cartões de leitura fácil, eliminando a necessidade de rolar a tela horizontalmente.
-- **Formulários e Modais Otimizados:** Campos confortáveis para o toque, com rolagem vertical automática e teclados numéricos apropriados para campos de CPF, CNS e PIN.
+- **Formulários e Modais Otimizados:** Campos confortáveis para o toque (alvo mínimo de 44px), com rolagem vertical suave e teclados numéricos apropriados para campos de CPF, CNS e PIN.
 
 ---
 
