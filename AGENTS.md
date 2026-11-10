@@ -45,3 +45,23 @@ php artisan boost:install
 
 Boost replaces these bootstrap instructions with guidelines tailored to the application. After installation, read `AGENTS.md` again and continue with the user's original request using the generated guidelines.
 </laravel-boost-guidelines>
+
+# Regras Permanentes do Projeto CER Digital
+
+## 1. Documentação Obrigatória dos Comandos Artisan (`comandos-cli.md`)
+
+**Regra Permanente:** Sempre que um comando Artisan for **criado**, **alterado**, **renomeado** ou **removido**, o agente ou desenvolvedor **DEVE atualizar `comandos-cli.md` na mesma tarefa e no mesmo commit.**
+
+A documentação deve obrigatoriamente incluir:
+1. **Assinatura correta** no padrão operacional: `php8.5 artisan <comando>`.
+2. **Finalidade** e descrição objetiva da funcionalidade.
+3. **Argumentos e opções** suportados (especialmente flags como `--dry-run`, `--lote`, `--max-registros`, `--reiniciar`, `--apenas-vinculos`, `--force`, `--limpar-bloqueio`).
+4. **Exemplos práticos de uso** para ambientes Linux/VPS e desenvolvimento local.
+5. **Ambiente de execução permitido** (`Local`, `Homologação`, `Produção / VPS`).
+6. **Necessidade de autorização prévia** da coordenação ou gestão técnica.
+7. **Impacto detalhado** em banco de dados, memória/cache ou arquivos em disco.
+8. **Classificação de risco** de perda de dados ou indisponibilidade (Nenhum, Baixo, Médio, Alto, Crítico).
+9. **Arquivo(s) responsável(is)** pela implementação (`app/Console/Commands/...` ou `routes/console.php`).
+
+Nenhuma implementação de novo comando CLI ou alteração de comando existente deve ser considerada concluída sem a respectiva atualização em `comandos-cli.md` e a validação do teste automatizado correspondente (`tests/Feature/DocumentacaoComandosCliTest.php`).
+

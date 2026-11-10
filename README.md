@@ -84,14 +84,14 @@ A plataforma substitui integralmente processos fragmentados baseados em planilha
   - Módulo simplificado de **Profissões e CBOs** baseado no catálogo oficial do Ministério do Trabalho e Emprego (MTE).
   - Fluxo integrado: Configurações → Profissões e CBOs → Cadastrar/Importar → Selecionar profissão no cadastro do profissional.
   - **Busca Inteligente com Autocomplete:** Campo único **Profissão / CBO** com pesquisa instantânea a partir de 2 caracteres por código ou título oficial, debounce de 300 ms, ranqueamento por relevância, navegação por teclado (WAI-ARIA combobox) e seleção explícita sem pré-seleção arbitrária.
-  - Comandos Artisan idempotentes: `php artisan cer:recuperar-cbos-legados` para conciliação segura e `php artisan cer:importar-cbos` para o catálogo oficial MTE (2.614 ocupações).
+  - Comandos Artisan idempotentes: `php8.5 artisan cer:recuperar-cbos-legados` para conciliação segura e `php8.5 artisan cer:importar-cbos` para o catálogo oficial MTE (2.614 ocupações).
   - Preservação integral das especialidades históricas, relatórios gerenciais e regras estritas de faturamento `CBO × SIGTAP` para BPA-i (incluindo CBO 251545 — Neuropsicólogo).
   - Bloqueio de exclusão para CBOs com profissionais vinculados.
 - **Cadastro da Rede de Atenção Primária / UBS:**
   - Cadastro estruturado de Unidades Básicas de Saúde com código CNES (7 dígitos), código IBGE, endereço, telefone e origem (`MANUAL` ou `ESUS`).
   - Associação direta no prontuário do paciente com sincronização dos campos legados e bloqueio de exclusão quando houver vínculos.
 - **Gestão de Pacientes com Alta Performance:** Visualização e pesquisa em bases com dezenas de milhares de usuários com paginação configurável (15, 25, 50 ou 100 por página).
-- **Integração Nativa com e-SUS APS PEC:** Conexão direta via rede interna/VPN com o banco de dados PostgreSQL do e-SUS PEC do município, permitindo a importação de cadastros da Atenção Primária, vinculação com UBS de referência e Agente Comunitário de Saúde (ACS), tanto pela interface web quanto por comando CLI agendado (`php artisan esus:sincronizar-pec`).
+- **Integração Nativa com e-SUS APS PEC:** Conexão direta via rede interna/VPN com o banco de dados PostgreSQL do e-SUS PEC do município, permitindo a importação de cadastros da Atenção Primária, vinculação com UBS de referência e Agente Comunitário de Saúde (ACS), tanto pela interface web quanto por comando CLI padronizado (`php8.5 artisan esus:sincronizar` e `php8.5 artisan esus:conciliar-pacientes`). Consulte a documentação completa em [`comandos-cli.md`](comandos-cli.md).
 
 ### 10. Central de Ajuda & Histórico de Versões (`/ajuda`)
 - **Comunicação de Atualizações:** Modal automático pós-login informando as novidades da release mais recente em linguagem simples e acessível, com persistência individual por usuário (`ultima_versao_novidades_vista`).
@@ -279,39 +279,45 @@ O script `deploy.sh` automatiza o ciclo completo de atualização em produção:
 ## Rotinas de Manutenção, Backup e Cron
 
 ### 1. Agendamento de Tarefas (Cron do CloudPanel)
-No painel do CloudPanel, acesse **Cron Jobs** e configure a execução do agendador do Laravel a cada minuto:
+No painel do CloudPanel, acesse **Cron Jobs** e configure a execução do agendador do Laravel a cada minuto utilizando o binário `php8.5`:
 
 ```bash
-* * * * * php /home/<usuario-site>/htdocs/<seu-dominio>/artisan schedule:run >> /dev/null 2>&1
+* * * * * php8.5 /home/<usuario-site>/htdocs/<seu-dominio>/artisan schedule:run >> /dev/null 2>&1
 ```
+
+> [!TIP]
+> Para o inventário completo, opções detalhadas, permissões e análise de riscos de todos os comandos Artisan disponíveis na instalação, consulte o guia oficial [`comandos-cli.md`](comandos-cli.md).
 
 ### 2. Integração e Sincronização e-SUS APS PEC
 
 O CER Digital integra-se diretamente ao banco de dados PostgreSQL do **e-SUS APS PEC** municipal via rede local ou VPN corporativa (em modo **estritamente somente leitura** / `SELECT`):
 
 #### Pré-requisitos de Conexão
-- **Extensão PHP:** `pdo_pgsql` e `pgsql` habilitadas no PHP CLI (`php -m | grep pdo_pgsql`).
+- **Extensão PHP:** `pdo_pgsql` e `pgsql` habilitadas no PHP 8.5 CLI (`php8.5 -m | grep pdo_pgsql`).
 - **Acesso à Rede:** Conectividade TCP até o servidor PostgreSQL do e-SUS PEC (geralmente porta `5433` ou `5432`).
 - **Credenciais Seguras:** Usuário PostgreSQL com permissão exclusiva `GRANT SELECT` nas tabelas do e-SUS PEC (nunca usar usuário administrativo com privilégios de escrita).
 - **Destino dos Dados:** Banco MySQL local do CER Digital (`pacientes`, `unidades_basicas_saude`).
 
-#### Comandos de Linha de Comando (CLI)
+#### Comandos de Linha de Comando (CLI — Padrão `php8.5 artisan`)
 
 ```bash
 # 1. Diagnóstico Somente-Leitura (avalia conexão, latência, schema, tabelas e métricas sem gravar dados):
-php artisan esus:diagnostico
+php8.5 artisan esus:diagnostico
 
 # 2. Simulação Segura (Dry-Run) com lotes controlados:
-php artisan esus:sincronizar --dry-run --max-registros=100 --lote=50
+php8.5 artisan esus:sincronizar --dry-run --max-registros=100 --lote=50
 
 # 3. Complementação Exclusiva de Vínculos (Dry-Run):
-php artisan esus:sincronizar --apenas-vinculos --dry-run --max-registros=100 --lote=50
+php8.5 artisan esus:sincronizar --apenas-vinculos --dry-run --max-registros=100 --lote=50
 
 # 4. Complementação Real de Vínculos de UBS e ACS (apenas pacientes locais existentes, zero criação de novos):
-php artisan esus:sincronizar --apenas-vinculos --lote=500
+php8.5 artisan esus:sincronizar --apenas-vinculos --lote=500
 
-# 5. Sincronização Periódica Agendada no Crontab (madrugada):
-0 2 * * * php /home/<usuario-site>/htdocs/<seu-dominio>/artisan esus:sincronizar --lote=1000 >> /home/<usuario-site>/htdocs/<seu-dominio>/storage/logs/esus-sync.log 2>&1
+# 5. Conciliação Segura de Pacientes com UBS Textual (Dry-Run):
+php8.5 artisan esus:conciliar-pacientes --dry-run
+
+# 6. Sincronização Periódica Agendada no Crontab (madrugada):
+0 2 * * * php8.5 /home/<usuario-site>/htdocs/<seu-dominio>/artisan esus:sincronizar --lote=1000 >> /home/<usuario-site>/htdocs/<seu-dominio>/storage/logs/esus-sync.log 2>&1
 ```
 
 #### Regras de Identificação e Resolução de Vínculos
