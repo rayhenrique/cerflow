@@ -25,7 +25,6 @@ use App\Services\TvPairingService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -219,9 +218,9 @@ class ConfiguracoesSistema extends Component
 
     public ?int $prof_especialidade_id = null;
 
-    public string $prof_cbo = '223605';
+    public string $prof_cbo = '';
 
-    public string $prof_especialidade = 'Fisioterapia';
+    public string $prof_especialidade = '';
 
     public string $prof_pin = '';
 
@@ -443,10 +442,17 @@ class ConfiguracoesSistema extends Component
     public function updatedProfCboId(?int $cboId): void
     {
         if ($cboId) {
-            $cbo = Cbo::find($cboId);
+            $cbo = Cbo::query()->ativos()->find($cboId);
             if ($cbo) {
                 $this->prof_cbo = $cbo->codigo;
+                $this->buscaCboModal = "{$cbo->codigo} — {$cbo->titulo_oficial}";
+                $this->resetErrorBag(['prof_cbo_id', 'prof_cbo', 'buscaCboModal']);
+            } else {
+                $this->prof_cbo_id = null;
+                $this->prof_cbo = '';
             }
+        } else {
+            $this->prof_cbo = '';
         }
     }
 
@@ -1479,12 +1485,41 @@ class ConfiguracoesSistema extends Component
         ]);
         $this->usr_role = 'terapeuta';
         $this->vincular_profissional = true;
-        $primeiroCbo = Cbo::ativos()->orderBy('titulo_oficial')->first();
-        $this->prof_cbo_id = $primeiroCbo?->id;
-        $this->prof_cbo = $primeiroCbo?->codigo ?? '223605';
+        $this->prof_cbo_id = null;
+        $this->prof_cbo = '';
+        $this->buscaCboModal = '';
         $this->prof_especialidade_id = null;
         $this->prof_especialidade = '';
         $this->modalProfissionalAberto = true;
+    }
+
+    public function updatedBuscaCboModal(): void
+    {
+        // Se o usuário alterar o texto e ele não for idêntico à representação da opção selecionada,
+        // invalida a seleção anterior exigindo nova escolha explícita.
+        if ($this->prof_cbo_id !== null) {
+            $cbo = Cbo::find($this->prof_cbo_id);
+            $textoEsperado = $cbo ? "{$cbo->codigo} — {$cbo->titulo_oficial}" : '';
+            if (trim($this->buscaCboModal) !== $textoEsperado) {
+                $this->prof_cbo_id = null;
+                $this->prof_cbo = '';
+            }
+        }
+    }
+
+    public function selecionarCbo(int $cboId): void
+    {
+        $cbo = Cbo::query()->ativos()->find($cboId);
+        if (! $cbo) {
+            $this->addError('prof_cbo_id', 'A profissão ou CBO selecionado não foi encontrado ou está inativo no catálogo oficial.');
+
+            return;
+        }
+
+        $this->prof_cbo_id = $cbo->id;
+        $this->prof_cbo = $cbo->codigo;
+        $this->buscaCboModal = "{$cbo->codigo} — {$cbo->titulo_oficial}";
+        $this->resetErrorBag(['prof_cbo_id', 'prof_cbo', 'buscaCboModal']);
     }
 
     public function editarUsuarioProfissional(int $userId): void
@@ -1506,22 +1541,37 @@ class ConfiguracoesSistema extends Component
             $this->prof_cpf = $usuario->profissional->cpf;
             $this->prof_cns = $usuario->profissional->cns;
             $this->prof_conselho = $usuario->profissional->registro_conselho;
-            $this->prof_cbo_id = $usuario->profissional->cbo_id ?? Cbo::where('codigo', $usuario->profissional->cbo_padrao)->value('id');
-            $this->prof_especialidade_id = $usuario->profissional->especialidade_id ?? Especialidade::where('nome', $usuario->profissional->especialidade)->value('id');
-            $this->prof_cbo = $usuario->profissional->cbo_padrao;
-            $this->prof_especialidade = $usuario->profissional->especialidade;
+
+            $cboVinculado = null;
+            if ($usuario->profissional->cbo_id) {
+                $cboVinculado = Cbo::find($usuario->profissional->cbo_id);
+            } elseif ($usuario->profissional->cbo_padrao) {
+                $cboVinculado = Cbo::where('codigo', $usuario->profissional->cbo_padrao)->first();
+            }
+
+            if ($cboVinculado) {
+                $this->prof_cbo_id = $cboVinculado->id;
+                $this->prof_cbo = $cboVinculado->codigo;
+                $this->buscaCboModal = "{$cboVinculado->codigo} — {$cboVinculado->titulo_oficial}";
+            } else {
+                $this->prof_cbo_id = null;
+                $this->prof_cbo = (string) ($usuario->profissional->cbo_padrao ?? '');
+                $this->buscaCboModal = $this->prof_cbo;
+            }
+
+            $this->prof_especialidade_id = $usuario->profissional->especialidade_id;
+            $this->prof_especialidade = (string) ($usuario->profissional->especialidade ?? '');
             $this->prof_pin = '';
         } else {
             $this->vincular_profissional = false;
             $this->prof_cpf = '';
             $this->prof_cns = '';
             $this->prof_conselho = '';
-            $primeiroCbo = Cbo::ativos()->orderBy('titulo_oficial')->first();
-            $this->prof_cbo_id = $primeiroCbo?->id;
-            $this->prof_cbo = $primeiroCbo?->codigo ?? '223605';
-            $primeiraEsp = $primeiroCbo?->especialidades()->first() ?? Especialidade::ativas()->first();
-            $this->prof_especialidade_id = $primeiraEsp?->id;
-            $this->prof_especialidade = $primeiraEsp?->nome ?? 'Fisioterapia';
+            $this->prof_cbo_id = null;
+            $this->prof_cbo = '';
+            $this->buscaCboModal = '';
+            $this->prof_especialidade_id = null;
+            $this->prof_especialidade = '';
             $this->prof_pin = '';
         }
 
@@ -1572,13 +1622,34 @@ class ConfiguracoesSistema extends Component
                 Rule::unique('profissionais', 'cns')->ignore($profissionalExistenteId),
             ];
             $regras['prof_conselho'] = ['required', 'string', 'max:50'];
-            $regras['prof_cbo'] = ['required', 'string', 'max:10'];
             $regras['prof_pin'] = ($editando && $profissionalExistenteId !== null)
                 ? ['nullable', 'string', 'min:4', 'max:12']
                 : ['required', 'string', 'min:4', 'max:12'];
+
+            // Validação estrita de seleção de CBO do catálogo oficial
+            if ($this->prof_cbo_id !== null) {
+                $regras['prof_cbo_id'] = [
+                    'required',
+                    'integer',
+                    Rule::exists('cbos', 'id')->where('ativo', true),
+                ];
+            } elseif ($editando && $this->prof_cbo !== '' && $profissionalExistenteId !== null) {
+                $regras['prof_cbo'] = ['required', 'string', 'max:10'];
+            } else {
+                $regras['prof_cbo_id'] = [
+                    'required',
+                    'integer',
+                    Rule::exists('cbos', 'id')->where('ativo', true),
+                ];
+            }
         }
 
-        $this->validate($regras);
+        $mensagens = [
+            'prof_cbo_id.required' => 'É obrigatório selecionar uma profissão ou CBO do catálogo oficial.',
+            'prof_cbo_id.exists' => 'A profissão ou CBO selecionado é inválido ou está inativo no catálogo oficial.',
+        ];
+
+        $this->validate($regras, $mensagens);
 
         DB::transaction(function () use ($editando, $usuarioExistente): void {
             if ($editando && $usuarioExistente !== null) {
@@ -1606,12 +1677,23 @@ class ConfiguracoesSistema extends Component
             if ($this->vincular_profissional) {
                 $cboModel = null;
                 if ($this->prof_cbo_id) {
-                    $cboModel = Cbo::find($this->prof_cbo_id);
-                } elseif ($this->prof_cbo !== '') {
+                    $cboModel = Cbo::query()->ativos()->find($this->prof_cbo_id);
+                    if (! $cboModel) {
+                        throw ValidationException::withMessages([
+                            'prof_cbo_id' => 'A profissão ou CBO selecionado não está ativo no catálogo oficial.',
+                        ]);
+                    }
+                } elseif ($editando && $this->prof_cbo !== '') {
                     $cboModel = Cbo::where('codigo', trim($this->prof_cbo))->first();
                 }
 
                 $cboCodigoFinal = $cboModel ? $cboModel->codigo : trim($this->prof_cbo);
+
+                if ($cboCodigoFinal === '') {
+                    throw ValidationException::withMessages([
+                        'prof_cbo_id' => 'É obrigatório selecionar uma profissão ou CBO do catálogo oficial.',
+                    ]);
+                }
 
                 // Preserva especialidade histórica do profissional se existente
                 $especialidadeHistorica = $usuarioExistente?->profissional?->especialidade
@@ -2563,7 +2645,10 @@ class ConfiguracoesSistema extends Component
         [$logsAuditoria, $logInspecionado] = $this->carregarAuditoria($isCoordenacao);
         [$dispositivosTv, $solicitacoesTvPendentes] = $this->carregarTv($isCoordenacao);
 
-        $opcoesCboModal = $this->carregarOpcoesCboModal($isCoordenacao);
+        $sugestoesCboModal = collect();
+        if ($this->modalProfissionalAberto && mb_strlen(trim($this->buscaCboModal)) >= 2) {
+            $sugestoesCboModal = Cbo::buscarParaAutocomplete($this->buscaCboModal, 10);
+        }
 
         return view('livewire.configuracoes-sistema', [
             'abasPermitidas' => $this->abasPermitidas(),
@@ -2574,9 +2659,10 @@ class ConfiguracoesSistema extends Component
             'cbos' => $cbos,
             'especialidades' => $especialidades,
             'unidadesSaude' => $this->carregarUbs($isCoordenacao),
-            'todosCbos' => $opcoesCboModal,
-            'opcoesCboModal' => $opcoesCboModal,
-            'cboAtualModal' => $this->prof_cbo_id ? Cbo::with('especialidades')->find($this->prof_cbo_id) : null,
+            'sugestoesCboModal' => $sugestoesCboModal,
+            'todosCbos' => $sugestoesCboModal,
+            'opcoesCboModal' => $sugestoesCboModal,
+            'cboAtualModal' => $this->prof_cbo_id ? Cbo::find($this->prof_cbo_id) : null,
             'todasEspecialidades' => Especialidade::query()->ativas()->orderBy('nome')->get(['id', 'nome']),
             'todasUbs' => UnidadeBasicaSaude::query()->ativas()->orderBy('nome')->get(['id', 'nome', 'cnes']),
             'logsAuditoria' => $logsAuditoria,
@@ -2586,52 +2672,6 @@ class ConfiguracoesSistema extends Component
             'dispositivosTv' => $dispositivosTv,
             'solicitacoesTvPendentes' => $solicitacoesTvPendentes,
         ]);
-    }
-
-    /**
-     * Carrega uma lista otimizada de CBOs para exibição em modais, com busca textual e preservação da seleção atual.
-     *
-     * @return Collection<int, Cbo>
-     */
-    private function carregarOpcoesCboModal(bool $isCoordenacao): Collection
-    {
-        if (! $isCoordenacao) {
-            return collect();
-        }
-
-        $termo = trim($this->buscaCboModal);
-        $query = Cbo::query()->ativos()->with('especialidades')->orderBy('codigo');
-
-        if ($termo !== '') {
-            $query->where(function ($q) use ($termo): void {
-                $digitos = preg_replace('/\D/', '', $termo) ?? '';
-                if ($digitos !== '') {
-                    $q->where('codigo', 'like', "%{$digitos}%");
-                }
-                $q->orWhere('titulo_oficial', 'like', "%{$termo}%");
-            });
-        }
-
-        $opcoes = $query->limit(40)->get();
-
-        // Preserva o CBO selecionado no profissional caso não esteja nas primeiras 40 opções
-        if ($this->prof_cbo_id && ! $opcoes->contains('id', (int) $this->prof_cbo_id)) {
-            $selecionado = Cbo::with('especialidades')->find($this->prof_cbo_id);
-            if ($selecionado) {
-                $opcoes->prepend($selecionado);
-            }
-        }
-
-        // Preserva os CBOs vinculados na modal de especialidade
-        if (! empty($this->esp_cbos_vinculados)) {
-            $faltantes = Cbo::with('especialidades')
-                ->whereIn('id', $this->esp_cbos_vinculados)
-                ->whereNotIn('id', $opcoes->pluck('id'))
-                ->get();
-            $opcoes = $opcoes->concat($faltantes);
-        }
-
-        return $opcoes;
     }
 
     private function carregarSalas(bool $isCoordenacao): mixed

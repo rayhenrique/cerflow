@@ -83,7 +83,7 @@ A plataforma substitui integralmente processos fragmentados baseados em planilha
 - **Gestão de Profissões e CBOs (Módulo Unificado):**
   - Módulo simplificado de **Profissões e CBOs** baseado no catálogo oficial do Ministério do Trabalho e Emprego (MTE).
   - Fluxo integrado: Configurações → Profissões e CBOs → Cadastrar/Importar → Selecionar profissão no cadastro do profissional.
-  - Seleção por campo único **Profissão / CBO** com pesquisa rápida por código (6 dígitos) ou nome oficial e exibição de selo de validação.
+  - **Busca Inteligente com Autocomplete:** Campo único **Profissão / CBO** com pesquisa instantânea a partir de 2 caracteres por código ou título oficial, debounce de 300 ms, ranqueamento por relevância, navegação por teclado (WAI-ARIA combobox) e seleção explícita sem pré-seleção arbitrária.
   - Comandos Artisan idempotentes: `php artisan cer:recuperar-cbos-legados` para conciliação segura e `php artisan cer:importar-cbos` para o catálogo oficial MTE (2.614 ocupações).
   - Preservação integral das especialidades históricas, relatórios gerenciais e regras estritas de faturamento `CBO × SIGTAP` para BPA-i (incluindo CBO 251545 — Neuropsicólogo).
   - Bloqueio de exclusão para CBOs com profissionais vinculados.

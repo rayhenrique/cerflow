@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Livewire\ConfiguracoesSistema;
+use App\Models\Cbo;
 use App\Models\ConfiguracaoEstabelecimento;
 use App\Models\Paciente;
 use App\Models\ProcedimentoSigtap;
@@ -93,11 +94,18 @@ class ConfiguracoesSistemaTest extends TestCase
         $this->assertDatabaseMissing('salas', ['id' => $sala->id]);
 
         // 2. CRUD Usuário + Profissional (Criar -> Editar -> Excluir)
+        $cbo = Cbo::create([
+            'codigo' => '251510',
+            'titulo_oficial' => 'Psicólogo Clínico',
+            'ativo' => true,
+        ]);
         $cnsProf = CnsValido::gerarDefinitivo('15566677788');
         Livewire::actingAs($coordenador)
             ->test(ConfiguracoesSistema::class, ['secao' => 'profissionais'])
             ->call('abrirModalNovoProfissional')
             ->assertSet('modalProfissionalAberto', true)
+            ->assertSet('prof_cbo_id', null)
+            ->call('selecionarCbo', $cbo->id)
             ->set('usr_name', 'Dr. Renato Psicólogo')
             ->set('usr_email', 'renato.psico@cerflow.gov.br')
             ->set('usr_password', 'senha123')
@@ -106,7 +114,6 @@ class ConfiguracoesSistemaTest extends TestCase
             ->set('prof_cpf', '55566677788')
             ->set('prof_cns', $cnsProf)
             ->set('prof_conselho', 'CRP-15 4455')
-            ->set('prof_cbo', '251510')
             ->set('prof_especialidade', 'Psicologia')
             ->set('prof_pin', '4567')
             ->call('salvarUsuarioProfissional')

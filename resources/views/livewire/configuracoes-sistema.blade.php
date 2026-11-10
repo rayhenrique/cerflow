@@ -2214,40 +2214,150 @@
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-700 mb-1">Profissão / CBO *</label>
-                                    <div class="mb-1">
-                                        <input type="text" wire:model.live.debounce.300ms="buscaCboModal"
-                                            placeholder="🔍 Filtrar profissão por código ou nome..."
-                                            class="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs focus:border-teal-600 focus:outline-none">
-                                    </div>
-                                    <select wire:model.live="prof_cbo_id"
-                                        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm">
-                                        <option value="">-- Selecione a Profissão / CBO --</option>
-                                        @foreach ($opcoesCboModal as $cboOption)
-                                            <option value="{{ $cboOption->id }}">
-                                                {{ $cboOption->codigo }} — {{ $cboOption->titulo_oficial }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    @if ($cboAtualModal)
-                                        <div class="mt-1 flex items-center gap-1.5 text-[11px] text-slate-600">
-                                            @if ($cboAtualModal->verificado_em)
-                                                <span class="inline-flex items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
-                                                    ✓ Oficial MTE
-                                                </span>
-                                            @else
-                                                <span class="inline-flex items-center gap-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
-                                                    ⚠️ Legado não verificado
-                                                </span>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1" for="campo-busca-cbo-modal">
+                                        Profissão / CBO *
+                                    </label>
+                                    <div class="relative"
+                                        x-data="{
+                                            aberto: false,
+                                            focoIndice: -1,
+                                            get totalItens() {
+                                                return $refs.listaSugestoes ? $refs.listaSugestoes.querySelectorAll('[role=option]').length : 0;
+                                            },
+                                            moverFoco(direcao) {
+                                                const total = this.totalItens;
+                                                if (total === 0) return;
+                                                if (!this.aberto) { this.aberto = true; }
+                                                this.focoIndice = (this.focoIndice + direcao + total) % total;
+                                                const itens = $refs.listaSugestoes.querySelectorAll('[role=option]');
+                                                if (itens[this.focoIndice]) {
+                                                    itens[this.focoIndice].scrollIntoView({ block: 'nearest' });
+                                                }
+                                            },
+                                            selecionarFocado() {
+                                                if (this.focoIndice >= 0 && $refs.listaSugestoes) {
+                                                    const itens = $refs.listaSugestoes.querySelectorAll('[role=option]');
+                                                    if (itens[this.focoIndice]) {
+                                                        itens[this.focoIndice].click();
+                                                        this.aberto = false;
+                                                        this.focoIndice = -1;
+                                                    }
+                                                }
+                                            },
+                                            fechar() {
+                                                this.aberto = false;
+                                                this.focoIndice = -1;
+                                            }
+                                        }"
+                                        @click.outside="fechar()"
+                                        @keydown.escape.prevent="fechar()"
+                                    >
+                                        <div class="relative flex items-center">
+                                            <input
+                                                type="text"
+                                                id="campo-busca-cbo-modal"
+                                                role="combobox"
+                                                aria-autocomplete="list"
+                                                aria-haspopup="listbox"
+                                                :aria-expanded="aberto"
+                                                aria-controls="lista-sugestoes-cbo"
+                                                wire:model.live.debounce.300ms="buscaCboModal"
+                                                @focus="aberto = true"
+                                                @input="aberto = true; focoIndice = -1"
+                                                @keydown.arrow-down.prevent="moverFoco(1)"
+                                                @keydown.arrow-up.prevent="moverFoco(-1)"
+                                                @keydown.enter.prevent="if (aberto && focoIndice >= 0) { selecionarFocado(); } else if (aberto) { aberto = false; }"
+                                                placeholder="Digite o nome da profissão ou código CBO..."
+                                                autocomplete="off"
+                                                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 pr-10 text-xs sm:text-sm placeholder:text-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 @error('prof_cbo_id') border-rose-400 ring-rose-200 @enderror @error('prof_cbo') border-rose-400 ring-rose-200 @enderror"
+                                            >
+                                            <div wire:loading wire:target="buscaCboModal" class="absolute right-3 text-teal-600">
+                                                <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                            </div>
+                                            @if($prof_cbo_id)
+                                                <div wire:loading.remove wire:target="buscaCboModal" class="absolute right-3 text-emerald-600" title="CBO selecionado com sucesso">
+                                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                                </div>
                                             @endif
-                                            <span class="truncate font-medium text-slate-800">{{ $cboAtualModal->titulo_oficial }}</span>
                                         </div>
-                                    @elseif ($prof_cbo)
-                                        <div class="mt-1 rounded bg-amber-50 p-1.5 text-[11px] text-amber-800 border border-amber-200">
-                                            ⚠️ CBO legado (<strong>{{ $prof_cbo }}</strong>) pendente de conciliação com o catálogo oficial.
+
+                                        <!-- Dropdown de Sugestões de Autocomplete -->
+                                        <div
+                                            id="lista-sugestoes-cbo"
+                                            role="listbox"
+                                            x-ref="listaSugestoes"
+                                            x-show="aberto && $wire.buscaCboModal && $wire.buscaCboModal.trim().length >= 2"
+                                            x-cloak
+                                            class="absolute z-50 left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-xl divide-y divide-slate-100"
+                                        >
+                                            @if(mb_strlen(trim($buscaCboModal)) >= 2)
+                                                @forelse($sugestoesCboModal as $indice => $cboOption)
+                                                    <button
+                                                        type="button"
+                                                        role="option"
+                                                        id="opcao-cbo-{{ $cboOption->id }}"
+                                                        :aria-selected="focoIndice === {{ $indice }}"
+                                                        :class="{ 'bg-teal-50 text-teal-900': focoIndice === {{ $indice }}, 'hover:bg-slate-50 text-slate-800': focoIndice !== {{ $indice }} }"
+                                                        @click="$wire.selecionarCbo({{ $cboOption->id }}); fechar()"
+                                                        @mouseenter="focoIndice = {{ $indice }}"
+                                                        wire:key="sugestao-cbo-{{ $cboOption->id }}"
+                                                        class="w-full text-left p-2.5 transition-colors flex items-center justify-between gap-3 group cursor-pointer"
+                                                    >
+                                                        <div class="space-y-0.5 min-w-0">
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="font-mono font-bold text-xs text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">
+                                                                    {{ $cboOption->codigo }}
+                                                                </span>
+                                                                <span class="font-semibold text-xs text-slate-800 truncate group-hover:text-teal-900">
+                                                                    {{ $cboOption->titulo_oficial }}
+                                                                </span>
+                                                            </div>
+                                                            <div class="text-[11px] text-slate-500 flex items-center gap-2">
+                                                                @if($cboOption->verificado_em)
+                                                                    <span class="inline-flex items-center gap-0.5 text-emerald-700 font-medium">
+                                                                        <svg class="h-3 w-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                                                        Verificado no catálogo oficial
+                                                                    </span>
+                                                                @else
+                                                                    <span class="text-slate-400">Ocupação cadastrada</span>
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                        <span class="shrink-0 text-xs font-semibold text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            Selecionar ↵
+                                                        </span>
+                                                    </button>
+                                                @empty
+                                                    <div class="p-3 text-center text-xs text-slate-500" wire:loading.remove wire:target="buscaCboModal">
+                                                        Nenhum resultado encontrado para <strong class="text-slate-700">"{{ $buscaCboModal }}"</strong>.
+                                                    </div>
+                                                @endforelse
+                                            @endif
                                         </div>
-                                    @endif
-                                    @error('prof_cbo') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
+
+                                        <!-- Indicador do CBO Atual / Status Oficial ou Legado -->
+                                        @if ($cboAtualModal)
+                                            <div class="mt-1.5 flex items-center gap-1.5 text-[11px] text-slate-600">
+                                                @if ($cboAtualModal->verificado_em)
+                                                    <span class="inline-flex items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
+                                                        ✓ Oficial MTE
+                                                    </span>
+                                                @else
+                                                    <span class="inline-flex items-center gap-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
+                                                        ⚠️ Legado não verificado
+                                                    </span>
+                                                @endif
+                                                <span class="truncate font-medium text-slate-800">{{ $cboAtualModal->codigo }} — {{ $cboAtualModal->titulo_oficial }}</span>
+                                            </div>
+                                        @elseif ($prof_cbo)
+                                            <div class="mt-1.5 rounded bg-amber-50 p-2 text-[11px] text-amber-800 border border-amber-200">
+                                                ⚠️ CBO legado (<strong>{{ $prof_cbo }}</strong>) pendente de conciliação com o catálogo oficial.
+                                            </div>
+                                        @endif
+
+                                        @error('prof_cbo_id') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
+                                        @error('prof_cbo') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
+                                    </div>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 mb-1">Conselho de Classe *</label>

@@ -44,6 +44,20 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.26.0',
+                'data' => '10/11/2026',
+                'titulo' => 'Busca Inteligente e Autocomplete de Profissão e CBO',
+                'tipo' => 'Melhoria e Usabilidade',
+                'destaques' => [
+                    'Profissões e CBOs: Campo único de autocomplete inteligente para seleção da ocupação do profissional, eliminando o antigo seletor duplo de filtro e select.',
+                    'Pesquisa em Tempo Real: Sugestões instantâneas ao digitar a partir de 2 caracteres por código ou título oficial, com debounce de 300 ms.',
+                    'Classificação por Relevância: Resultados ordenados por código exato, prefixo de código, prefixo de título e demais correspondências.',
+                    'Seleção Consciente: O modal de novo profissional não seleciona mais nenhum CBO automaticamente, exigindo a escolha explícita do colaborador.',
+                    'Acessibilidade e Navegação: Suporte completo à seleção por clique e teclado (setas para cima/baixo, Enter para escolher, Esc para fechar).',
+                    'Performance e Segurança: Consulta sob demanda com limite de 10 sugestões, sem carregar o catálogo na memória quando o modal está fechado.',
+                ],
+            ],
+            [
                 'versao' => '1.25.0',
                 'data' => '10/11/2026',
                 'titulo' => 'Ajustes de Interface, Prontuário Eletrônico, IBGE e CNES',

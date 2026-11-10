@@ -508,9 +508,15 @@ Em **Configurações** → **Profissões e CBOs**:
   - Cada registro possui metadados de auditoria e verificação oficial (`fonte_referencia`, `versao_referencia` e data de verificação).
   - Inclui por padrão o CBO oficial `251545` (Neuropsicólogo).
   - Ações disponíveis: cadastrar nova profissão, editar, consultar quantidade de profissionais vinculados e inativar/ativar.
-- **Novo Fluxo de Cadastro de Profissionais:**
-  - O formulário de colaboradores foi simplificado: os campos separados de CBO e Especialidade foram substituídos por um único campo **Profissão / CBO**.
-  - O seletor oferece pesquisa rápida em tempo real por código numérico ou título oficial, exibindo o selo de validação do MTE.
+- **Novo Fluxo de Cadastro com Busca Inteligente (Autocomplete):**
+  - O formulário de colaboradores possui um único campo **Profissão / CBO** com busca preditiva em tempo real:
+    - Digite pelo menos 2 caracteres (números do CBO ou letras do título da profissão) para visualizar sugestões instantâneas.
+    - Resultados limitados a 10 registros sob demanda, otimizando o tráfego de rede e a resposta visual.
+    - Ordenação inteligente por relevância: código exato primeiro, seguido por código iniciado pelo termo, título iniciado pelo termo e demais ocorrências.
+    - Seleção consciente: ao abrir o modal de novo profissional, nenhum CBO é selecionado automaticamente, garantindo que o gestor escolha expressamente a ocupação correta.
+    - Acessibilidade completa via teclado (setas para cima/baixo para navegar, Enter para confirmar e Esc para fechar) e clique do mouse.
+    - Ao selecionar, o campo exibe o formato padronizado `Código — Profissão` com o selo de verificação oficial do MTE.
+    - Se o usuário editar o texto após selecionar, a seleção anterior é invalidada para exigir uma nova escolha válida do catálogo.
   - Não é mais exigido o cadastro separado de especialidades clínicas para novos profissionais.
 - **Preservação de Dados Históricos:** Especialidades assistenciais anteriormente cadastradas, relatórios gerenciais e dados de atendimentos históricos permanecem 100% preservados no banco de dados.
 - **Comandos Artisan para Produção:**
