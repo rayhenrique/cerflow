@@ -44,6 +44,20 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.25.0',
+                'data' => '10/11/2026',
+                'titulo' => 'Ajustes de Interface, Prontuário Eletrônico, IBGE e CNES',
+                'tipo' => 'Novidades e Correções',
+                'destaques' => [
+                    'Interface: Corrigido o botão de Novo Agendamento na Agenda Operacional, eliminando o símbolo duplicado de adição.',
+                    'Prontuário: Nova seção "Meus Atendimentos" no PEP, permitindo consultar agendamentos de hoje, futuros e anteriores com filtros por período e status.',
+                    'Prontuário: Histórico e atendimentos futuros do paciente selecionado agora com paginação organizada e navegação ágil.',
+                    'Prontuário: Ação de agendamento de retornos e novos atendimentos diretamente a partir do PEP, com pré-seleção do paciente e checagem de conflitos.',
+                    'Institucional: Padronização oficial do município sede para Teotônio Vilela/AL (código IBGE oficial 2709152 e compatibilidade de 6 dígitos para BPA-i).',
+                    'Institucional: Atualização dinâmica do CNES oficial (0795690 - Centro Especializado em Reabilitação Jailson Barbosa Lins) na Central de Ajuda e no sistema.',
+                ],
+            ],
+            [
                 'versao' => '1.24.0',
                 'data' => '10/11/2026',
                 'titulo' => 'Unificação de Profissões e CBOs e Simplificação de Cadastros',

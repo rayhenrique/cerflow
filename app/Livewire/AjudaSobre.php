@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
-use App\Services\BpaiExportService;
+use App\Models\ConfiguracaoEstabelecimento;
 use App\Services\VersionService;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
@@ -50,6 +50,13 @@ class AjudaSobre extends Component
 
     public function render(VersionService $versionService): View
     {
+        $configuracao = ConfiguracaoEstabelecimento::atual();
+        $cnesAtual = (string) ($configuracao->cnes ?: '0795690');
+        // Garante que uma string de 7 dígitos preserve o zero inicial
+        if (strlen($cnesAtual) < 7 && ctype_digit($cnesAtual)) {
+            $cnesAtual = str_pad($cnesAtual, 7, '0', STR_PAD_LEFT);
+        }
+
         return view('livewire.ajuda-sobre', [
             'versaoAtual' => $versionService->versaoAtual(),
             'historicoVersoes' => $versionService->historicoVersoes(),
@@ -58,7 +65,10 @@ class AjudaSobre extends Component
                 'php' => PHP_VERSION,
                 'timezone' => config('app.timezone'),
                 'locale' => config('app.locale'),
-                'cnes' => BpaiExportService::CNES_PADRAO,
+                'cnes' => $cnesAtual,
+                'unidade' => 'Centro Especializado em Reabilitação Jailson Barbosa Lins',
+                'municipio' => 'Teotônio Vilela / AL',
+                'ibge' => (string) ($configuracao->codigo_ibge_padrao ?: '2709152'),
             ],
         ]);
     }

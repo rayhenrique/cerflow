@@ -33,7 +33,7 @@
                     class="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer"
                 >
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    <span>+ Novo Agendamento</span>
+                    <span>Novo Agendamento</span>
                 </button>
             @endcan
         </div>
@@ -231,7 +231,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                     </svg>
                     <p class="text-sm font-semibold text-slate-700">Nenhum agendamento encontrado para este dia e filtros selecionados.</p>
-                    <p class="text-slate-400 mt-1">Utilize o botão "+ Novo Agendamento" acima para registrar um horário.</p>
+                    <p class="text-slate-400 mt-1">Utilize o botão "Novo Agendamento" acima para registrar um horário.</p>
                 </div>
             @else
                 <!-- Visão Mobile: Lista em Cartões (< lg) -->

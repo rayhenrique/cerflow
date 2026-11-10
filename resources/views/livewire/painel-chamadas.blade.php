@@ -137,7 +137,7 @@
                 <h1 class="text-lg sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
                     <span>CER Digital</span>
                     <span class="hidden sm:inline-block text-xs font-mono font-medium px-2 py-0.5 rounded bg-teal-950/80 text-teal-300 border border-teal-800">
-                        CNES {{ $configuracao->cnes ?? '2000001' }}
+                        CNES {{ $configuracao->cnes ?? '0795690' }}
                     </span>
                 </h1>
                 <p class="text-xs sm:text-sm text-slate-400">

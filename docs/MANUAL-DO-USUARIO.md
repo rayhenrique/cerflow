@@ -41,6 +41,8 @@
    - [5.6 Termos de Adendo Retificadores](#56-termos-de-adendo-retificadores)
    - [5.7 Linha do Tempo e Interdisciplinaridade](#57-linha-do-tempo-e-interdisciplinaridade)
    - [5.8 Impressão Oficial de Prontuário em Folha A4](#58-impressão-oficial-de-prontuário-em-folha-a4)
+   - [5.9 Sub-aba "Meus Atendimentos": Consulta Rápida da Agenda do Terapeuta](#59-sub-aba-meus-atendimentos-consulta-rápida-da-agenda-do-terapeuta)
+   - [5.10 Agendamento de Retorno / Novo Atendimento diretamente pelo PEP](#510-agendamento-de-retorno--novo-atendimento-diretamente-pelo-pep)
 6. [Faturamento SUS & Lote Magnético BPA-i (SIA/SUS)](#6-faturamento-sus--lote-magnético-bpa-i-siasus)
    - [6.1 Fluxo Automático de Produção a partir do PEP](#61-fluxo-automático-de-produção-a-partir-do-pep)
    - [6.2 Validação Prévia e Regras SIGTAP](#62-validação-prévia-e-regras-sigtap)
@@ -350,6 +352,24 @@ Para fornecer relatórios a juntas médicas, Ministério Público ou auditorias 
 - Clique no botão **Imprimir Prontuário** no topo da tela do PEP (ou utilize `Ctrl + P`).
 - O sistema formata um relatório clínico limpo, organizado em folhas A4 com logotipo oficial da unidade, cabeçalho institucional, dados demográficos, histórico completo de evoluções assinadas, carimbos de PIN e hashes SHA-256.
 
+### 5.9 Sub-aba "Meus Atendimentos": Consulta Rápida da Agenda do Terapeuta
+Para consultar os atendimentos sob sua responsabilidade diretamente pelo PEP, sem precisar transitar para a Agenda:
+1. No topo da tela do Prontuário, clique na sub-aba **Meus Atendimentos**.
+2. Utilize os filtros integrados:
+   - **Período:** Hoje, Próximos atendimentos, Atendimentos anteriores ou Todos os períodos.
+   - **Situação:** Todos os status, Agendado, Presente, Atendido, Falta ou Cancelado.
+3. Cada linha exibe o nome do paciente, data e horário, sala alocada, se há atendimento compartilhado e o status da evolução clínica (Registrada ou Pendente).
+4. O botão **Abrir Prontuário →** carrega o paciente selecionado na aba clínica.
+
+### 5.10 Agendamento de Retorno / Novo Atendimento diretamente pelo PEP
+Quando o terapeuta estiver em atendimento e acordar a data do próximo retorno com o paciente ou acompanhante:
+1. Clique no botão **Novo Atendimento** no cabeçalho do PEP (ou no atalho **+ Agendar retorno** na tabela de atendimentos do paciente).
+2. O sistema pré-seleciona automaticamente o paciente atual e o profissional autenticado.
+3. Escolha a data, horário, sala e, se necessário, adicione outros colegas para atendimento compartilhado ou configure repetição semanal.
+4. O sistema valida instantaneamente eventuais conflitos de horário e a regularidade do Cartão SUS do paciente.
+5. Ao confirmar, o agendamento é registrado com status inicial `AGENDADO`, integrando-se à grade geral.
+> ⚠️ **Aviso de Presença:** O registro de evolução clínica e faturamento BPA-i requer que o paciente tenha sua presença confirmada na recepção (`PRESENTE` ou `ATENDIDO`). Agendamentos futuros podem ser consultados, mas não permitem evolução antecipada indevida.
+
 ---
 
 ## 6. Faturamento SUS & Lote Magnético BPA-i (SIA/SUS)
@@ -462,7 +482,12 @@ Acessível em `/dashboard`, exibe o panorama executivo da unidade em tempo real 
 
 ### 8.2 Dados do Estabelecimento e Logotipo Oficial
 Em **Configurações** → **Estabelecimento**:
-- Cadastre os dados oficiais da unidade: Razão Social, Nome Fantasia, Código CNES (7 dígitos), Município IBGE e dados de contato.
+- Cadastre e consulte os dados oficiais da unidade de saúde: Razão Social, Nome Fantasia, Código CNES de 7 dígitos (`0795690` — Centro Especializado em Reabilitação Jailson Barbosa Lins), Município IBGE padrão (`2709152` — Teotônio Vilela/AL) e dados de contato.
+- **Padrão de CNES Oficial (`0795690`):** O CNES do estabelecimento é mantido como string de 7 caracteres com preservação rigorosa do zero à esquerda, sendo utilizado na identificação visual, cabeçalhos, Central de Ajuda e exportações BPA-i.
+- **Código IBGE do Município Sede (`2709152`) vs. Exportação BPA-i (`270915`):**
+  - Nos cadastros do sistema (estabelecimento, pacientes e unidades de saúde), o código IBGE padrão adota o formato oficial completo de 7 dígitos com dígito verificador módulo 10 (`2709152` para Teotônio Vilela).
+  - No layout de exportação magnética do **BPA-i (SIA/SUS)**, a especificação técnica do DATASUS exige exatamente 6 posições numéricas. O sistema realiza a conversão automática dos 7 dígitos para as 6 posições (`270915`), garantindo conformidade sem intervenção manual.
+  - **Município de Residência dos Pacientes:** O código padrão `2709152` é sugerido por conveniência operacional, mas o sistema aceita livremente o cadastro e a validação de códigos IBGE de 6 ou 7 dígitos de qualquer município do Brasil (ex.: Maceió `2704302`, Arapiraca `2700300`), assegurando que pacientes oriundos de outros municípios tenham sua procedência preservada.
 - Faça o upload do **Logotipo Oficial** da unidade ou da prefeitura. O logotipo é exibido automaticamente na tela de entrada, nos cabeçalhos de impressão de prontuário, no painel de TV e nos relatórios gerenciais.
 
 ### 8.3 Cadastro e Manutenção de Pacientes com Paginação Ágil

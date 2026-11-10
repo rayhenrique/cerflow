@@ -8,19 +8,29 @@ use App\Models\Agendamento;
 use App\Models\EvolucaoClinica;
 use App\Models\Paciente;
 use App\Models\ProcedimentoSigtap;
+use App\Models\Profissional;
+use App\Models\Sala;
+use App\Services\AgendamentoService;
 use App\Services\ChamadaPacienteService;
 use App\Services\EvolucaoService;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('components.layouts.app')]
 #[Title('Prontuário Multiprofissional (PEP) — CER Digital')]
 class ProntuarioPaciente extends Component
 {
+    use WithPagination;
+
+    public string $abaPep = 'prontuario'; // 'prontuario' | 'meus_atendimentos'
+
     public ?int $pacienteId = null;
 
     public string $pesquisaPaciente = '';
@@ -49,6 +59,11 @@ class ProntuarioPaciente extends Component
 
     public string $pin_adendo = '';
 
+    // --- Filtros da Seção Meus Atendimentos ---
+    public string $filtroPeriodo = 'hoje'; // 'hoje' | 'proximos' | 'anteriores' | 'todos'
+
+    public string $filtroStatus = 'todos'; // 'todos' | 'AGENDADO' | 'PRESENTE' | 'ATENDIDO' | 'FALTA' | 'CANCELADO'
+
     // --- Avaliação & Diagnóstico Clínico (CID-10 e Modalidades) ---
     public bool $modalDiagnosticoAberto = false;
 
@@ -59,6 +74,35 @@ class ProntuarioPaciente extends Component
     /** @var array<int, string> */
     public array $diag_modalidades = [];
 
+    // --- Modal Novo Atendimento / Agendamento no PEP ---
+    public bool $modalNovoAgendamentoAberto = false;
+
+    public ?int $novo_paciente_id = null;
+
+    public ?int $novo_sala_id = null;
+
+    public string $novo_data = '';
+
+    public string $novo_hora_inicio = '08:00';
+
+    public string $novo_hora_fim = '08:45';
+
+    public string $novo_dia_semana = 'SEGUNDA';
+
+    public string $novo_tipo_atendimento = 'INDIVIDUAL';
+
+    /** @var array<int, int> */
+    public array $novo_profissionais = [];
+
+    public bool $novo_recorrente = false;
+
+    public int $novo_semanas_recorrencia = 1;
+
+    public string $novo_observacao = '';
+
+    /** @var ?array{tipo: string, titulo: string, mensagem: string} */
+    public ?array $alertaPaciente = null;
+
     public function mount(?int $paciente = null): void
     {
         Gate::authorize('viewAny', EvolucaoClinica::class);
@@ -66,6 +110,23 @@ class ProntuarioPaciente extends Component
         if ($paciente !== null) {
             $this->pacienteId = $paciente;
         }
+    }
+
+    public function selecionarAbaPep(string $aba): void
+    {
+        if (in_array($aba, ['prontuario', 'meus_atendimentos'], true)) {
+            $this->abaPep = $aba;
+        }
+    }
+
+    public function updatedFiltroPeriodo(): void
+    {
+        $this->resetPage('pageMeusAtendimentos');
+    }
+
+    public function updatedFiltroStatus(): void
+    {
+        $this->resetPage('pageMeusAtendimentos');
     }
 
     public function selecionarPaciente(int $id): void
@@ -76,6 +137,7 @@ class ProntuarioPaciente extends Component
             $this->pacienteId = (int) $paciente->id;
             $this->pesquisaPaciente = '';
             $this->reset(['agendamento_id', 'procedimento_id', 'queixa_estado_atual', 'conduta_terapeutica', 'intercorrencias', 'pin_assinatura']);
+            $this->resetPage('pageAtendimentosPaciente');
             $this->resetValidation();
         }
     }
@@ -142,6 +204,14 @@ class ProntuarioPaciente extends Component
             'conduta_terapeutica' => ['required', 'string', 'min:5'],
         ]);
 
+        $agendamento = Agendamento::findOrFail($this->agendamento_id);
+        if (! in_array($agendamento->status, ['PRESENTE', 'ATENDIDO'], true) && $agendamento->chegada_em === null) {
+            $this->addError('agendamento_id', 'Apenas agendamentos com presença confirmada na recepção (PRESENTE ou ATENDIDO) podem receber evolução clínica e gerar produção BPA-i.');
+            $this->dispatch('toast', tipo: 'alerta', titulo: 'Presença não confirmada', mensagem: 'O paciente ainda não teve sua presença registrada na recepção para este agendamento.');
+
+            return;
+        }
+
         $this->pin_assinatura = '';
         $this->modalPinAberto = true;
     }
@@ -151,8 +221,15 @@ class ProntuarioPaciente extends Component
         Gate::authorize('create', EvolucaoClinica::class);
         $this->validate();
 
-        $profissional = auth()->user()?->profissional;
         $agendamento = Agendamento::findOrFail($this->agendamento_id);
+        if (! in_array($agendamento->status, ['PRESENTE', 'ATENDIDO'], true) && $agendamento->chegada_em === null) {
+            $this->addError('agendamento_id', 'Apenas agendamentos com presença confirmada na recepção (PRESENTE ou ATENDIDO) podem receber evolução clínica e gerar produção BPA-i.');
+            $this->dispatch('toast', tipo: 'alerta', titulo: 'Presença não confirmada', mensagem: 'O paciente ainda não teve sua presença registrada na recepção para este agendamento.');
+
+            return;
+        }
+
+        $profissional = auth()->user()?->profissional;
         $procedimento = ProcedimentoSigtap::findOrFail($this->procedimento_id);
 
         $evolucaoService->registrarEAssinar(
@@ -270,6 +347,7 @@ class ProntuarioPaciente extends Component
         $this->pacienteId = (int) $agendamento->paciente_id;
         $this->agendamento_id = (int) $agendamento->id;
         $this->pesquisaPaciente = '';
+        $this->abaPep = 'prontuario';
         $this->reset(['queixa_estado_atual', 'conduta_terapeutica', 'intercorrencias', 'pin_assinatura']);
         $this->resetValidation();
 
@@ -344,6 +422,190 @@ class ProntuarioPaciente extends Component
         }
     }
 
+    // =========================================================================
+    // FLUXO CENTRALIZADO DE NOVO ATENDIMENTO / AGENDAMENTO A PARTIR DO PEP
+    // =========================================================================
+
+    public function abrirModalNovoAgendamento(?int $pacienteId = null): void
+    {
+        Gate::authorize('create', Agendamento::class);
+
+        $this->resetValidation();
+        $this->alertaPaciente = null;
+
+        $alvoPacienteId = $pacienteId ?? $this->pacienteId;
+        $this->novo_paciente_id = $alvoPacienteId;
+
+        $hoje = CarbonImmutable::now();
+        if ($hoje->isWeekend()) {
+            $hoje = $hoje->next(CarbonInterface::MONDAY);
+        }
+        $this->novo_data = $hoje->toDateString();
+        $this->atualizarDiaSemanaNovoAgendamento();
+
+        $this->novo_hora_inicio = '08:00';
+        $this->novo_hora_fim = '08:45';
+        $this->novo_tipo_atendimento = 'INDIVIDUAL';
+        $this->novo_recorrente = false;
+        $this->novo_semanas_recorrencia = 1;
+        $this->novo_observacao = '';
+
+        $primeiraSala = Sala::query()->where('ativo', true)->orderBy('nome')->first();
+        $this->novo_sala_id = $primeiraSala?->id;
+
+        $prof = auth()->user()?->profissional;
+        if ($prof !== null && $prof->ativo) {
+            $this->novo_profissionais = [$prof->id];
+        } else {
+            $primeiroProf = Profissional::query()->where('ativo', true)->orderBy('nome')->first();
+            $this->novo_profissionais = $primeiroProf ? [$primeiroProf->id] : [];
+        }
+
+        if ($alvoPacienteId !== null) {
+            $paciente = Paciente::find($alvoPacienteId);
+            if ($paciente !== null) {
+                $service = app(AgendamentoService::class);
+                $this->alertaPaciente = $service->validarDadosCadastraisPaciente($paciente);
+            }
+        }
+
+        $this->modalNovoAgendamentoAberto = true;
+    }
+
+    public function updatedNovoData(): void
+    {
+        $this->atualizarDiaSemanaNovoAgendamento();
+    }
+
+    private function atualizarDiaSemanaNovoAgendamento(): void
+    {
+        if (! empty($this->novo_data)) {
+            try {
+                $data = CarbonImmutable::parse($this->novo_data);
+                $diasMap = [
+                    1 => 'SEGUNDA',
+                    2 => 'TERCA',
+                    3 => 'QUARTA',
+                    4 => 'QUINTA',
+                    5 => 'SEXTA',
+                    6 => 'SABADO',
+                    7 => 'DOMINGO',
+                ];
+                $this->novo_dia_semana = $diasMap[$data->dayOfWeekIso] ?? 'SEGUNDA';
+            } catch (\Throwable) {
+                $this->novo_dia_semana = 'SEGUNDA';
+            }
+        }
+    }
+
+    public function updatedNovoPacienteId(): void
+    {
+        if ($this->novo_paciente_id) {
+            $paciente = Paciente::find($this->novo_paciente_id);
+            $service = app(AgendamentoService::class);
+            $this->alertaPaciente = $service->validarDadosCadastraisPaciente($paciente);
+        } else {
+            $this->alertaPaciente = null;
+        }
+    }
+
+    public function fecharModalNovoAgendamento(): void
+    {
+        $this->modalNovoAgendamentoAberto = false;
+        $this->resetValidation();
+        $this->alertaPaciente = null;
+    }
+
+    public function salvarNovoAgendamento(AgendamentoService $agendamentoService): void
+    {
+        Gate::authorize('create', Agendamento::class);
+
+        $this->validate([
+            'novo_paciente_id' => ['required', 'integer', 'exists:pacientes,id'],
+            'novo_sala_id' => ['required', 'integer', 'exists:salas,id'],
+            'novo_data' => ['required', 'date'],
+            'novo_hora_inicio' => ['required', 'date_format:H:i'],
+            'novo_hora_fim' => ['required', 'date_format:H:i', 'after:novo_hora_inicio'],
+            'novo_dia_semana' => ['required', 'in:SEGUNDA,TERCA,QUARTA,QUINTA,SEXTA'],
+            'novo_tipo_atendimento' => ['required', 'in:INDIVIDUAL,COMPARTILHADO,TRABALHO_INTERNO'],
+            'novo_profissionais' => ['required', 'array', 'min:1'],
+            'novo_profissionais.*' => ['integer', 'exists:profissionais,id'],
+            'novo_recorrente' => ['boolean'],
+            'novo_semanas_recorrencia' => ['integer', 'min:1', 'max:12'],
+            'novo_observacao' => ['nullable', 'string', 'max:255'],
+        ], [
+            'novo_paciente_id.required' => 'É obrigatório selecionar um paciente para o agendamento.',
+            'novo_sala_id.required' => 'Selecione uma sala ou espaço para o agendamento.',
+            'novo_profissionais.required' => 'Selecione ao menos um profissional para o agendamento.',
+            'novo_profissionais.min' => 'Selecione ao menos um profissional para o agendamento.',
+        ]);
+
+        $paciente = Paciente::find($this->novo_paciente_id);
+        $pendencia = $agendamentoService->validarDadosCadastraisPaciente($paciente);
+        if ($pendencia !== null) {
+            $this->alertaPaciente = $pendencia;
+            $this->addError('novo_paciente_id', $pendencia['mensagem']);
+            $this->dispatch('toast', tipo: 'alerta', titulo: $pendencia['titulo'], mensagem: $pendencia['mensagem']);
+
+            return;
+        }
+
+        $tipoAtendimentoFinal = count($this->novo_profissionais) > 1 && $this->novo_tipo_atendimento === 'INDIVIDUAL'
+            ? 'COMPARTILHADO'
+            : $this->novo_tipo_atendimento;
+
+        try {
+            $agendamentoService->criarGrade(
+                dados: [
+                    'paciente_id' => $this->novo_paciente_id,
+                    'sala_id' => $this->novo_sala_id,
+                    'data_atendimento' => $this->novo_data,
+                    'hora_inicio' => $this->novo_hora_inicio,
+                    'hora_fim' => $this->novo_hora_fim,
+                    'dia_semana' => $this->novo_dia_semana,
+                    'tipo_atendimento' => $tipoAtendimentoFinal,
+                    'status' => 'AGENDADO',
+                    'recorrente' => $this->novo_recorrente,
+                    'observacao' => $this->novo_observacao !== '' ? $this->novo_observacao : null,
+                ],
+                profissionaisIds: $this->novo_profissionais,
+                semanasRecorrencia: $this->novo_recorrente ? $this->novo_semanas_recorrencia : 1,
+            );
+        } catch (ValidationException $e) {
+            $erros = $e->errors();
+            foreach ($erros as $campo => $mensagens) {
+                $campoMapeado = match ($campo) {
+                    'paciente_id' => 'novo_paciente_id',
+                    'sala_id' => 'novo_sala_id',
+                    'data_atendimento' => 'novo_data',
+                    'hora_inicio' => 'novo_hora_inicio',
+                    'hora_fim' => 'novo_hora_fim',
+                    'dia_semana' => 'novo_dia_semana',
+                    'tipo_atendimento' => 'novo_tipo_atendimento',
+                    'profissionais' => 'novo_profissionais',
+                    default => $campo,
+                };
+                foreach ((array) $mensagens as $msg) {
+                    $this->addError($campoMapeado, $msg);
+                }
+            }
+
+            return;
+        }
+
+        $pacienteAgendadoId = $this->novo_paciente_id;
+        $this->modalNovoAgendamentoAberto = false;
+        $this->resetValidation();
+
+        // Retorna ao prontuário do paciente se apropriado
+        $this->selecionarPaciente($pacienteAgendadoId);
+        $this->abaPep = 'prontuario';
+
+        $mensagem = 'Atendimento agendado com sucesso e integrado à grade operacional.';
+        session()->flash('sucesso_pep', $mensagem);
+        $this->dispatch('toast', tipo: 'sucesso', titulo: 'Agendamento criado', mensagem: $mensagem);
+    }
+
     public function render(): View
     {
         $pacienteSelecionado = $this->pacienteId !== null
@@ -364,13 +626,24 @@ class ProntuarioPaciente extends Component
 
         $agendamentosPaciente = $pacienteSelecionado !== null
             ? Agendamento::query()
-                ->with(['sala', 'profissionais', 'chamadas'])
+                ->with(['sala', 'profissionais', 'chamadas', 'evolucoes'])
                 ->where('paciente_id', $pacienteSelecionado->id)
                 ->whereIn('status', ['AGENDADO', 'PRESENTE', 'ATENDIDO'])
                 ->orderByDesc('data_atendimento')
+                ->orderBy('hora_inicio')
                 ->limit(20)
                 ->get()
             : collect();
+
+        // Paginação do histórico e atendimentos futuros do paciente selecionado
+        $atendimentosPacientePaginados = $pacienteSelecionado !== null
+            ? Agendamento::query()
+                ->with(['sala', 'profissionais', 'chamadas', 'evolucoes'])
+                ->where('paciente_id', $pacienteSelecionado->id)
+                ->orderByDesc('data_atendimento')
+                ->orderByDesc('hora_inicio')
+                ->paginate(10, ['*'], 'pageAtendimentosPaciente')
+            : null;
 
         $procedimentos = ProcedimentoSigtap::query()->ativos()->orderBy('codigo')->get();
 
@@ -415,14 +688,50 @@ class ProntuarioPaciente extends Component
                 });
         }
 
+        // Consulta de "Meus Atendimentos" com filtros de período e status
+        $hojeStr = CarbonImmutable::now()->toDateString();
+        $meusAtendimentosQuery = Agendamento::query()
+            ->with(['paciente', 'sala', 'profissionais', 'evolucoes']);
+
+        if ($profissional !== null) {
+            $meusAtendimentosQuery->whereHas('profissionais', fn ($q) => $q->where('profissionais.id', $profissional->id));
+        }
+
+        match ($this->filtroPeriodo) {
+            'hoje' => $meusAtendimentosQuery->whereDate('data_atendimento', $hojeStr),
+            'proximos' => $meusAtendimentosQuery->whereDate('data_atendimento', '>', $hojeStr),
+            'anteriores' => $meusAtendimentosQuery->whereDate('data_atendimento', '<', $hojeStr),
+            default => null,
+        };
+
+        if ($this->filtroStatus !== 'todos') {
+            $meusAtendimentosQuery->where('status', $this->filtroStatus);
+        }
+
+        if ($this->filtroPeriodo === 'anteriores') {
+            $meusAtendimentosQuery->orderByDesc('data_atendimento')->orderByDesc('hora_inicio');
+        } else {
+            $meusAtendimentosQuery->orderBy('data_atendimento')->orderBy('hora_inicio');
+        }
+
+        $meusAtendimentos = $meusAtendimentosQuery->paginate(15, ['*'], 'pageMeusAtendimentos');
+
+        // Salas e profissionais disponíveis para novo agendamento
+        $salas = Sala::query()->where('ativo', true)->orderBy('nome')->get();
+        $profissionaisLista = Profissional::query()->where('ativo', true)->orderBy('nome')->get();
+
         return view('livewire.prontuario-paciente', [
             'pacientesResultados' => $this->buscarPacientes(),
             'pacienteSelecionado' => $pacienteSelecionado,
             'evolucoes' => $evolucoes,
             'agendamentosPaciente' => $agendamentosPaciente,
+            'atendimentosPacientePaginados' => $atendimentosPacientePaginados,
             'procedimentos' => $procedimentos,
             'profissionalAutenticado' => $profissional,
             'filaAtendimentosHoje' => $filaAtendimentosHoje,
+            'meusAtendimentos' => $meusAtendimentos,
+            'salas' => $salas,
+            'profissionaisLista' => $profissionaisLista,
         ]);
     }
 }

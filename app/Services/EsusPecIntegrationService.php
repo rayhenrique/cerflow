@@ -10,6 +10,7 @@ use App\Models\HistoricoSincronizacaoEsus;
 use App\Models\Paciente;
 use App\Models\UnidadeBasicaSaude;
 use App\Rules\CnsValido;
+use App\Support\IbgeMunicipio;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -90,7 +91,7 @@ class EsusPecIntegrationService
             $ubs = UnidadeBasicaSaude::create([
                 'nome' => $nomeUbs !== '' ? $nomeUbs : ('UBS CNES '.$cnes),
                 'cnes' => $cnes !== '' ? $cnes : null,
-                'municipio_ibge' => '270430',
+                'municipio_ibge' => ConfiguracaoEstabelecimento::atual()->codigo_ibge_padrao ?: '2709152',
                 'origem' => 'ESUS',
                 'ativo' => true,
             ]);
@@ -713,7 +714,7 @@ class EsusPecIntegrationService
             }
 
             $tabelaOrigem = $diagnostico['tabela_origem'];
-            $ibgePadrao = ConfiguracaoEstabelecimento::atual()->codigo_ibge_padrao ?: '270430';
+            $ibgePadrao = ConfiguracaoEstabelecimento::atual()->codigo_ibge_padrao ?: '2709152';
 
             // Determina a modalidade real de sincronização: incremental com janela ou reconciliação completa
             $colunaAtualizacao = $diagnostico['coluna_atualizacao'] ?? null;
@@ -1621,7 +1622,9 @@ class EsusPecIntegrationService
         // Município IBGE
         $ibge = $resolver(['co_ibge_domicilio', 'co_ibge_tb_cidadao', 'co_ibge', 'co_municipio_ibge', 'municipio_ibge']) ?: $ibgePadrao;
         $ibgeLimpo = preg_replace('/\D/', '', $ibge) ?: $ibgePadrao;
-        $ibgeLimpo = substr($ibgeLimpo, 0, 6);
+        if (strlen($ibgeLimpo) === 6) {
+            $ibgeLimpo = IbgeMunicipio::formatar7($ibgeLimpo);
+        }
 
         // Vínculo APS — Unidade Básica de Saúde (UBS) de Referência
         $cnesVinculado = $resolver(['nu_cnes_vinc_equipe', 'nu_cnes_vinc_unidade', 'nu_cnes']);
@@ -1891,7 +1894,7 @@ class EsusPecIntegrationService
             'data_nascimento' => $dtNascimento,
             'sexo' => $dados['sexo'] ?? 'M',
             'nome_mae' => $dados['nome_mae'] ?? null,
-            'municipio_ibge' => $dados['municipio_ibge'] ?? '270430',
+            'municipio_ibge' => $dados['municipio_ibge'] ?? $ibgePadrao,
             'ubs_id' => $ubsModel?->id,
             'ubs_referencia' => $dados['ubs_referencia'] ?? $ubsModel?->nome,
             'nome_acs' => $dados['nome_acs'] ?? null,
@@ -2078,7 +2081,7 @@ class EsusPecIntegrationService
 
             $tabelaOrigem = $diagnostico['tabela_origem'];
             $colunaSequencial = $diagnostico['coluna_sequencial'] ?? null;
-            $ibgePadrao = ConfiguracaoEstabelecimento::atual()->codigo_ibge_padrao ?: '270430';
+            $ibgePadrao = ConfiguracaoEstabelecimento::atual()->codigo_ibge_padrao ?: '2709152';
 
             // 1. Carrega dicionários de UBSs e Equipes em memória
             $dicionarios = $this->carregarDicionariosUbsEquipes($pdo, $diagnostico);

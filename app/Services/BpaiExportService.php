@@ -9,13 +9,14 @@ use App\Models\LogAuditoria;
 use App\Models\ProducaoBpai;
 use App\Models\User;
 use App\Rules\CnsValido;
+use App\Support\IbgeMunicipio;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BpaiExportService
 {
-    public const CNES_PADRAO = '2000001';
+    public const CNES_PADRAO = '0795690';
 
     /**
      * RF4.2 - Validador pré-exportação de inconsistências em memória para uma competência (YYYYMM).
@@ -99,8 +100,8 @@ class BpaiExportService
             $erros[] = 'Data de nascimento do paciente ausente';
         }
 
-        if (preg_match('/^\d{6}$/', (string) $paciente->municipio_ibge) !== 1) {
-            $erros[] = 'Código IBGE do município inválido (exige 6 dígitos)';
+        if (! IbgeMunicipio::validar((string) $paciente->municipio_ibge)) {
+            $erros[] = 'Código IBGE do município inválido (exige 6 ou 7 dígitos)';
         }
 
         if ($profissional === null) {
@@ -290,7 +291,7 @@ class BpaiExportService
             .$this->padNum((string) $procedimento->codigo, 10)              // 050-059 (10) Procedimento SIGTAP
             .$this->padNum((string) $paciente->cns, 15)                     // 060-074 (15) CNS do Paciente
             .$this->padAlfa((string) $paciente->sexo, 1)                    // 075-075 (01) Sexo (M/F)
-            .$this->padNum((string) $paciente->municipio_ibge, 6)           // 076-081 (06) Código IBGE Município
+            .$this->padNum(IbgeMunicipio::converterParaBpai((string) $paciente->municipio_ibge), 6) // 076-081 (06) Código IBGE Município
             .$this->padAlfa($cidLimpo, 4)                                   // 082-085 (04) CID-10 Principal
             .$this->padNum((string) $idade, 3)                              // 086-088 (03) Idade na data do atendimento
             .$this->padNum('1', 6)                                          // 089-094 (06) Quantidade produzida

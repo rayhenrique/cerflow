@@ -21,7 +21,7 @@ class AgendamentoPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['recepcao', 'coordenacao']);
+        return $user->hasAnyRole(['recepcao', 'terapeuta', 'coordenacao']);
     }
 
     public function update(User $user, Agendamento $agendamento): bool

@@ -19,7 +19,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RelatorioService
 {
-    public const CNES_PADRAO = '2000001';
+    public const CNES_PADRAO = '0795690';
 
     /**
      * Resolve o período de datas com validação, limites de segurança e predefinições.

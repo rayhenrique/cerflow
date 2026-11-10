@@ -51,6 +51,9 @@ A plataforma substitui integralmente processos fragmentados baseados em planilha
 
 ### 6. Prontuário Eletrônico Multiprofissional (PEP Multi — `/prontuario/{paciente}`)
 - **Linha do Tempo Multidisciplinar Unificada:** Visualização cronológica integrada de todas as anotações clínicas de Fisioterapia, Fonoaudiologia, Terapia Ocupacional, Psicologia, Serviço Social e demais áreas.
+- **Meus Atendimentos no PEP:** Sub-aba operacional permitindo aos terapeutas consultar rapidamente seus agendamentos de hoje, futuros e anteriores, com filtros por período e status, e ação direta para abrir prontuário.
+- **Histórico e Atendimentos do Paciente:** Consulta completa e paginada de atendimentos anteriores e futuros do paciente selecionado.
+- **Agendamento de Retorno no PEP:** Ação centralizada "Novo Atendimento" permitindo agendar retornos diretamente pelo prontuário, com pré-seleção do paciente e checagem preventiva de conflitos de agenda e requisitos do Cartão SUS.
 - **Assinatura Eletrônica com PIN:** Autenticação individual por PIN numérico do terapeuta, gerando carimbo de tempo inviolável e assinatura criptográfica com hash SHA-256 de 64 caracteres.
 - **Trava Legal de 24 Horas:** Em conformidade com as normas dos conselhos de classe da saúde (CFM, COFFITO, CFP, CFFa, CRESS) e resoluções do prontuário eletrônico, toda evolução é travada após 24 horas da assinatura.
 - **Termos de Adendo Retificadores:** Modificações posteriores são registradas exclusivamente como adendos complementares vinculados à anotação original, preservando o histórico legal.

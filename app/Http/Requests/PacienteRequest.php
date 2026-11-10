@@ -68,7 +68,7 @@ class PacienteRequest extends FormRequest
             'data_nascimento' => ['required', 'date', 'before_or_equal:today'],
             'sexo' => ['required', Rule::in(['M', 'F'])],
             'nome_mae' => ['required', 'string', 'max:255'],
-            'municipio_ibge' => ['required', 'string', 'digits:6'],
+            'municipio_ibge' => ['required', 'string', 'regex:/^\d{6,7}$/'],
             'endereco' => ['nullable', 'string', 'max:255'],
             'bairro' => ['nullable', 'string', 'max:100'],
             'telefone_contato' => ['nullable', 'string', 'max:20'],

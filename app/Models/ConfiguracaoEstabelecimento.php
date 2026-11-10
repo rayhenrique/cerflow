@@ -45,8 +45,8 @@ class ConfiguracaoEstabelecimento extends Model
     public static function padrao(): self
     {
         $padrao = new self([
-            'codigo_ibge_padrao' => '270430',
-            'cnes' => '2000001',
+            'codigo_ibge_padrao' => '2709152',
+            'cnes' => '0795690',
             'logo_path' => null,
             'painel_voz_ativa' => true,
             'painel_volume' => 80,

@@ -51,9 +51,9 @@ class ConfiguracoesSistema extends Component
 
     public bool $removerLogoEstabelecimento = false;
 
-    public string $estabelecimento_ibge = '270430';
+    public string $estabelecimento_ibge = '2709152';
 
-    public string $estabelecimento_cnes = '2000001';
+    public string $estabelecimento_cnes = '0795690';
 
     // --- Configurações do Painel de Chamadas para TV ---
     public bool $painel_voz_ativa = true;
@@ -173,7 +173,7 @@ class ConfiguracoesSistema extends Component
 
     public string $pac_nome_mae = '';
 
-    public string $pac_municipio_ibge = '270430';
+    public string $pac_municipio_ibge = '2709152';
 
     public ?int $pac_ubs_id = null;
 
@@ -262,7 +262,7 @@ class ConfiguracoesSistema extends Component
 
     public string $ubs_cnes = '';
 
-    public string $ubs_municipio_ibge = '270430';
+    public string $ubs_municipio_ibge = '2709152';
 
     public string $ubs_bairro = '';
 
@@ -516,7 +516,7 @@ class ConfiguracoesSistema extends Component
         abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
 
         $dados = $this->validate([
-            'estabelecimento_ibge' => ['required', 'string', 'digits:6'],
+            'estabelecimento_ibge' => ['required', 'string', 'regex:/^\d{6,7}$/'],
             'estabelecimento_cnes' => ['required', 'string', 'digits:7'],
             'logoEstabelecimento' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
             'removerLogoEstabelecimento' => ['boolean'],
@@ -529,8 +529,8 @@ class ConfiguracoesSistema extends Component
         }
 
         $antes = [
-            'codigo_ibge_padrao' => $configuracao->codigo_ibge_padrao ?? '270430',
-            'cnes' => $configuracao->cnes ?? '2000001',
+            'codigo_ibge_padrao' => $configuracao->codigo_ibge_padrao ?? '2709152',
+            'cnes' => $configuracao->cnes ?? '0795690',
             'logo_path' => $configuracao->logo_path,
         ];
         $logoAnterior = $configuracao->logo_path;
@@ -1340,7 +1340,7 @@ class ConfiguracoesSistema extends Component
             'pac_nome' => ['required', 'string', 'max:255'],
             'pac_data_nascimento' => ['required', 'date', 'before_or_equal:today'],
             'pac_sexo' => ['required', Rule::in(['M', 'F'])],
-            'pac_municipio_ibge' => ['required', 'string', 'digits:6'],
+            'pac_municipio_ibge' => ['required', 'string', 'regex:/^\d{6,7}$/'],
             'pac_nome_mae' => ['nullable', 'string', 'max:255'],
             'pac_ubs_referencia' => ['nullable', 'string', 'max:255'],
             'pac_nome_acs' => ['nullable', 'string', 'max:255'],
@@ -1982,7 +1982,7 @@ class ConfiguracoesSistema extends Component
         $this->ubsEditandoId = null;
         $this->ubs_nome = '';
         $this->ubs_cnes = '';
-        $this->ubs_municipio_ibge = '270430';
+        $this->ubs_municipio_ibge = (string) (ConfiguracaoEstabelecimento::atual()->codigo_ibge_padrao ?: '2709152');
         $this->ubs_bairro = '';
         $this->ubs_endereco = '';
         $this->ubs_telefone = '';
@@ -2001,7 +2001,7 @@ class ConfiguracoesSistema extends Component
         $this->ubsEditandoId = $ubs->id;
         $this->ubs_nome = $ubs->nome;
         $this->ubs_cnes = (string) ($ubs->cnes ?? '');
-        $this->ubs_municipio_ibge = (string) ($ubs->municipio_ibge ?? '270430');
+        $this->ubs_municipio_ibge = (string) ($ubs->municipio_ibge ?? (ConfiguracaoEstabelecimento::atual()->codigo_ibge_padrao ?: '2709152'));
         $this->ubs_bairro = (string) ($ubs->bairro ?? '');
         $this->ubs_endereco = (string) ($ubs->endereco ?? '');
         $this->ubs_telefone = (string) ($ubs->telefone ?? '');
@@ -2021,7 +2021,7 @@ class ConfiguracoesSistema extends Component
         abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
 
         $this->ubs_cnes = preg_replace('/\D/', '', $this->ubs_cnes ?? '') ?? '';
-        $this->ubs_municipio_ibge = preg_replace('/\D/', '', $this->ubs_municipio_ibge ?? '') ?? '270430';
+        $this->ubs_municipio_ibge = preg_replace('/\D/', '', $this->ubs_municipio_ibge ?? '') ?: (ConfiguracaoEstabelecimento::atual()->codigo_ibge_padrao ?: '2709152');
 
         $this->validate([
             'ubs_nome' => ['required', 'string', 'max:255'],
@@ -2032,7 +2032,7 @@ class ConfiguracoesSistema extends Component
                     Rule::unique('unidades_basicas_saude', 'cnes')->ignore($this->ubsEditandoId),
                 ]),
             ],
-            'ubs_municipio_ibge' => ['required', 'string', 'digits:6'],
+            'ubs_municipio_ibge' => ['required', 'string', 'regex:/^\d{6,7}$/'],
             'ubs_bairro' => ['nullable', 'string', 'max:100'],
             'ubs_endereco' => ['nullable', 'string', 'max:255'],
             'ubs_telefone' => ['nullable', 'string', 'max:20'],

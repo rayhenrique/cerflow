@@ -30,20 +30,24 @@
     <!-- Resumo Rápido da Unidade -->
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-            <span class="text-[11px] text-slate-400 block">Versão Atual do Sistema</span>
-            <span class="mt-1 font-mono text-sm font-bold text-teal-700 block">v{{ $versaoAtual }}</span>
+            <span class="text-[11px] text-slate-400 block">Unidade / Município Sede</span>
+            <span class="mt-1 text-xs font-bold text-slate-800 block truncate" title="{{ $infoAmbiente['unidade'] }}">{{ $infoAmbiente['unidade'] }}</span>
+            <span class="text-[11px] text-teal-700 font-semibold block">{{ $infoAmbiente['municipio'] }} (IBGE {{ $infoAmbiente['ibge'] }})</span>
         </div>
         <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
             <span class="text-[11px] text-slate-400 block">Código CNES da Unidade</span>
             <span class="mt-1 font-mono text-sm font-semibold text-slate-800 block">{{ $infoAmbiente['cnes'] }}</span>
+            <span class="text-[11px] text-slate-400 block">Configurado dinamicamente</span>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+            <span class="text-[11px] text-slate-400 block">Versão Atual do Sistema</span>
+            <span class="mt-1 font-mono text-sm font-bold text-teal-700 block">v{{ $versaoAtual }}</span>
+            <span class="text-[11px] text-slate-400 block">Laravel 13 • Livewire 4</span>
         </div>
         <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
             <span class="text-[11px] text-slate-400 block">Horário do Sistema</span>
-            <span class="mt-1 text-sm font-semibold text-slate-800 block">Horário de Maceió / Brasília</span>
-        </div>
-        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-            <span class="text-[11px] text-slate-400 block">Desenvolvido por</span>
-            <span class="mt-1 text-sm font-semibold text-slate-800 block">KL Tecnologia</span>
+            <span class="mt-1 text-sm font-semibold text-slate-800 block">Horário de Alagoas / Brasília</span>
+            <span class="text-[11px] text-slate-400 block">Desenvolvido por KL Tecnologia</span>
         </div>
     </div>
 

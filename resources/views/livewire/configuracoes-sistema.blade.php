@@ -169,8 +169,8 @@
                 <form wire:submit="salvarIdentificacaoEstabelecimento" class="space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">Código IBGE padrão do município *</label>
-                        <input type="text" inputmode="numeric" maxlength="6" wire:model="estabelecimento_ibge" placeholder="6 dígitos" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-mono focus:border-teal-600 focus:outline-none">
-                        <p class="text-[11px] text-slate-500 mt-1">Código municipal de 6 dígitos, conforme o layout atualmente adotado pelo sistema.</p>
+                        <input type="text" inputmode="numeric" maxlength="7" wire:model="estabelecimento_ibge" placeholder="Ex.: 2709152 (Teotônio Vilela)" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-mono focus:border-teal-600 focus:outline-none">
+                        <p class="text-[11px] text-slate-500 mt-1">Código municipal IBGE oficial (7 dígitos, ex.: 2709152) ou SIA/SUS (6 dígitos).</p>
                         @error('estabelecimento_ibge') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
                     </div>
                     <div>
@@ -2023,8 +2023,8 @@
                         </div>
 
                         <div class="sm:w-1/2">
-                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Município IBGE (6 dígitos) *</label>
-                            <input type="text" wire:model="pac_municipio_ibge" maxlength="6"
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Município IBGE (6 ou 7 dígitos) *</label>
+                            <input type="text" wire:model="pac_municipio_ibge" maxlength="7" placeholder="Ex.: 2709152"
                                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-teal-600 focus:outline-none">
                             @error('pac_municipio_ibge') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
                         </div>
@@ -2514,8 +2514,8 @@
                             @error('ubs_cnes') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">Município IBGE (6 dígitos)</label>
-                            <input type="text" wire:model="ubs_municipio_ibge" maxlength="6" placeholder="270430"
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Município IBGE (6 ou 7 dígitos)</label>
+                            <input type="text" wire:model="ubs_municipio_ibge" maxlength="7" placeholder="Ex.: 2709152"
                                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-teal-600 focus:outline-none">
                             @error('ubs_municipio_ibge') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
                         </div>

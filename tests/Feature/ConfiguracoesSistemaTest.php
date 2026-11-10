@@ -305,25 +305,25 @@ class ConfiguracoesSistemaTest extends TestCase
     {
         $coordenador = User::factory()->create(['ativo' => true]);
         $coordenador->assignRole('coordenacao');
-        ConfiguracaoEstabelecimento::atual()->update(['codigo_ibge_padrao' => '270915']);
+        ConfiguracaoEstabelecimento::atual()->update(['codigo_ibge_padrao' => '2709152']);
 
         Livewire::actingAs($coordenador)
             ->test(ConfiguracoesSistema::class, ['secao' => 'pacientes'])
             ->call('abrirModalNovoPaciente')
-            ->assertSet('pac_municipio_ibge', '270915');
+            ->assertSet('pac_municipio_ibge', '2709152');
     }
 
     public function test_configuracao_estabelecimento_padrao_e_fallback_sem_escrita(): void
     {
         $padrao = ConfiguracaoEstabelecimento::padrao();
-        $this->assertSame('270430', $padrao->codigo_ibge_padrao);
-        $this->assertSame('2000001', $padrao->cnes);
+        $this->assertSame('2709152', $padrao->codigo_ibge_padrao);
+        $this->assertSame('0795690', $padrao->cnes);
         $this->assertNull($padrao->logo_path);
         $this->assertFalse($padrao->exists);
 
         $atual = ConfiguracaoEstabelecimento::atual();
         $this->assertInstanceOf(ConfiguracaoEstabelecimento::class, $atual);
-        $this->assertSame('270430', $atual->codigo_ibge_padrao);
+        $this->assertSame('2709152', $atual->codigo_ibge_padrao);
     }
 
     public function test_fallback_temporario_seguro_quando_tabela_nao_existe(): void
@@ -332,8 +332,8 @@ class ConfiguracoesSistemaTest extends TestCase
 
         $atual = ConfiguracaoEstabelecimento::atual();
 
-        $this->assertSame('270430', $atual->codigo_ibge_padrao);
-        $this->assertSame('2000001', $atual->cnes);
+        $this->assertSame('2709152', $atual->codigo_ibge_padrao);
+        $this->assertSame('0795690', $atual->cnes);
         $this->assertNull($atual->logo_path);
     }
 }

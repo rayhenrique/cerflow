@@ -103,8 +103,8 @@ class DadosFicticiosLocaisSeeder extends Seeder
         }
 
         $config->fill([
-            'cnes' => '2000001',
-            'codigo_ibge_padrao' => '270430', // Maceió/AL
+            'cnes' => '0795690',
+            'codigo_ibge_padrao' => '2709152', // Teotônio Vilela/AL
             'painel_voz_ativa' => true,
             'painel_volume' => 85,
             'painel_tempo_destaque_segundos' => 15,
