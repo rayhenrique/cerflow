@@ -2343,15 +2343,38 @@
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 mb-1">CBO Oficial *</label>
+                                    <div class="mb-1">
+                                        <input type="text" wire:model.live.debounce.300ms="buscaCboModal"
+                                            placeholder="🔍 Filtrar CBO por código ou título..."
+                                            class="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs focus:border-teal-600 focus:outline-none">
+                                    </div>
                                     <select wire:model.live="prof_cbo_id"
                                         class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm">
                                         <option value="">-- Selecione o CBO Oficial --</option>
-                                        @foreach ($todosCbos as $cboOption)
+                                        @foreach ($opcoesCboModal as $cboOption)
                                             <option value="{{ $cboOption->id }}">
                                                 {{ $cboOption->codigo }} — {{ $cboOption->titulo_oficial }}
                                             </option>
                                         @endforeach
                                     </select>
+                                    @if ($cboAtualModal)
+                                        <div class="mt-1 flex items-center gap-1.5 text-[11px] text-slate-600">
+                                            @if ($cboAtualModal->verificado_em)
+                                                <span class="inline-flex items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
+                                                    ✓ Oficial MTE
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center gap-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
+                                                    ⚠️ Legado não verificado
+                                                </span>
+                                            @endif
+                                            <span class="truncate">{{ $cboAtualModal->titulo_oficial }}</span>
+                                        </div>
+                                    @elseif ($prof_cbo)
+                                        <div class="mt-1 rounded bg-amber-50 p-1.5 text-[11px] text-amber-800 border border-amber-200">
+                                            ⚠️ CBO legado (<strong>{{ $prof_cbo }}</strong>) pendente de conciliação com o catálogo oficial.
+                                        </div>
+                                    @endif
                                     @error('prof_cbo') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
                                 </div>
                                 <div>
@@ -2364,7 +2387,7 @@
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    @php($cboAtual = $todosCbos->firstWhere('id', (int) $prof_cbo_id))
+                                    @php($cboAtual = $cboAtualModal)
                                     @php($opcoesEspecialidades = ($cboAtual && $cboAtual->especialidades->isNotEmpty()) ? $cboAtual->especialidades : $todasEspecialidades)
                                     <label class="block text-xs font-bold text-slate-700 mb-1">Especialidade Assistencial *</label>
                                     <select wire:model.live="prof_especialidade_id"
@@ -2639,14 +2662,22 @@
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Associar aos CBOs Correspondentes</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Associar aos CBOs Correspondentes</label>
+                        <div class="mb-1.5">
+                            <input type="text" wire:model.live.debounce.300ms="buscaCboModal"
+                                placeholder="🔍 Filtrar CBOs por código ou título..."
+                                class="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs focus:border-teal-600 focus:outline-none">
+                        </div>
                         <div class="max-h-44 overflow-y-auto rounded-lg border border-slate-200 p-2.5 bg-slate-50 space-y-1.5">
-                            @foreach ($todosCbos as $cboOption)
+                            @foreach ($opcoesCboModal as $cboOption)
                                 <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-100 p-1 rounded cursor-pointer">
                                     <input type="checkbox" wire:model="esp_cbos_vinculados" value="{{ $cboOption->id }}"
                                         class="rounded text-teal-600 focus:ring-teal-500">
                                     <span class="font-mono font-bold text-teal-700">{{ $cboOption->codigo }}</span>
                                     <span>— {{ $cboOption->titulo_oficial }}</span>
+                                    @if ($cboOption->verificado_em)
+                                        <span class="text-[9px] text-emerald-600 font-semibold">✓ Oficial</span>
+                                    @endif
                                 </label>
                             @endforeach
                         </div>

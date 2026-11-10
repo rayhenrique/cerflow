@@ -25,6 +25,7 @@ use App\Services\TvPairingService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -106,6 +107,8 @@ class ConfiguracoesSistema extends Component
     public string $buscaSigtap = '';
 
     public string $buscaCbo = '';
+
+    public string $buscaCboModal = '';
 
     public int $porPaginaCbo = 15;
 
@@ -1477,6 +1480,7 @@ class ConfiguracoesSistema extends Component
             'prof_cbo_id',
             'prof_especialidade_id',
             'prof_pin',
+            'buscaCboModal',
         ]);
         $this->usr_role = 'terapeuta';
         $this->vincular_profissional = true;
@@ -1494,6 +1498,7 @@ class ConfiguracoesSistema extends Component
         abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
 
         $this->resetValidation();
+        $this->buscaCboModal = '';
         $usuario = User::with(['roles', 'profissional'])->findOrFail($userId);
 
         $this->usuarioEditandoId = $usuario->id;
@@ -1859,6 +1864,7 @@ class ConfiguracoesSistema extends Component
         $this->esp_descricao = '';
         $this->esp_ativo = true;
         $this->esp_cbos_vinculados = [];
+        $this->buscaCboModal = '';
         $this->modalEspecialidadeAberto = true;
     }
 
@@ -1867,6 +1873,7 @@ class ConfiguracoesSistema extends Component
         abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
 
         $this->resetValidation();
+        $this->buscaCboModal = '';
         $esp = Especialidade::with('cbos')->findOrFail($especialidadeId);
 
         $this->especialidadeEditandoId = $esp->id;
@@ -2563,6 +2570,8 @@ class ConfiguracoesSistema extends Component
         [$logsAuditoria, $logInspecionado] = $this->carregarAuditoria($isCoordenacao);
         [$dispositivosTv, $solicitacoesTvPendentes] = $this->carregarTv($isCoordenacao);
 
+        $opcoesCboModal = $this->carregarOpcoesCboModal($isCoordenacao);
+
         return view('livewire.configuracoes-sistema', [
             'abasPermitidas' => $this->abasPermitidas(),
             'salas' => $this->carregarSalas($isCoordenacao),
@@ -2572,7 +2581,9 @@ class ConfiguracoesSistema extends Component
             'cbos' => $cbos,
             'especialidades' => $especialidades,
             'unidadesSaude' => $this->carregarUbs($isCoordenacao),
-            'todosCbos' => Cbo::query()->ativos()->with('especialidades')->orderBy('codigo')->get(),
+            'todosCbos' => $opcoesCboModal,
+            'opcoesCboModal' => $opcoesCboModal,
+            'cboAtualModal' => $this->prof_cbo_id ? Cbo::with('especialidades')->find($this->prof_cbo_id) : null,
             'todasEspecialidades' => Especialidade::query()->ativas()->orderBy('nome')->get(['id', 'nome']),
             'todasUbs' => UnidadeBasicaSaude::query()->ativas()->orderBy('nome')->get(['id', 'nome', 'cnes']),
             'logsAuditoria' => $logsAuditoria,
@@ -2582,6 +2593,52 @@ class ConfiguracoesSistema extends Component
             'dispositivosTv' => $dispositivosTv,
             'solicitacoesTvPendentes' => $solicitacoesTvPendentes,
         ]);
+    }
+
+    /**
+     * Carrega uma lista otimizada de CBOs para exibição em modais, com busca textual e preservação da seleção atual.
+     *
+     * @return Collection<int, Cbo>
+     */
+    private function carregarOpcoesCboModal(bool $isCoordenacao): Collection
+    {
+        if (! $isCoordenacao) {
+            return collect();
+        }
+
+        $termo = trim($this->buscaCboModal);
+        $query = Cbo::query()->ativos()->with('especialidades')->orderBy('codigo');
+
+        if ($termo !== '') {
+            $query->where(function ($q) use ($termo): void {
+                $digitos = preg_replace('/\D/', '', $termo) ?? '';
+                if ($digitos !== '') {
+                    $q->where('codigo', 'like', "%{$digitos}%");
+                }
+                $q->orWhere('titulo_oficial', 'like', "%{$termo}%");
+            });
+        }
+
+        $opcoes = $query->limit(40)->get();
+
+        // Preserva o CBO selecionado no profissional caso não esteja nas primeiras 40 opções
+        if ($this->prof_cbo_id && ! $opcoes->contains('id', (int) $this->prof_cbo_id)) {
+            $selecionado = Cbo::with('especialidades')->find($this->prof_cbo_id);
+            if ($selecionado) {
+                $opcoes->prepend($selecionado);
+            }
+        }
+
+        // Preserva os CBOs vinculados na modal de especialidade
+        if (! empty($this->esp_cbos_vinculados)) {
+            $faltantes = Cbo::with('especialidades')
+                ->whereIn('id', $this->esp_cbos_vinculados)
+                ->whereNotIn('id', $opcoes->pluck('id'))
+                ->get();
+            $opcoes = $opcoes->concat($faltantes);
+        }
+
+        return $opcoes;
     }
 
     private function carregarSalas(bool $isCoordenacao): mixed

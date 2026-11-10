@@ -44,6 +44,18 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.23.1',
+                'data' => '10/11/2026',
+                'titulo' => 'Recuperação de CBOs Legados e Importação do Catálogo Oficial MTE',
+                'tipo' => 'Novidades e Integridade',
+                'destaques' => [
+                    'Novidades: Adicionamos o comando seguro cer:recuperar-cbos-legados para resgatar os CBOs e Especialidades dos 39 profissionais já cadastrados sem perder dados históricos.',
+                    'Novidades: Adicionamos o comando oficial cer:importar-cbos com o catálogo completo CBO 2002 do Ministério do Trabalho e Emprego (2.614 ocupações válidas).',
+                    'Melhorias: O seletor de CBO nos cadastros de profissionais e especialidades agora conta com busca rápida em tempo real, evitando lentidão ao navegar no catálogo.',
+                    'Segurança: Garantimos a vinculação formal da Neuropsicologia ao CBO 251545 e a preservação total de dados de faturamento e produção BPA-i do SUS.',
+                ],
+            ],
+            [
                 'versao' => '1.23.0',
                 'data' => '10/11/2026',
                 'titulo' => 'Reorganização do Menu Lateral por Áreas Funcionais',
