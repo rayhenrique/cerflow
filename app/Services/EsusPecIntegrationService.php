@@ -51,10 +51,94 @@ class EsusPecIntegrationService
     protected array $cacheUbsMemoria = [];
 
     /**
-     * Resolve ou cria uma Unidade Básica de Saúde (UBS) a partir de CNES ou Nome sem duplicidade.
+     * Verifica se o nome informado para a UBS é inconclusivo, genérico ou inválido.
      */
-    public function resolverOuCriarUbs(?string $nomeUbs, ?string $cnes = null): ?UnidadeBasicaSaude
+    public function nomeUbsInconclusivo(?string $nome): bool
     {
+        if ($nome === null) {
+            return true;
+        }
+
+        $nomeLimpo = trim(mb_strtoupper($nome));
+        if ($nomeLimpo === '' || mb_strlen($nomeLimpo) < 3) {
+            return true;
+        }
+
+        $termosInconclusivos = [
+            'SEM UBS',
+            'SEM UNIDADE',
+            'NAO INFORMADO',
+            'NÃO INFORMADO',
+            'IGNORADO',
+            'NAO DECLARADO',
+            'NÃO DECLARADO',
+            'DESCONHECIDO',
+            'INDEFINIDO',
+            'NULL',
+            'TESTE',
+            'OUTROS',
+            'OUTRO',
+        ];
+
+        if (in_array($nomeLimpo, $termosInconclusivos, true)) {
+            return true;
+        }
+
+        if (str_starts_with($nomeLimpo, 'UBS CNES ') && strlen(trim(substr($nomeLimpo, 9))) < 6) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Localiza uma UBS existente exclusivamente por consulta (somente leitura, sem alterações no banco).
+     */
+    public function localizarUbsExistente(?string $nomeUbs, ?string $cnes = null, ?string $municipioIbge = null): ?UnidadeBasicaSaude
+    {
+        $nomeUbs = trim((string) $nomeUbs);
+        $cnes = trim((string) $cnes);
+        if ($cnes !== '') {
+            $cnes = substr(preg_replace('/\D/', '', $cnes) ?? '', 0, 7);
+        }
+
+        // 1. Busca por CNES válido (6 ou 7 dígitos)
+        if ($cnes !== '' && strlen($cnes) >= 6 && strlen($cnes) <= 7) {
+            $ubs = UnidadeBasicaSaude::where('cnes', $cnes)->first();
+            if ($ubs) {
+                return $ubs;
+            }
+        }
+
+        // 2. Busca por Nome quando conclusivo
+        if ($nomeUbs !== '' && ! $this->nomeUbsInconclusivo($nomeUbs) && mb_strlen($nomeUbs) >= 3) {
+            $candidatos = UnidadeBasicaSaude::where('nome', $nomeUbs)->get();
+            if ($candidatos->count() === 1) {
+                $candidato = $candidatos->first();
+                if (! $municipioIbge || ! $candidato->municipio_ibge || $candidato->municipio_ibge === $municipioIbge) {
+                    return $candidato;
+                }
+            } elseif ($candidatos->count() > 1 && $municipioIbge) {
+                $filtrados = $candidatos->where('municipio_ibge', $municipioIbge);
+                if ($filtrados->count() === 1) {
+                    return $filtrados->first();
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve ou cria uma Unidade Básica de Saúde (UBS) a partir de CNES ou Nome sem duplicidade.
+     * Em modo somente leitura ($somenteLeitura = true), não realiza nenhuma gravação no MySQL.
+     */
+    public function resolverOuCriarUbs(
+        ?string $nomeUbs,
+        ?string $cnes = null,
+        bool $somenteLeitura = false,
+        ?string $municipioIbge = null
+    ): ?UnidadeBasicaSaude {
         $nomeUbs = trim((string) $nomeUbs);
         $cnes = trim((string) $cnes);
         if ($cnes !== '') {
@@ -65,37 +149,55 @@ class EsusPecIntegrationService
             return null;
         }
 
-        $chaveCache = "{$cnes}|{$nomeUbs}";
+        $chaveCache = "{$cnes}|{$nomeUbs}|{$municipioIbge}|".($somenteLeitura ? 'RO' : 'RW');
         if (isset($this->cacheUbsMemoria[$chaveCache])) {
             return $this->cacheUbsMemoria[$chaveCache];
         }
 
-        $ubs = null;
-        if ($cnes !== '') {
-            $ubs = UnidadeBasicaSaude::where('cnes', $cnes)->first();
-            if ($ubs) {
+        $ubs = $this->localizarUbsExistente($nomeUbs, $cnes, $municipioIbge);
+
+        if ($ubs) {
+            if (! $somenteLeitura) {
                 if ($nomeUbs !== '' && (empty($ubs->nome) || str_starts_with($ubs->nome, 'UBS CNES '))) {
                     $ubs->update(['nome' => $nomeUbs]);
                 }
+                if ($cnes !== '' && empty($ubs->cnes) && strlen($cnes) >= 6 && strlen($cnes) <= 7) {
+                    $ubs->update(['cnes' => $cnes]);
+                }
             }
+            $this->cacheUbsMemoria[$chaveCache] = $ubs;
+
+            return $ubs;
         }
 
-        if (! $ubs && $nomeUbs !== '') {
-            $ubs = UnidadeBasicaSaude::where('nome', $nomeUbs)->first();
-            if ($ubs && $cnes !== '' && empty($ubs->cnes)) {
-                $ubs->update(['cnes' => $cnes]);
-            }
+        $cnesValido = $cnes !== '' && strlen($cnes) >= 6 && strlen($cnes) <= 7;
+        $nomeValido = ! $this->nomeUbsInconclusivo($nomeUbs) && mb_strlen($nomeUbs) >= 3;
+
+        if (! $cnesValido && ! $nomeValido) {
+            return null;
         }
 
-        if (! $ubs) {
-            $ubs = UnidadeBasicaSaude::create([
+        if ($somenteLeitura) {
+            $ubsSimulada = new UnidadeBasicaSaude([
                 'nome' => $nomeUbs !== '' ? $nomeUbs : ('UBS CNES '.$cnes),
-                'cnes' => $cnes !== '' ? $cnes : null,
-                'municipio_ibge' => ConfiguracaoEstabelecimento::atual()->codigo_ibge_padrao ?: '2709152',
+                'cnes' => $cnesValido ? $cnes : null,
+                'municipio_ibge' => $municipioIbge ?: (ConfiguracaoEstabelecimento::atual()->codigo_ibge_padrao ?: '2709152'),
                 'origem' => 'ESUS',
                 'ativo' => true,
             ]);
+            $ubsSimulada->id = -1 * (count($this->cacheUbsMemoria) + 1);
+            $this->cacheUbsMemoria[$chaveCache] = $ubsSimulada;
+
+            return $ubsSimulada;
         }
+
+        $ubs = UnidadeBasicaSaude::create([
+            'nome' => $nomeUbs !== '' ? $nomeUbs : ('UBS CNES '.$cnes),
+            'cnes' => $cnesValido ? $cnes : null,
+            'municipio_ibge' => $municipioIbge ?: (ConfiguracaoEstabelecimento::atual()->codigo_ibge_padrao ?: '2709152'),
+            'origem' => 'ESUS',
+            'ativo' => true,
+        ]);
 
         $this->cacheUbsMemoria[$chaveCache] = $ubs;
 
@@ -622,7 +724,7 @@ class EsusPecIntegrationService
         $duracaoProcessamentoMs = 0;
         $duracaoGravacaoMs = 0;
 
-        $lock = $this->assegurarLockConcorrencia($historicoId);
+        $lock = $this->assegurarLockConcorrencia($historicoId, $dryRun);
 
         try {
             $config = ConfiguracaoEsusPec::atual();
@@ -1057,7 +1159,7 @@ class EsusPecIntegrationService
     /**
      * Adquire o bloqueio atômico de concorrência e valida execuções em andamento.
      */
-    protected function assegurarLockConcorrencia(?int $historicoId): mixed
+    protected function assegurarLockConcorrencia(?int $historicoId, bool $dryRun = false): mixed
     {
         $lock = Cache::lock(self::LOCK_NAME, self::LOCK_TTL_SEGUNDOS);
         if (! $lock->get()) {
@@ -1079,7 +1181,13 @@ class EsusPecIntegrationService
                 throw new RuntimeException("Já existe uma sincronização com o e-SUS PEC em andamento por {$origem}. Aguarde a conclusão.");
             }
 
-            // Recupera e encerra execuções estagnadas há mais de 2 horas
+            if ($dryRun) {
+                $lock->release();
+
+                throw new RuntimeException("Existe uma sincronização em andamento (ID #{$ativa->id}). Dry-run não altera execuções ativas.");
+            }
+
+            // Recupera e encerra execuções estagnadas há mais de 2 horas (somente em execução real)
             $ativa->update([
                 'status' => 'INTERROMPIDO',
                 'finalizado_em' => now(),
@@ -1639,6 +1747,9 @@ class EsusPecIntegrationService
         if ($ubs === null && $ineVinculado !== null && isset($mapaEquipes[$ineVinculado]['no_unidade_saude'])) {
             $ubs = $mapaEquipes[$ineVinculado]['no_unidade_saude'];
         }
+        if ($cnesVinculado === null && $ineVinculado !== null && ! empty($mapaEquipes[$ineVinculado]['nu_cnes'])) {
+            $cnesVinculado = $mapaEquipes[$ineVinculado]['nu_cnes'];
+        }
         // Prioridade 3: Nome textual de unidade de saúde diretamente na linha
         if ($ubs === null) {
             $ubs = $resolver(['no_unidade_vinc', 'no_unidade_saude', 'no_ubs', 'ubs_referencia']);
@@ -2050,7 +2161,7 @@ class EsusPecIntegrationService
         $duracaoConsultaMs = 0;
         $duracaoGravacaoMs = 0;
 
-        $lock = $this->assegurarLockConcorrencia(null);
+        $lock = $this->assegurarLockConcorrencia(null, $dryRun);
 
         try {
             $config = ConfiguracaoEsusPec::atual();
@@ -2368,15 +2479,35 @@ class EsusPecIntegrationService
                 $camposParaAtualizar = [];
                 $houveAlteracao = false;
 
-                // Complementa UBS somente se estiver vazia no registro local
+                // Caso 1: Paciente sem UBS (nem textual nem id) e dados do e-SUS trazem UBS de referência
                 if (empty($paciente->ubs_referencia) && empty($paciente->ubs_id) && ! empty($dados['ubs_referencia'])) {
                     $camposParaAtualizar['ubs_referencia'] = $dados['ubs_referencia'];
-                    $ubsModel = $this->resolverOuCriarUbs($dados['ubs_referencia'], $dados['cnes_ubs'] ?? null);
-                    if ($ubsModel) {
+                    $ubsModel = $this->resolverOuCriarUbs(
+                        $dados['ubs_referencia'],
+                        $dados['cnes_ubs'] ?? null,
+                        $dryRun,
+                        $paciente->municipio_ibge ?: ($dados['municipio_ibge'] ?? $ibgePadrao)
+                    );
+                    if ($ubsModel && $ubsModel->id > 0) {
                         $camposParaAtualizar['ubs_id'] = $ubsModel->id;
                     }
                     $metricas['ubs_complementadas']++;
                     $houveAlteracao = true;
+                }
+                // Caso 2: Paciente JÁ possui ubs_referencia textual, mas ubs_id está vazio (reconciliação sem sobrescrever o nome manual)
+                elseif (empty($paciente->ubs_id) && ! empty($paciente->ubs_referencia)) {
+                    $ubsModel = $this->localizarUbsExistente(
+                        $paciente->ubs_referencia,
+                        $dados['cnes_ubs'] ?? null,
+                        $paciente->municipio_ibge ?: ($dados['municipio_ibge'] ?? $ibgePadrao)
+                    );
+                    if ($ubsModel && $ubsModel->id > 0) {
+                        if (! $dryRun) {
+                            $camposParaAtualizar['ubs_id'] = $ubsModel->id;
+                        }
+                        $metricas['ubs_complementadas']++;
+                        $houveAlteracao = true;
+                    }
                 }
 
                 // Complementa ACS somente se estiver vazio no registro local
@@ -2438,7 +2569,9 @@ class EsusPecIntegrationService
 
         $tabelasStatus = [];
         foreach ($tabelasVerificar as $tab) {
-            $existe = ! empty($aux[$tab]) || in_array($tab, $diagnosticoSchema['tabelas_descobertas'], true);
+            $existe = ($tab === ($diagnosticoSchema['tabela_origem'] ?? null))
+                || ! empty($aux[$tab])
+                || in_array($tab, $diagnosticoSchema['tabelas_descobertas'], true);
             $total = null;
             if ($existe) {
                 try {
@@ -2577,14 +2710,14 @@ class EsusPecIntegrationService
         }
         unset($u);
 
-        // Contagem de profissionais ACS no PEC
+        // Contagem de profissionais ACS no PEC (vinculados por CBO em tb_fat_cad_individual ou tb_fat_visita_domiciliar)
         $totalAcsPec = 0;
-        if (! empty($aux['tb_dim_profissional']) && ! empty($aux['tb_dim_cbo'])) {
+        if (! empty($aux['tb_fat_cad_individual']) && ! empty($aux['tb_dim_profissional']) && ! empty($aux['tb_dim_cbo'])) {
             try {
                 $stmt = $pdo->query("
-                    SELECT COUNT(DISTINCT p.co_seq_dim_profissional)
-                    FROM tb_dim_profissional p
-                    JOIN tb_dim_cbo c ON c.co_seq_dim_cbo = p.co_dim_cbo
+                    SELECT COUNT(DISTINCT fci.co_dim_profissional)
+                    FROM tb_fat_cad_individual fci
+                    JOIN tb_dim_cbo c ON c.co_seq_dim_cbo = fci.co_dim_cbo
                     WHERE REPLACE(REPLACE(c.nu_cbo, '-', ''), ' ', '') IN ('515105', '322255')
                 ");
                 $totalAcsPec = $stmt ? (int) $stmt->fetchColumn() : 0;

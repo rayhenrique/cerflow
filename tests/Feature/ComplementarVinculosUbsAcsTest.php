@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Models\ConfiguracaoEsusPec;
 use App\Models\HistoricoSincronizacaoEsus;
 use App\Models\Paciente;
+use App\Models\UnidadeBasicaSaude;
 use App\Services\EsusPecIntegrationService;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -499,5 +500,179 @@ class ComplementarVinculosUbsAcsTest extends TestCase
         $this->artisan('esus:sincronizar', ['--diagnostico' => true])
             ->expectsOutputToContain('CER DIGITAL — DIAGNÓSTICO ESTRUTURAL E-SUS APS PEC (SOMENTE LEITURA)')
             ->assertSuccessful();
+    }
+
+    public function test_dry_run_absoluto_zero_gravacoes_em_pacientes_e_ubs(): void
+    {
+        $pdo = $this->criarPdoPecCompleto();
+        EsusPecIntegrationService::definirPdoTeste($pdo);
+
+        Paciente::create([
+            'id_externo_esus' => '1001',
+            'nome' => 'Paciente Para Dry Run',
+            'cpf' => '11111111101',
+            'cns' => '898001149470878',
+            'data_nascimento' => '1990-01-01',
+            'sexo' => 'M',
+            'municipio_ibge' => '270430',
+            'ubs_referencia' => null,
+            'ubs_id' => null,
+            'nome_acs' => null,
+            'ativo' => true,
+        ]);
+
+        $contagemPacientesAntes = Paciente::count();
+        $contagemUbsAntes = UnidadeBasicaSaude::count();
+        $configAntes = ConfiguracaoEsusPec::atual()->replicate();
+
+        $this->artisan('esus:sincronizar', [
+            '--apenas-vinculos' => true,
+            '--dry-run' => true,
+            '--reiniciar' => true,
+        ])
+            ->expectsOutputToContain('[MODO SIMULAÇÃO CONCLUÍDO]')
+            ->assertSuccessful();
+
+        $this->assertSame($contagemPacientesAntes, Paciente::count(), 'Dry-run não deve criar nem deletar pacientes.');
+        $this->assertSame($contagemUbsAntes, UnidadeBasicaSaude::count(), 'Dry-run NÃO PODE criar nem modificar UBS no MySQL.');
+
+        $paciente = Paciente::where('id_externo_esus', '1001')->first();
+        $this->assertNull($paciente->ubs_referencia, 'Dry-run não deve alterar ubs_referencia');
+        $this->assertNull($paciente->ubs_id, 'Dry-run não deve alterar ubs_id');
+        $this->assertNull($paciente->nome_acs, 'Dry-run não deve alterar nome_acs');
+
+        $configDepois = ConfiguracaoEsusPec::atual();
+        $this->assertSame($configAntes->ultimo_checkpoint_id, $configDepois->ultimo_checkpoint_id, 'Dry-run não deve alterar checkpoints');
+    }
+
+    public function test_reconciliacao_ubs_id_quando_ubs_referencia_preenchida_sem_sobrescrever(): void
+    {
+        $pdo = $this->criarPdoPecCompleto();
+        EsusPecIntegrationService::definirPdoTeste($pdo);
+
+        // Cria a UBS existente no banco local
+        $ubsExistente = UnidadeBasicaSaude::create([
+            'nome' => 'UBS CENTRAL DW',
+            'cnes' => '2001',
+            'municipio_ibge' => '270430',
+            'origem' => 'MANUAL',
+            'ativo' => true,
+        ]);
+
+        // Cria paciente que já possui ubs_referencia textual preenchida, mas ubs_id está NULL
+        $paciente = Paciente::create([
+            'id_externo_esus' => '1001',
+            'nome' => 'Paciente Com Nome Textual de UBS',
+            'cpf' => '11111111101',
+            'cns' => '898001149470878',
+            'data_nascimento' => '1990-01-01',
+            'sexo' => 'M',
+            'municipio_ibge' => '270430',
+            'ubs_referencia' => 'UBS CENTRAL DW',
+            'ubs_id' => null, // PENDENTE DE RECONCILIAÇÃO!
+            'nome_acs' => null,
+            'ativo' => true,
+        ]);
+
+        $this->artisan('esus:sincronizar', [
+            '--apenas-vinculos' => true,
+            '--force' => true,
+            '--reiniciar' => true,
+        ])->assertSuccessful();
+
+        $paciente->refresh();
+        $this->assertSame($ubsExistente->id, $paciente->ubs_id, 'O ubs_id deve ser preenchido pela reconciliação com a UBS existente.');
+        $this->assertSame('UBS CENTRAL DW', $paciente->ubs_referencia, 'O ubs_referencia original deve ser estritamente preservado.');
+        $this->assertSame('MARIA DA SILVA ACS', $paciente->nome_acs, 'O ACS deve ser complementado.');
+    }
+
+    public function test_nao_cria_ubs_com_cnes_invalido_ou_nome_inconclusivo(): void
+    {
+        $service = new EsusPecIntegrationService;
+
+        $contagemUbsAntes = UnidadeBasicaSaude::count();
+
+        // Nomes inconclusivos
+        $this->assertTrue($service->nomeUbsInconclusivo('SEM UBS'));
+        $this->assertTrue($service->nomeUbsInconclusivo('IGNORADO'));
+        $this->assertTrue($service->nomeUbsInconclusivo('NÃO INFORMADO'));
+        $this->assertTrue($service->nomeUbsInconclusivo('AB'));
+        $this->assertTrue($service->nomeUbsInconclusivo('UBS CNES 12'));
+
+        // Tenta resolver com nome inconclusivo e CNES inválido
+        $ubs = $service->resolverOuCriarUbs('SEM UBS', '12', false, '270430');
+        $this->assertNull($ubs, 'Não deve criar nem resolver UBS com nome inconclusivo e CNES inválido.');
+        $this->assertSame($contagemUbsAntes, UnidadeBasicaSaude::count());
+    }
+
+    public function test_nao_vincula_ubs_homonimas_em_municipios_diferentes_sem_conferencia(): void
+    {
+        $service = new EsusPecIntegrationService;
+
+        // Cria duas UBSs com mesmo nome em municípios distintos
+        UnidadeBasicaSaude::create([
+            'nome' => 'UBS SANTA RITA',
+            'cnes' => '7111111',
+            'municipio_ibge' => '270430',
+            'ativo' => true,
+        ]);
+
+        UnidadeBasicaSaude::create([
+            'nome' => 'UBS SANTA RITA',
+            'cnes' => '7222222',
+            'municipio_ibge' => '270915',
+            'ativo' => true,
+        ]);
+
+        // Tentativa de localização sem especificar município deve retornar NULL por ambiguidade
+        $resultadoAmbiguo = $service->localizarUbsExistente('UBS SANTA RITA', null, null);
+        $this->assertNull($resultadoAmbiguo, 'Não deve resolver quando existirem homônimas em municípios diferentes sem filtro.');
+
+        // Com município inequívoco, deve resolver a do município correto
+        $resultadoCorreto = $service->localizarUbsExistente('UBS SANTA RITA', null, '270430');
+        $this->assertNotNull($resultadoCorreto);
+        $this->assertSame('7111111', $resultadoCorreto->cnes);
+    }
+
+    public function test_reexecucao_idempotente_sem_duplicidades(): void
+    {
+        $pdo = $this->criarPdoPecCompleto();
+        EsusPecIntegrationService::definirPdoTeste($pdo);
+
+        Paciente::create([
+            'id_externo_esus' => '1001',
+            'nome' => 'Paciente Idempotente',
+            'cpf' => '11111111101',
+            'cns' => '898001149470878',
+            'data_nascimento' => '1990-01-01',
+            'sexo' => 'M',
+            'municipio_ibge' => '270430',
+            'ubs_referencia' => null,
+            'ubs_id' => null,
+            'nome_acs' => null,
+            'ativo' => true,
+        ]);
+
+        // Primeira execução: complementa
+        $this->artisan('esus:sincronizar', [
+            '--apenas-vinculos' => true,
+            '--force' => true,
+            '--reiniciar' => true,
+        ])->assertSuccessful();
+
+        $totalPacientesAposPrimeira = Paciente::count();
+        $totalUbsAposPrimeira = UnidadeBasicaSaude::count();
+
+        // Segunda execução: tudo já complementado, nada deve mudar nem duplicar
+        $this->artisan('esus:sincronizar', [
+            '--apenas-vinculos' => true,
+            '--force' => true,
+            '--reiniciar' => true,
+        ])
+            ->expectsOutputToContain('Total de Pacientes Atualizados')
+            ->assertSuccessful();
+
+        $this->assertSame($totalPacientesAposPrimeira, Paciente::count(), 'Total de pacientes deve ser estritamente o mesmo.');
+        $this->assertSame($totalUbsAposPrimeira, UnidadeBasicaSaude::count(), 'Total de UBS deve ser estritamente o mesmo.');
     }
 }

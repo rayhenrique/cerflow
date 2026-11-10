@@ -536,10 +536,16 @@ Em **Configurações** → **Unidades de Saúde (UBS)**:
 O CER Digital conecta-se via rede segura ao banco de dados PostgreSQL do **e-SUS Atenção Primária (PEC)** municipal:
 - **Finalidade:** Importa os cidadãos já cadastrados pelas Unidades Básicas de Saúde (UBS) e equipes de Saúde da Família (eSF), vinculando automaticamente a UBS de origem e o Agente Comunitário de Saúde (ACS) responsável pelo território de cada família.
 - **Sincronização pela Interface:** Acesse **Configurações** → **Integração e-SUS PEC** e clique em **Sincronizar Pacientes e Vínculos Agora**.
-- **Sincronização Automatizada via Terminal:** A equipe de TI pode agendar a sincronização incremental periódica no servidor através do comando:
-  ```bash
-  php artisan esus:sincronizar-pec
-  ```
+- **Comandos de Terminal e Operação Segura:**
+  - `php artisan esus:diagnostico`: Diagnóstico estrutural somente-leitura da conexão, latência, tabelas do DW PEC e métricas locais.
+  - `php artisan esus:sincronizar --dry-run`: Simulação de importação completa sem realizar qualquer alteração em pacientes, UBS ou checkpoints.
+  - `php artisan esus:sincronizar --apenas-vinculos --dry-run`: Simulação da complementação exclusiva de UBS e ACS para os pacientes já existentes.
+  - `php artisan esus:sincronizar --apenas-vinculos`: Execução real que atualiza vínculos de UBS e ACS em pacientes do CER Digital, garantindo zero criação de cadastros duplicados e preservação de campos manuais.
+- **Diretrizes de Segurança:**
+  - O banco PostgreSQL do e-SUS PEC opera sob permissão restrita de somente leitura (`SELECT`), sem nunca executar comandos destrutivos.
+  - Vínculos manuais digitados pela equipe nunca são sobrescritos automaticamente.
+  - Médicos e enfermeiros nunca são atribuídos como ACS.
+  - Em divergências de UBS homônimas entre municípios diferentes, o vínculo permanece pendente para conferência administrativa.
 
 ### 8.8 Trilha de Auditoria e Segurança (LGPD)
 Em **Configurações** → **Auditoria LGPD**:

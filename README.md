@@ -285,16 +285,42 @@ No painel do CloudPanel, acesse **Cron Jobs** e configure a execução do agenda
 * * * * * php /home/<usuario-site>/htdocs/<seu-dominio>/artisan schedule:run >> /dev/null 2>&1
 ```
 
-### 2. Sincronização e-SUS APS PEC Agendada
-Para manter a base de pacientes sincronizada diariamente com o PostgreSQL da Atenção Primária:
+### 2. Integração e Sincronização e-SUS APS PEC
+
+O CER Digital integra-se diretamente ao banco de dados PostgreSQL do **e-SUS APS PEC** municipal via rede local ou VPN corporativa (em modo **estritamente somente leitura** / `SELECT`):
+
+#### Pré-requisitos de Conexão
+- **Extensão PHP:** `pdo_pgsql` e `pgsql` habilitadas no PHP CLI (`php -m | grep pdo_pgsql`).
+- **Acesso à Rede:** Conectividade TCP até o servidor PostgreSQL do e-SUS PEC (geralmente porta `5433` ou `5432`).
+- **Credenciais Seguras:** Usuário PostgreSQL com permissão exclusiva `GRANT SELECT` nas tabelas do e-SUS PEC (nunca usar usuário administrativo com privilégios de escrita).
+- **Destino dos Dados:** Banco MySQL local do CER Digital (`pacientes`, `unidades_basicas_saude`).
+
+#### Comandos de Linha de Comando (CLI)
 
 ```bash
-# Exemplo de execução manual:
-php artisan esus:sincronizar-pec
+# 1. Diagnóstico Somente-Leitura (avalia conexão, latência, schema, tabelas e métricas sem gravar dados):
+php artisan esus:diagnostico
 
-# Exemplo de comando agendado no crontab (madrugada):
-0 2 * * * php /home/<usuario-site>/htdocs/<seu-dominio>/artisan esus:sincronizar-pec --tipo=incremental >> /home/<usuario-site>/htdocs/<seu-dominio>/storage/logs/esus-sync.log 2>&1
+# 2. Simulação Segura (Dry-Run) com lotes controlados:
+php artisan esus:sincronizar --dry-run --max-registros=100 --lote=50
+
+# 3. Complementação Exclusiva de Vínculos (Dry-Run):
+php artisan esus:sincronizar --apenas-vinculos --dry-run --max-registros=100 --lote=50
+
+# 4. Complementação Real de Vínculos de UBS e ACS (apenas pacientes locais existentes, zero criação de novos):
+php artisan esus:sincronizar --apenas-vinculos --lote=500
+
+# 5. Sincronização Periódica Agendada no Crontab (madrugada):
+0 2 * * * php /home/<usuario-site>/htdocs/<seu-dominio>/artisan esus:sincronizar --lote=1000 >> /home/<usuario-site>/htdocs/<seu-dominio>/storage/logs/esus-sync.log 2>&1
 ```
+
+#### Regras de Identificação e Resolução de Vínculos
+- **Prioridade 1 (CNES Válido):** Busca por CNES de 6 a 7 dígitos correspondente no catálogo de UBS.
+- **Prioridade 2 (INE da Equipe):** CNES e Unidade obtidos pelo vínculo formal da Equipe de Saúde da Família (eSF) via INE.
+- **Prioridade 3 (Nome e Município):** Correspondência textual somente quando for inequívoca no mesmo município IBGE. Homônimas em municípios diferentes não são vinculadas automaticamente.
+- **Proteção de Dados Manuais:** Vínculos e dados pessoais informados ou validados manualmente pela recepção/coordenação nunca são sobrescritos.
+- **Identificação de ACS:** Atribuição estrita a profissionais cadastrados com CBO oficial de ACS (`5151-05` / `3222-55`). Médicos e enfermeiros nunca são atribuídos como ACS.
+- **Checkpoints Seguros:** Utilização de Keyset Pagination por chave sequencial (`co_seq_acomp_cidadaos_vinc`), permitindo retomar sincronizações interrompidas sem perda de progresso. Em modo `--dry-run`, checkpoints permanecem intocados.
 
 ### 3. Rotinas de Backup
 - **Banco de Dados MySQL:** Configurar dump diário do MySQL via CloudPanel ou script automatizado:

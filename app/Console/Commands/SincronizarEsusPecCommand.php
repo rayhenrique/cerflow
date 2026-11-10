@@ -69,8 +69,8 @@ class SincronizarEsusPecCommand extends Command
             }
         }
 
-        // Confirmação de segurança caso o usuário solicite reiniciar sem --force
-        if ($reiniciar && ! $force) {
+        // Confirmação de segurança caso o usuário solicite reiniciar sem --force (em dry-run, checkpoints não são alterados)
+        if ($reiniciar && ! $force && ! $dryRun) {
             $confirmado = $this->confirm(
                 'Atenção: A opção --reiniciar irá resetar o checkpoint e reler todos os registros desde o início (sem apagar pacientes locais). Deseja continuar?',
                 false
@@ -155,20 +155,27 @@ class SincronizarEsusPecCommand extends Command
 
         // Recuperação automática de execuções órfãs/abandonadas (> 2 horas)
         if ($ativa && $ativa->iniciado_em && $ativa->iniciado_em->lessThan(now()->subHours(2))) {
-            $this->warn(sprintf(
-                'Identificada execução anterior estagnada (#%d iniciada em %s). Marcando como INTERROMPIDO e prosseguindo...',
-                $ativa->id,
-                $ativa->iniciado_em->format('d/m/Y H:i:s')
-            ));
+            if (! $dryRun) {
+                $this->warn(sprintf(
+                    'Identificada execução anterior estagnada (#%d iniciada em %s). Marcando como INTERROMPIDO e prosseguindo...',
+                    $ativa->id,
+                    $ativa->iniciado_em->format('d/m/Y H:i:s')
+                ));
 
-            $ativa->update([
-                'status' => 'INTERROMPIDO',
-                'finalizado_em' => now(),
-                'mensagem_erro' => 'Execução anterior expirou por inatividade (> 2 horas) e foi liberada automaticamente.',
-            ]);
-            Cache::lock(EsusPecIntegrationService::LOCK_NAME, 7200)->forceRelease();
-            Cache::forget(EsusPecIntegrationService::LOCK_NAME);
-            $ativa = null;
+                $ativa->update([
+                    'status' => 'INTERROMPIDO',
+                    'finalizado_em' => now(),
+                    'mensagem_erro' => 'Execução anterior expirou por inatividade (> 2 horas) e foi liberada automaticamente.',
+                ]);
+                Cache::lock(EsusPecIntegrationService::LOCK_NAME, 7200)->forceRelease();
+                Cache::forget(EsusPecIntegrationService::LOCK_NAME);
+                $ativa = null;
+            } else {
+                $this->warn(sprintf(
+                    'Identificada execução anterior estagnada (#%d). Modo --dry-run não altera bloqueios ou status.',
+                    $ativa->id
+                ));
+            }
         }
 
         if ($ativa && ! $force) {
