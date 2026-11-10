@@ -1997,27 +1997,40 @@
                             <div>
                                 <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Unidade Básica de Saúde (UBS)</label>
                                 <select wire:model.live="pac_ubs_id"
-                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none mb-1.5">
-                                    <option value="">-- Selecionar da rede cadastrada --</option>
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                                    <option value="">-- UBS não identificada / Nenhuma UBS vinculada --</option>
                                     @foreach ($todasUbs as $ubsCadastrada)
-                                        <option value="{{ $ubsCadastrada->id }}">{{ $ubsCadastrada->nome }} @if($ubsCadastrada->cnes) (CNES: {{ $ubsCadastrada->cnes }}) @endif</option>
+                                        <option value="{{ $ubsCadastrada->id }}">
+                                            {{ $ubsCadastrada->nome }}@if($ubsCadastrada->cnes) (CNES: {{ $ubsCadastrada->cnes }})@endif @if($ubsCadastrada->municipio_ibge && $ubsCadastrada->municipio_ibge !== ($pac_municipio_ibge ?: '2709152')) [IBGE: {{ $ubsCadastrada->municipio_ibge }}]@endif @if(!$ubsCadastrada->ativo) (Inativa)@endif
+                                        </option>
                                     @endforeach
                                 </select>
-                                <input list="ubs-list" wire:model="pac_ubs_referencia" placeholder="Ou digite o nome da UBS de referência..."
-                                    class="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs focus:border-teal-600 focus:outline-none">
-                                <datalist id="ubs-list">
-                                    @foreach ($listaUbs as $ubs)
-                                        <option value="{{ $ubs }}"></option>
-                                    @endforeach
-                                </datalist>
+                                @if ($pacienteEditandoId && $pac_ubs_referencia && ! $pac_ubs_id)
+                                    <div class="mt-1.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 border border-amber-200">
+                                        <span><strong>Vínculo textual histórico:</strong> {{ $pac_ubs_referencia }}</span>
+                                        <span class="text-[10px] text-amber-600">Selecione da lista acima para vincular o ID oficial</span>
+                                    </div>
+                                @endif
+                                @if (auth()->user()?->hasRole('coordenacao'))
+                                    <div class="mt-1.5 flex items-center justify-between text-[11px] text-slate-500">
+                                        <span>Precisa cadastrar uma nova UBS?</span>
+                                        <button type="button" wire:click="abrirGerenciadorUbs" class="text-teal-700 hover:text-teal-800 hover:underline font-semibold cursor-pointer">
+                                            Gerenciar Unidades de Saúde (UBS) →
+                                        </button>
+                                    </div>
+                                @endif
                                 @error('pac_ubs_id') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
-                                @error('pac_ubs_referencia') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
                             </div>
 
                             <div>
                                 <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Agente Comunitário de Saúde (ACS)</label>
-                                <input type="text" wire:model="pac_nome_acs" placeholder="Ex: ACS Maria Pereira"
+                                <input type="text" wire:model="pac_nome_acs" placeholder="ACS não identificado (opcional)..."
                                     class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                                @if ($pac_nome_acs)
+                                    <span class="text-[11px] text-teal-700 mt-1 block font-medium">ACS vinculado: {{ $pac_nome_acs }}</span>
+                                @else
+                                    <span class="text-[11px] text-slate-400 mt-1 block">ACS não identificado</span>
+                                @endif
                                 @error('pac_nome_acs') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
                             </div>
                         </div>

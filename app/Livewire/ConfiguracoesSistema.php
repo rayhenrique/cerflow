@@ -24,6 +24,7 @@ use App\Services\EsusPecIntegrationService;
 use App\Services\TvPairingService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -466,14 +467,24 @@ class ConfiguracoesSistema extends Component
         }
     }
 
-    public function updatedPacUbsId(?int $ubsId): void
+    public function updatedPacUbsId($ubsId): void
     {
-        if ($ubsId) {
-            $ubs = UnidadeBasicaSaude::find($ubsId);
-            if ($ubs) {
-                $this->pac_ubs_referencia = $ubs->nome;
-            }
+        $ubsIdInt = ! empty($ubsId) ? (int) $ubsId : null;
+        $this->pac_ubs_id = $ubsIdInt;
+
+        if ($ubsIdInt) {
+            $ubs = UnidadeBasicaSaude::find($ubsIdInt);
+            $this->pac_ubs_referencia = $ubs ? $ubs->nome : '';
+        } else {
+            $this->pac_ubs_referencia = '';
         }
+    }
+
+    public function abrirGerenciadorUbs(): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+        $this->modalPacienteAberto = false;
+        $this->selecionarAba('ubs');
     }
 
     public function selecionarAba(string $aba): void
@@ -1294,6 +1305,11 @@ class ConfiguracoesSistema extends Component
 
         [$ubsIdFinal, $ubsNomeFinal] = $this->resolverUbsParaPaciente();
 
+        $nomeAcs = trim($this->pac_nome_acs);
+        if ($nomeAcs === '' || mb_strtoupper($nomeAcs) === 'ACS NÃO IDENTIFICADO' || mb_strtoupper($nomeAcs) === 'ACS NAO IDENTIFICADO') {
+            $nomeAcs = null;
+        }
+
         Paciente::updateOrCreate(
             ['id' => $this->pacienteEditandoId],
             [
@@ -1306,7 +1322,7 @@ class ConfiguracoesSistema extends Component
                 'municipio_ibge' => $this->pac_municipio_ibge,
                 'ubs_id' => $ubsIdFinal,
                 'ubs_referencia' => $ubsNomeFinal,
-                'nome_acs' => $this->pac_nome_acs !== '' ? trim($this->pac_nome_acs) : null,
+                'nome_acs' => $nomeAcs,
                 'telefone_contato' => $this->pac_telefone_contato !== '' ? trim($this->pac_telefone_contato) : null,
                 'telefone_secundario' => $this->pac_telefone_secundario !== '' ? trim($this->pac_telefone_secundario) : null,
                 'endereco' => $this->pac_endereco !== '' ? trim($this->pac_endereco) : null,
@@ -1322,8 +1338,6 @@ class ConfiguracoesSistema extends Component
         if (! $editando) {
             $this->resetPage();
         }
-
-        Cache::forget('pacientes_lista_ubs_dropdown');
 
         $this->modalPacienteAberto = false;
         $this->limparFormularioPaciente();
@@ -1348,6 +1362,7 @@ class ConfiguracoesSistema extends Component
             'pac_sexo' => ['required', Rule::in(['M', 'F'])],
             'pac_municipio_ibge' => ['required', 'string', 'regex:/^\d{6,7}$/'],
             'pac_nome_mae' => ['nullable', 'string', 'max:255'],
+            'pac_ubs_id' => ['nullable', 'integer', 'exists:unidades_basicas_saude,id'],
             'pac_ubs_referencia' => ['nullable', 'string', 'max:255'],
             'pac_nome_acs' => ['nullable', 'string', 'max:255'],
             'pac_telefone_contato' => ['nullable', 'string', 'max:20'],
@@ -1397,28 +1412,30 @@ class ConfiguracoesSistema extends Component
     }
 
     /**
+     * Resolve os campos ubs_id e ubs_referencia para persistência do paciente.
+     * Elimina a criação implícita de UBS baseada em texto livre.
+     *
      * @return array{0: int|null, 1: string|null}
      */
     private function resolverUbsParaPaciente(): array
     {
-        $ubsIdFinal = $this->pac_ubs_id;
-        $ubsNomeFinal = $this->pac_ubs_referencia !== '' ? trim($this->pac_ubs_referencia) : null;
+        $ubsIdFinal = $this->pac_ubs_id ? (int) $this->pac_ubs_id : null;
+        $ubsNomeFinal = null;
 
         if ($ubsIdFinal) {
             $ubsModel = UnidadeBasicaSaude::find($ubsIdFinal);
             if ($ubsModel) {
                 $ubsNomeFinal = $ubsModel->nome;
+            } else {
+                $ubsIdFinal = null;
             }
-        } elseif ($ubsNomeFinal !== null && $ubsNomeFinal !== '') {
-            $ubsModel = UnidadeBasicaSaude::firstOrCreate(
-                ['nome' => $ubsNomeFinal],
-                [
-                    'municipio_ibge' => $this->pac_municipio_ibge,
-                    'origem' => 'MANUAL',
-                    'ativo' => true,
-                ]
-            );
-            $ubsIdFinal = $ubsModel->id;
+        } elseif ($this->pacienteEditandoId) {
+            // Em edição de paciente existente, se pac_ubs_id estiver vazio mas o paciente já possuía
+            // ubs_referencia histórica textual (sem ID), preserva o dado legado original se não alterado
+            $pacExistente = Paciente::find($this->pacienteEditandoId);
+            if ($pacExistente && ! empty($pacExistente->ubs_referencia) && $this->pac_ubs_referencia === $pacExistente->ubs_referencia) {
+                $ubsNomeFinal = $pacExistente->ubs_referencia;
+            }
         }
 
         return [$ubsIdFinal, $ubsNomeFinal];
@@ -2140,8 +2157,6 @@ class ConfiguracoesSistema extends Component
             $ubs = UnidadeBasicaSaude::create($dados);
         }
 
-        Cache::forget('pacientes_lista_ubs_dropdown');
-
         LogAuditoria::create([
             'user_id' => auth()->id(),
             'acao' => $editando ? 'ATUALIZACAO_UBS' : 'CADASTRO_UBS',
@@ -2166,8 +2181,6 @@ class ConfiguracoesSistema extends Component
         $ubs = UnidadeBasicaSaude::findOrFail($ubsId);
         $novoStatus = ! $ubs->ativo;
         $ubs->update(['ativo' => $novoStatus]);
-
-        Cache::forget('pacientes_lista_ubs_dropdown');
 
         LogAuditoria::create([
             'user_id' => auth()->id(),
@@ -2616,7 +2629,6 @@ class ConfiguracoesSistema extends Component
                 ]);
 
                 $ubs->delete();
-                Cache::forget('pacientes_lista_ubs_dropdown');
                 $this->cancelarExclusao();
                 $this->dispatch('toast', tipo: 'sucesso', titulo: 'UBS excluída', mensagem: "A UBS '{$nome}' foi removida.");
 
@@ -2664,11 +2676,10 @@ class ConfiguracoesSistema extends Component
             'opcoesCboModal' => $sugestoesCboModal,
             'cboAtualModal' => $this->prof_cbo_id ? Cbo::find($this->prof_cbo_id) : null,
             'todasEspecialidades' => Especialidade::query()->ativas()->orderBy('nome')->get(['id', 'nome']),
-            'todasUbs' => UnidadeBasicaSaude::query()->ativas()->orderBy('nome')->get(['id', 'nome', 'cnes']),
+            'todasUbs' => $this->carregarOpcoesUbs(),
             'logsAuditoria' => $logsAuditoria,
             'logInspecionado' => $logInspecionado,
             'historicoEsus' => $this->carregarHistoricoEsus($isCoordenacao),
-            'listaUbs' => $this->carregarListaUbsDropdown($podePacientes),
             'dispositivosTv' => $dispositivosTv,
             'solicitacoesTvPendentes' => $solicitacoesTvPendentes,
         ]);
@@ -2890,39 +2901,22 @@ class ConfiguracoesSistema extends Component
     }
 
     /**
-     * @return array<int, string>
+     * Carrega as UBS cadastradas ativas para a seleção no cadastro de pacientes,
+     * incluindo a UBS atualmente vinculada ao paciente em edição mesmo se inativa.
+     *
+     * @return Collection<int, UnidadeBasicaSaude>
      */
-    private function carregarListaUbsDropdown(bool $podePacientes): array
+    private function carregarOpcoesUbs()
     {
-        if (! $podePacientes || ($this->abaAtiva !== 'pacientes' && ! $this->modalPacienteAberto)) {
-            return [];
-        }
-
-        return Cache::remember('pacientes_lista_ubs_dropdown', 3600, function (): array {
-            $ubsEntidades = UnidadeBasicaSaude::query()
-                ->where('ativo', true)
-                ->orderBy('nome')
-                ->pluck('nome')
-                ->toArray();
-
-            $ubsDoBanco = Paciente::query()
-                ->whereNotNull('ubs_referencia')
-                ->where('ubs_referencia', '!=', '')
-                ->distinct()
-                ->pluck('ubs_referencia')
-                ->toArray();
-
-            $padroes = [
-                'UBS Centro / PSF Central',
-                'UBS Dr. José Ferreira',
-                'UBS Santa Luzia',
-                'UBS Bela Vista',
-                'UBS São José',
-                'USF Esperança',
-                'UBS Zona Rural',
-            ];
-
-            return array_values(array_unique(array_filter(array_merge($ubsEntidades, $padroes, $ubsDoBanco))));
-        });
+        return UnidadeBasicaSaude::query()
+            ->select(['id', 'nome', 'cnes', 'municipio_ibge', 'ativo'])
+            ->where(function ($query) {
+                $query->where('ativo', true);
+                if ($this->pac_ubs_id) {
+                    $query->orWhere('id', $this->pac_ubs_id);
+                }
+            })
+            ->orderBy('nome')
+            ->get();
     }
 }

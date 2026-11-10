@@ -12,6 +12,7 @@ use App\Models\Agendamento;
 use App\Models\Paciente;
 use App\Models\Profissional;
 use App\Models\Sala;
+use App\Models\UnidadeBasicaSaude;
 use App\Models\User;
 use App\Rules\CnsValido;
 use Carbon\CarbonImmutable;
@@ -166,7 +167,7 @@ class OtimizacaoConsultasPacientesTest extends TestCase
             ->assertViewHas('pacientes', function ($pac) {
                 return $pac->isEmpty();
             })
-            ->assertViewHas('listaUbs', []);
+            ->assertViewMissing('listaUbs');
 
         $this->assertSame(0, $consultasPacientes, 'Aba salas não deve executar queries na tabela pacientes');
 
@@ -224,47 +225,38 @@ class OtimizacaoConsultasPacientesTest extends TestCase
         }
     }
 
-    public function test_lista_ubs_utiliza_cache_e_invalida_ao_salvar_novo_paciente(): void
+    public function test_dropdown_ubs_referencia_utiliza_apenas_unidades_cadastradas_sem_mock(): void
     {
-        Cache::forget('pacientes_lista_ubs_dropdown');
-
-        Paciente::create([
-            'nome' => 'Paciente com Nova UBS',
-            'cpf' => '44400000001',
-            'cns' => CnsValido::gerarDefinitivo('44400000001'),
-            'data_nascimento' => '1992-02-02',
-            'sexo' => 'M',
-            'nome_mae' => 'Mãe UBS',
+        $ubsReal = UnidadeBasicaSaude::create([
+            'nome' => 'UBS Vila Nova Esperanca',
+            'cnes' => '2719999',
             'municipio_ibge' => '270430',
-            'ubs_referencia' => 'UBS Vila Nova Esperanca',
+            'origem' => 'MANUAL',
             'ativo' => true,
         ]);
 
-        $this->assertFalse(Cache::has('pacientes_lista_ubs_dropdown'));
-
-        // Primeira renderização aquece o cache
+        // Renderização deve conter a UBS cadastrada em todasUbs
         Livewire::actingAs($this->coordenador)
             ->test(ConfiguracoesSistema::class, ['secao' => 'pacientes'])
-            ->assertViewHas('listaUbs', function (array $ubs) {
-                return in_array('UBS Vila Nova Esperanca', $ubs, true);
+            ->assertViewHas('todasUbs', function ($todasUbs) use ($ubsReal) {
+                return $todasUbs->contains('id', $ubsReal->id);
             });
 
-        $this->assertTrue(Cache::has('pacientes_lista_ubs_dropdown'));
-
-        // Salvar paciente invalida o cache para refletir novidades
+        // Salvar paciente selecionando a UBS associa pac_ubs_id e sincroniza pac_ubs_referencia
         Livewire::actingAs($this->coordenador)
             ->test(ConfiguracoesSistema::class, ['secao' => 'pacientes'])
             ->set('pac_nome', 'Novo Paciente Cadastrado')
             ->set('pac_data_nascimento', '2000-01-01')
             ->set('pac_sexo', 'M')
             ->set('pac_municipio_ibge', '270430')
-            ->set('pac_ubs_referencia', 'UBS Bairro Novo 2026')
+            ->set('pac_ubs_id', $ubsReal->id)
             ->call('salvarPaciente')
             ->assertHasNoErrors();
 
-        // Ao salvar um novo paciente, o cache antigo é invalidado e o novo render inclui a nova UBS
-        $this->assertTrue(Cache::has('pacientes_lista_ubs_dropdown'));
-        $this->assertContains('UBS Bairro Novo 2026', Cache::get('pacientes_lista_ubs_dropdown'));
+        $pacienteCriado = Paciente::where('nome', 'Novo Paciente Cadastrado')->first();
+        $this->assertNotNull($pacienteCriado);
+        $this->assertSame($ubsReal->id, $pacienteCriado->ubs_id);
+        $this->assertSame('UBS Vila Nova Esperanca', $pacienteCriado->ubs_referencia);
     }
 
     public function test_dashboard_contagem_modalidades_e_metricas_possuem_cache(): void

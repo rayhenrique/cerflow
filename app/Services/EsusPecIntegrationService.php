@@ -2122,10 +2122,32 @@ class EsusPecIntegrationService
             }
         }
 
-        if (empty($paciente->ubs_id) && ! empty($camposParaAtualizar['ubs_referencia'])) {
-            $ubsModel = $this->resolverOuCriarUbs($camposParaAtualizar['ubs_referencia'], $dadosNovos['cnes_ubs'] ?? null);
-            if ($ubsModel) {
-                $camposParaAtualizar['ubs_id'] = $ubsModel->id;
+        // Reconciliação do ubs_id se estiver vazio
+        if (empty($paciente->ubs_id)) {
+            $nomeUbsParaResolver = ! empty($camposParaAtualizar['ubs_referencia'])
+                ? $camposParaAtualizar['ubs_referencia']
+                : $paciente->ubs_referencia;
+
+            if (! empty($nomeUbsParaResolver) || ! empty($dadosNovos['cnes_ubs'])) {
+                $ubsModel = $this->localizarUbsExistente(
+                    $nomeUbsParaResolver ?: null,
+                    $dadosNovos['cnes_ubs'] ?? null,
+                    $paciente->municipio_ibge ?: ($dadosNovos['municipio_ibge'] ?? null)
+                );
+
+                if (! $ubsModel && ! empty($camposParaAtualizar['ubs_referencia'])) {
+                    $ubsModel = $this->resolverOuCriarUbs(
+                        $camposParaAtualizar['ubs_referencia'],
+                        $dadosNovos['cnes_ubs'] ?? null,
+                        false,
+                        $paciente->municipio_ibge ?: ($dadosNovos['municipio_ibge'] ?? null)
+                    );
+                }
+
+                if ($ubsModel && $ubsModel->id > 0) {
+                    $camposParaAtualizar['ubs_id'] = $ubsModel->id;
+                    $houveAlteracaoCadastral = true;
+                }
             }
         }
 

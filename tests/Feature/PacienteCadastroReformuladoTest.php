@@ -9,6 +9,7 @@ use App\Livewire\ProntuarioPaciente;
 use App\Models\ConfiguracaoEstabelecimento;
 use App\Models\Paciente;
 use App\Models\Sala;
+use App\Models\UnidadeBasicaSaude;
 use App\Models\User;
 use App\Rules\CnsValido;
 use App\Services\AgendamentoService;
@@ -34,6 +35,14 @@ class PacienteCadastroReformuladoTest extends TestCase
 
     public function test_recepcao_pode_cadastrar_paciente_sem_cns_e_sem_dados_clinicos(): void
     {
+        $ubs = UnidadeBasicaSaude::create([
+            'nome' => 'UBS Centro / PSF Central',
+            'cnes' => '2005432',
+            'municipio_ibge' => '270430',
+            'origem' => 'MANUAL',
+            'ativo' => true,
+        ]);
+
         $recepcionista = User::factory()->create(['ativo' => true]);
         $recepcionista->assignRole('recepcao');
 
@@ -44,7 +53,7 @@ class PacienteCadastroReformuladoTest extends TestCase
             ->set('pac_nome', 'Carlos Eduardo da Silva')
             ->set('pac_data_nascimento', '1995-08-20')
             ->set('pac_sexo', 'M')
-            ->set('pac_ubs_referencia', 'UBS Centro / PSF Central')
+            ->set('pac_ubs_id', $ubs->id)
             ->set('pac_nome_acs', 'Maria do Carmo ACS')
             ->set('pac_telefone_contato', '(82) 98888-1111')
             ->set('pac_telefone_secundario', '(82) 97777-2222')
@@ -63,6 +72,7 @@ class PacienteCadastroReformuladoTest extends TestCase
             'cid_secundario' => null,
             'modalidades_reabilitacao' => null,
             'origem_cadastro' => 'MANUAL',
+            'ubs_id' => $ubs->id,
             'ubs_referencia' => 'UBS Centro / PSF Central',
             'nome_acs' => 'Maria do Carmo ACS',
             'telefone_contato' => '(82) 98888-1111',
