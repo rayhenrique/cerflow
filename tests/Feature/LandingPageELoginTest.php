@@ -61,6 +61,45 @@ class LandingPageELoginTest extends TestCase
             ->assertSee('Senha de acesso');
     }
 
+    public function test_campo_de_senha_possui_type_password_nativo_e_seguro_no_html(): void
+    {
+        $response = $this->get('/login');
+
+        $response->assertOk();
+
+        // O campo de senha DEVE conter type="password" diretamente no HTML
+        $response->assertSee('id="password"', false)
+            ->assertSee('type="password"', false)
+            ->assertSee('autocomplete="current-password"', false);
+
+        // Não deve usar diretivas Alpine vulneráveis a ausência de runtime
+        $response->assertDontSee(':type=', false);
+        $response->assertDontSee('x-data="{ showPass', false);
+        $response->assertDontSee('x-show="showPass"', false);
+    }
+
+    public function test_botao_de_visibilidade_da_senha_e_acessivel_por_teclado(): void
+    {
+        $response = $this->get('/login');
+
+        $response->assertOk();
+
+        // Botão deve possuir identificador, aria-label, aria-pressed e NÃO ter tabindex="-1"
+        $response->assertSee('id="toggle-password"', false)
+            ->assertSee('aria-label="Mostrar senha"', false)
+            ->assertSee('aria-pressed="false"', false)
+            ->assertSee('id="icon-eye-show"', false)
+            ->assertSee('id="icon-eye-hide"', false);
+
+        // Garante que o tabindex="-1" foi removido para permitir navegação por teclado
+        $response->assertDontSee('tabindex="-1"', false);
+
+        // Garante presença do script nativo com alternância e estado de envio
+        $response->assertSee("passwordInput.setAttribute('type', 'text')", false)
+            ->assertSee("passwordInput.setAttribute('type', 'password')", false)
+            ->assertSee('submitBtn.disabled = true', false);
+    }
+
     public function test_login_autentica_com_sucesso_e_redireciona_ao_dashboard(): void
     {
         $user = User::factory()->create([

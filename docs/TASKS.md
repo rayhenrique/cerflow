@@ -104,3 +104,4 @@
 - [x] 10.4 Filtros globais compartilhados por período, atalhos dinâmicos, profissional, especialidade, sala e competência BPA-i
 - [x] 10.5 Exportação universal para planilhas em formato CSV e impressão otimizada em folha A4 limpa via CSS de impressão
 - [x] 10.6 Documentação integral e sincronizada com a versão v1.21.1 (`README.md`, `MANUAL-DO-USUARIO.md`, `DATABASE-SCHEMA.md`, `AjudaSobre`)
+- [x] 10.7 Correção de segurança no campo de senha da tela de login (`type="password"` nativo, toggle via JavaScript leve e acessibilidade por teclado) (v1.21.2)

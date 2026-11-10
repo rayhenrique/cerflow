@@ -2,7 +2,7 @@
 
 **Plataforma Integrada de Gestão Especializada em Reabilitação, Grade Multiprofissional e Faturamento SIA/SUS**
 
-> **Versão do Sistema:** v1.21.1  
+> **Versão do Sistema:** v1.21.2  
 > **Público-alvo:** Recepção, Terapeutas e Equipe Clínica Multiprofissional, Faturamento SUS, Coordenação Geral e Tecnologia da Informação  
 > **Homologação:** Ministério da Saúde / Datasus (BPA-i / SIA-SUS) e e-SUS APS PEC  
 > **Desenvolvido por:** [KL Tecnologia](https://kltecnologia.com)
@@ -573,4 +573,4 @@ Acessível a qualquer momento em `/ajuda` no menu lateral:
 
 ---
 
-*Manual elaborado pela equipe de desenvolvimento e homologado para a rede de Centros Especializados em Reabilitação (CER Digital — v1.21.1).*
+*Manual elaborado pela equipe de desenvolvimento e homologado para a rede de Centros Especializados em Reabilitação (CER Digital — v1.21.2).*

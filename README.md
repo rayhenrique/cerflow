@@ -82,7 +82,7 @@ A plataforma substitui integralmente processos fragmentados baseados em planilha
 
 ### 10. Central de Ajuda & Histórico de Versões (`/ajuda`)
 - **Comunicação de Atualizações:** Modal automático pós-login informando as novidades da release mais recente em linguagem simples e acessível, com persistência individual por usuário (`ultima_versao_novidades_vista`).
-- **Manual do Usuário Integrado:** Consulta dos capítulos operacionais diretamente na aplicação e botão para download do arquivo completo em formato Markdown (`Manual-do-Usuario-CER-Digital-v1.21.1.md`).
+- **Manual do Usuário Integrado:** Consulta dos capítulos operacionais diretamente na aplicação e botão para download do arquivo completo em formato Markdown (`Manual-do-Usuario-CER-Digital-v1.21.2.md`).
 
 ---
 
@@ -258,7 +258,7 @@ O script `deploy.sh` automatiza o ciclo completo de atualização em produção:
 ./deploy.sh
 
 # Ou atualizar para uma versão específica (SemVer):
-./deploy.sh v1.21.1
+./deploy.sh v1.21.2
 ```
 
 ---

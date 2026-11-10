@@ -44,6 +44,17 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.21.2',
+                'data' => '10/11/2026',
+                'titulo' => 'Correção de Segurança e Privacidade no Campo de Senha do Login',
+                'tipo' => 'Correções e Segurança',
+                'destaques' => [
+                    'Correções: Garantimos que o campo de senha na tela de entrada do sistema permaneça sempre protegido e oculto por padrão em qualquer computador, celular ou navegador.',
+                    'Melhorias: O botão para visualizar a senha agora funciona de forma mais rápida, segura e permite navegação pelo teclado para maior acessibilidade.',
+                    'Melhorias: Aprimoramos o aviso de carregamento ao entrar no sistema, evitando cliques repetidos durante a conferência dos dados de acesso.',
+                ],
+            ],
+            [
                 'versao' => '1.21.1',
                 'data' => '10/11/2026',
                 'titulo' => 'Atualização Integral do Manual do Usuário e Central de Ajuda',
