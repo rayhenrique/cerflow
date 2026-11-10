@@ -66,4 +66,3 @@ class Especialidade extends Model
         return ! $this->profissionais()->exists();
     }
 }
-

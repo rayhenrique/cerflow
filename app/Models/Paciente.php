@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,6 +14,27 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * @property int $id
+ * @property string $cns
+ * @property string|null $cpf
+ * @property string $nome
+ * @property Carbon|null $data_nascimento
+ * @property string $sexo
+ * @property string|null $nome_mae
+ * @property string $municipio_ibge
+ * @property int|null $ubs_id
+ * @property string|null $ubs_referencia
+ * @property string|null $nome_acs
+ * @property string|null $telefone_contato
+ * @property string|null $telefone_secundario
+ * @property string|null $endereco
+ * @property string|null $bairro
+ * @property string|null $cid_principal
+ * @property string|null $cid_secundario
+ * @property array<string>|null $modalidades_reabilitacao
+ * @property bool $ativo
+ */
 class Paciente extends Model
 {
     use HasFactory, SoftDeletes;

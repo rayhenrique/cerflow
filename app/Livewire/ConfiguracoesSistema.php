@@ -29,7 +29,9 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -361,6 +363,7 @@ class ConfiguracoesSistema extends Component
 
     public function mount(?string $secao = null): void
     {
+        /** @var User|null $user */
         $user = auth()->user();
         abort_if($user === null, 403);
 
@@ -486,6 +489,7 @@ class ConfiguracoesSistema extends Component
      */
     public function abasPermitidas(): array
     {
+        /** @var User|null $user */
         $user = auth()->user();
         if ($user === null) {
             return [];
@@ -939,7 +943,7 @@ class ConfiguracoesSistema extends Component
 
         // Atualiza a senha apenas se informada
         if ($this->esus_senha !== '') {
-            $config->senha = $this->esus_senha;
+            $config->setAttribute('senha', $this->esus_senha);
         }
 
         $config->save();
@@ -984,7 +988,7 @@ class ConfiguracoesSistema extends Component
         $config->banco = trim($this->esus_banco);
         $config->usuario = trim($this->esus_usuario);
         if ($this->esus_senha !== '') {
-            $config->senha = $this->esus_senha;
+            $config->setAttribute('senha', $this->esus_senha);
         }
         $config->save();
 
@@ -1237,7 +1241,9 @@ class ConfiguracoesSistema extends Component
         $this->pac_nome = $pac->nome;
         $this->pac_cns = (string) ($pac->cns ?? '');
         $this->pac_cpf = (string) ($pac->cpf ?? '');
-        $this->pac_data_nascimento = $pac->data_nascimento->format('Y-m-d');
+        $this->pac_data_nascimento = $pac->data_nascimento instanceof \DateTimeInterface
+            ? $pac->data_nascimento->format('Y-m-d')
+            : (string) ($pac->data_nascimento ?? '');
         $this->pac_sexo = $pac->sexo;
         $this->pac_nome_mae = (string) ($pac->nome_mae ?? '');
         $this->pac_municipio_ibge = (string) ($pac->municipio_ibge ?? ConfiguracaoEstabelecimento::atual()->codigo_ibge_padrao);
@@ -1265,65 +1271,7 @@ class ConfiguracoesSistema extends Component
     {
         abort_unless(auth()->user()?->hasAnyRole(['recepcao', 'coordenacao']) === true, 403);
 
-        $this->pac_cns = preg_replace('/\D/', '', $this->pac_cns ?? '') ?? '';
-        $this->pac_cpf = preg_replace('/\D/', '', $this->pac_cpf ?? '') ?? '';
-        $this->pac_municipio_ibge = preg_replace('/\D/', '', $this->pac_municipio_ibge ?? '') ?? '';
-
-        $rules = [
-            'pac_nome' => ['required', 'string', 'max:255'],
-            'pac_data_nascimento' => ['required', 'date', 'before_or_equal:today'],
-            'pac_sexo' => ['required', Rule::in(['M', 'F'])],
-            'pac_municipio_ibge' => ['required', 'string', 'digits:6'],
-            'pac_nome_mae' => ['nullable', 'string', 'max:255'],
-            'pac_ubs_referencia' => ['nullable', 'string', 'max:255'],
-            'pac_nome_acs' => ['nullable', 'string', 'max:255'],
-            'pac_telefone_contato' => ['nullable', 'string', 'max:20'],
-            'pac_telefone_secundario' => ['nullable', 'string', 'max:20'],
-            'pac_endereco' => ['nullable', 'string', 'max:255'],
-            'pac_bairro' => ['nullable', 'string', 'max:100'],
-            'pac_cns' => [
-                'nullable',
-                'string',
-                'digits:15',
-                new CnsValido,
-                Rule::unique('pacientes', 'cns')->ignore($this->pacienteEditandoId),
-            ],
-            'pac_cpf' => [
-                'nullable',
-                'string',
-                'digits:11',
-                Rule::unique('pacientes', 'cpf')->ignore($this->pacienteEditandoId),
-            ],
-        ];
-
-        // Se campos clínicos forem fornecidos (ex.: por coordenação ou testes legados)
-        if ($this->pac_cid_principal !== '') {
-            $rules['pac_cid_principal'] = ['nullable', 'string', 'max:10'];
-        }
-        if ($this->pac_cid_secundario !== '') {
-            $rules['pac_cid_secundario'] = ['nullable', 'string', 'max:10'];
-        }
-        if ($this->pac_modalidades !== []) {
-            $rules['pac_modalidades'] = ['nullable', 'array'];
-        }
-
-        $this->validate($rules);
-
-        // Regra de desduplicação do e-SUS/SUS:
-        // Se CPF e CNS não forem informados, validar duplicidade por Nome + Data de Nascimento
-        if ($this->pac_cpf === '' && $this->pac_cns === '') {
-            $duplicado = Paciente::query()
-                ->when($this->pacienteEditandoId !== null, fn ($q) => $q->where('id', '!=', $this->pacienteEditandoId))
-                ->where('nome', trim($this->pac_nome))
-                ->whereDate('data_nascimento', $this->pac_data_nascimento)
-                ->exists();
-
-            if ($duplicado) {
-                $this->addError('pac_nome', 'Já existe um paciente cadastrado com este mesmo nome e data de nascimento no sistema.');
-
-                return;
-            }
-        }
+        $this->validarFormularioPaciente();
 
         $editando = $this->pacienteEditandoId !== null;
         $pacienteExistente = $editando ? Paciente::find($this->pacienteEditandoId) : null;
@@ -1340,25 +1288,7 @@ class ConfiguracoesSistema extends Component
             ? $this->pac_modalidades
             : ($pacienteExistente?->modalidades_reabilitacao);
 
-        $ubsIdFinal = $this->pac_ubs_id;
-        $ubsNomeFinal = $this->pac_ubs_referencia !== '' ? trim($this->pac_ubs_referencia) : null;
-
-        if ($ubsIdFinal) {
-            $ubsModel = UnidadeBasicaSaude::find($ubsIdFinal);
-            if ($ubsModel) {
-                $ubsNomeFinal = $ubsModel->nome;
-            }
-        } elseif ($ubsNomeFinal !== null && $ubsNomeFinal !== '') {
-            $ubsModel = UnidadeBasicaSaude::firstOrCreate(
-                ['nome' => $ubsNomeFinal],
-                [
-                    'municipio_ibge' => $this->pac_municipio_ibge,
-                    'origem' => 'MANUAL',
-                    'ativo' => true,
-                ]
-            );
-            $ubsIdFinal = $ubsModel->id;
-        }
+        [$ubsIdFinal, $ubsNomeFinal] = $this->resolverUbsParaPaciente();
 
         Paciente::updateOrCreate(
             ['id' => $this->pacienteEditandoId],
@@ -1392,6 +1322,106 @@ class ConfiguracoesSistema extends Component
         Cache::forget('pacientes_lista_ubs_dropdown');
 
         $this->modalPacienteAberto = false;
+        $this->limparFormularioPaciente();
+
+        $mensagem = $editando
+            ? 'Os dados cadastrais do paciente foram atualizados com sucesso.'
+            : 'Paciente cadastrado com sucesso e pronto para atendimento.';
+
+        session()->flash('sucesso_config', $mensagem);
+        $this->dispatch('toast', tipo: 'sucesso', titulo: $editando ? 'Paciente atualizado' : 'Paciente cadastrado', mensagem: $mensagem);
+    }
+
+    private function validarFormularioPaciente(): void
+    {
+        $this->pac_cns = preg_replace('/\D/', '', $this->pac_cns ?? '') ?? '';
+        $this->pac_cpf = preg_replace('/\D/', '', $this->pac_cpf ?? '') ?? '';
+        $this->pac_municipio_ibge = preg_replace('/\D/', '', $this->pac_municipio_ibge ?? '') ?? '';
+
+        $rules = [
+            'pac_nome' => ['required', 'string', 'max:255'],
+            'pac_data_nascimento' => ['required', 'date', 'before_or_equal:today'],
+            'pac_sexo' => ['required', Rule::in(['M', 'F'])],
+            'pac_municipio_ibge' => ['required', 'string', 'digits:6'],
+            'pac_nome_mae' => ['nullable', 'string', 'max:255'],
+            'pac_ubs_referencia' => ['nullable', 'string', 'max:255'],
+            'pac_nome_acs' => ['nullable', 'string', 'max:255'],
+            'pac_telefone_contato' => ['nullable', 'string', 'max:20'],
+            'pac_telefone_secundario' => ['nullable', 'string', 'max:20'],
+            'pac_endereco' => ['nullable', 'string', 'max:255'],
+            'pac_bairro' => ['nullable', 'string', 'max:100'],
+            'pac_cns' => [
+                'nullable',
+                'string',
+                'digits:15',
+                new CnsValido,
+                Rule::unique('pacientes', 'cns')->ignore($this->pacienteEditandoId),
+            ],
+            'pac_cpf' => [
+                'nullable',
+                'string',
+                'digits:11',
+                Rule::unique('pacientes', 'cpf')->ignore($this->pacienteEditandoId),
+            ],
+        ];
+
+        if ($this->pac_cid_principal !== '') {
+            $rules['pac_cid_principal'] = ['nullable', 'string', 'max:10'];
+        }
+        if ($this->pac_cid_secundario !== '') {
+            $rules['pac_cid_secundario'] = ['nullable', 'string', 'max:10'];
+        }
+        if ($this->pac_modalidades !== []) {
+            $rules['pac_modalidades'] = ['nullable', 'array'];
+        }
+
+        $this->validate($rules);
+
+        if ($this->pac_cpf === '' && $this->pac_cns === '') {
+            $duplicado = Paciente::query()
+                ->when($this->pacienteEditandoId !== null, fn ($q) => $q->where('id', '!=', $this->pacienteEditandoId))
+                ->where('nome', trim($this->pac_nome))
+                ->whereDate('data_nascimento', $this->pac_data_nascimento)
+                ->exists();
+
+            if ($duplicado) {
+                throw ValidationException::withMessages([
+                    'pac_nome' => 'Já existe um paciente cadastrado com este mesmo nome e data de nascimento no sistema.',
+                ]);
+            }
+        }
+    }
+
+    /**
+     * @return array{0: int|null, 1: string|null}
+     */
+    private function resolverUbsParaPaciente(): array
+    {
+        $ubsIdFinal = $this->pac_ubs_id;
+        $ubsNomeFinal = $this->pac_ubs_referencia !== '' ? trim($this->pac_ubs_referencia) : null;
+
+        if ($ubsIdFinal) {
+            $ubsModel = UnidadeBasicaSaude::find($ubsIdFinal);
+            if ($ubsModel) {
+                $ubsNomeFinal = $ubsModel->nome;
+            }
+        } elseif ($ubsNomeFinal !== null && $ubsNomeFinal !== '') {
+            $ubsModel = UnidadeBasicaSaude::firstOrCreate(
+                ['nome' => $ubsNomeFinal],
+                [
+                    'municipio_ibge' => $this->pac_municipio_ibge,
+                    'origem' => 'MANUAL',
+                    'ativo' => true,
+                ]
+            );
+            $ubsIdFinal = $ubsModel->id;
+        }
+
+        return [$ubsIdFinal, $ubsNomeFinal];
+    }
+
+    private function limparFormularioPaciente(): void
+    {
         $this->reset([
             'pacienteEditandoId',
             'pac_nome',
@@ -1410,13 +1440,6 @@ class ConfiguracoesSistema extends Component
             'pac_cid_secundario',
             'pac_modalidades',
         ]);
-
-        $mensagem = $editando
-            ? 'Os dados cadastrais do paciente foram atualizados com sucesso.'
-            : 'Paciente cadastrado com sucesso e pronto para atendimento.';
-
-        session()->flash('sucesso_config', $mensagem);
-        $this->dispatch('toast', tipo: 'sucesso', titulo: $editando ? 'Paciente atualizado' : 'Paciente cadastrado', mensagem: $mensagem);
     }
 
     public function alternarStatusPaciente(int $pacienteId): void
@@ -2214,6 +2237,7 @@ class ConfiguracoesSistema extends Component
     // =========================================================================
     public function atualizarCredenciaisProprias(): void
     {
+        /** @var User|null $user */
         $user = auth()->user();
         abort_if($user === null, 403);
 
@@ -2529,247 +2553,286 @@ class ConfiguracoesSistema extends Component
 
     public function render(): View
     {
+        /** @var User|null $user */
         $user = auth()->user();
         $isCoordenacao = $user?->hasRole('coordenacao') === true;
         $podePacientes = $user?->hasAnyRole(['recepcao', 'coordenacao']) === true;
         $podeSigtap = $user?->hasAnyRole(['faturamento', 'coordenacao']) === true;
 
-        // Otimização de Performance: busca exclusivamente os dados da aba ativa
-        $salas = collect();
-        if ($isCoordenacao && $this->abaAtiva === 'salas') {
-            $salas = Sala::query()
-                ->when($this->buscaSala !== '', function ($q): void {
-                    $termo = '%'.trim($this->buscaSala).'%';
-                    $q->where(fn ($sub) => $sub->where('nome', 'like', $termo)->orWhere('tipo', 'like', $termo));
-                })
-                ->orderBy('nome')
-                ->get();
-        }
-
-        $usuarios = collect();
-        if ($isCoordenacao && $this->abaAtiva === 'profissionais') {
-            $usuarios = User::query()
-                ->with(['roles', 'profissional'])
-                ->when($this->buscaProfissional !== '', function ($q): void {
-                    $termo = '%'.trim($this->buscaProfissional).'%';
-                    $q->where(function ($sub) use ($termo): void {
-                        $sub->where('name', 'like', $termo)
-                            ->orWhere('email', 'like', $termo)
-                            ->orWhereHas('profissional', fn ($p) => $p->where('cns', 'like', $termo)->orWhere('cbo_padrao', 'like', $termo)->orWhere('especialidade', 'like', $termo));
-                    });
-                })
-                ->orderBy('name')
-                ->get();
-        }
-
-        $pacientes = collect();
-        if ($podePacientes && $this->abaAtiva === 'pacientes') {
-            $termo = trim($this->buscaPaciente);
-            $termoDigitos = preg_replace('/\D/', '', $termo) ?? '';
-
-            $itensPorPagina = in_array($this->porPaginaPaciente, [15, 25, 50, 100], true)
-                ? $this->porPaginaPaciente
-                : 25;
-
-            // Restringe projeção apenas às colunas renderizadas na tabela, evitando SELECT * pesado
-            $colunas = [
-                'id',
-                'nome',
-                'cpf',
-                'cns',
-                'data_nascimento',
-                'sexo',
-                'nome_mae',
-                'cid_principal',
-                'cid_secundario',
-                'modalidades_reabilitacao',
-                'ubs_referencia',
-                'nome_acs',
-                'telefone_contato',
-                'telefone_secundario',
-                'ativo',
-            ];
-
-            $query = Paciente::query()->select($colunas);
-
-            if ($termo !== '') {
-                $somenteDigitos = $termoDigitos !== '' && strlen(preg_replace('/[\s\.\-\/]/', '', $termo)) === strlen($termoDigitos);
-
-                $query->where(function (Builder $sub) use ($termo, $termoDigitos, $somenteDigitos): void {
-                    // 1. Termo numérico (CPF ou CNS): busca exata ou prefixo indexado
-                    if ($somenteDigitos) {
-                        if (strlen($termoDigitos) === 11) {
-                            $sub->where('cpf', $termoDigitos)->orWhere('cns', 'like', $termoDigitos.'%');
-
-                            return;
-                        }
-                        if (strlen($termoDigitos) === 15) {
-                            $sub->where('cns', $termoDigitos);
-
-                            return;
-                        }
-                        if (strlen($termoDigitos) >= 3) {
-                            $sub->where('cpf', 'like', $termoDigitos.'%')->orWhere('cns', 'like', $termoDigitos.'%');
-
-                            return;
-                        }
-                    }
-
-                    // 2. Termo textual: prioriza prefixo do nome e CID
-                    $sub->where('nome', 'like', $termo.'%')
-                        ->orWhere('cid_principal', 'like', $termo.'%');
-
-                    if (strlen($termoDigitos) >= 3) {
-                        $sub->orWhere('cpf', 'like', $termoDigitos.'%')
-                            ->orWhere('cns', 'like', $termoDigitos.'%');
-                    }
-
-                    // 3. Suporte a palavras intermediárias no MySQL via FULLTEXT ou fallback indexável
-                    $driver = DB::connection()->getDriverName();
-                    if ($driver === 'mysql' && mb_strlen($termo) >= 3) {
-                        $termoFulltext = preg_replace('/[+\-><()~*\"@]+/', ' ', $termo) ?? $termo;
-                        $palavras = array_filter(explode(' ', trim($termoFulltext)));
-                        if ($palavras !== []) {
-                            $expressao = implode(' ', array_map(fn (string $p): string => '+'.$p.'*', $palavras));
-                            $sub->orWhereRaw('MATCH(nome) AGAINST(? IN BOOLEAN MODE)', [$expressao]);
-                        }
-                    } elseif ($driver !== 'mysql') {
-                        $sub->orWhere('nome', 'like', '%'.$termo.'%');
-                    }
-                });
-            }
-
-            $pacientes = $query->latest('id')->paginate($itensPorPagina);
-        }
-
-        $procedimentosSigtap = collect();
-        if ($podeSigtap && $this->abaAtiva === 'sigtap') {
-            $procedimentosSigtap = ProcedimentoSigtap::query()
-                ->when($this->buscaSigtap !== '', function ($q): void {
-                    $termo = '%'.trim($this->buscaSigtap).'%';
-                    $q->where(fn ($sub) => $sub->where('codigo', 'like', $termo)->orWhere('descricao', 'like', $termo));
-                })
-                ->orderBy('codigo')
-                ->get();
-        }
-
-        $logsAuditoria = collect();
-        $logInspecionado = null;
-        if ($isCoordenacao && $this->abaAtiva === 'auditoria') {
-            $logsAuditoria = LogAuditoria::query()
-                ->with('user')
-                ->when($this->filtroAcaoAuditoria !== '', fn ($q) => $q->where('acao', $this->filtroAcaoAuditoria))
-                ->latest('created_at')
-                ->limit(50)
-                ->get();
-
-            if ($this->logDetalhesId !== null) {
-                $logInspecionado = LogAuditoria::with('user')->find($this->logDetalhesId);
-            }
-        }
-
-        $historicoEsus = collect();
-        if ($isCoordenacao && $this->abaAtiva === 'esus') {
-            $historicoEsus = HistoricoSincronizacaoEsus::query()
-                ->latest('iniciado_em')
-                ->limit(20)
-                ->get();
-        }
-
-        $dispositivosTv = collect();
-        $solicitacoesTvPendentes = collect();
-        if ($isCoordenacao && $this->abaAtiva === 'chamadas') {
-            $dispositivosTv = DispositivoTv::query()
-                ->with(['autorizadoPor', 'revogadoPor'])
-                ->orderByDesc('created_at')
-                ->get();
-
-            $solicitacoesTvPendentes = SolicitacaoPareamentoTv::query()
-                ->validas()
-                ->orderByDesc('created_at')
-                ->get();
-        }
-
-        $cbos = collect();
-        $especialidades = collect();
-        if ($isCoordenacao && $this->abaAtiva === 'cbos') {
-            $cbos = Cbo::query()
-                ->buscar($this->buscaCbo)
-                ->withCount('profissionais')
-                ->with('especialidades')
-                ->orderBy('codigo')
-                ->paginate($this->porPaginaCbo, ['*'], 'page_cbos');
-
-            $especialidades = Especialidade::query()
-                ->buscar($this->buscaEspecialidade)
-                ->withCount('profissionais')
-                ->with('cbos')
-                ->orderBy('nome')
-                ->paginate($this->porPaginaEspecialidade, ['*'], 'page_especialidades');
-        }
-
-        $unidadesSaude = collect();
-        if ($isCoordenacao && $this->abaAtiva === 'ubs') {
-            $unidadesSaude = UnidadeBasicaSaude::query()
-                ->buscar($this->buscaUbs)
-                ->withCount('pacientes')
-                ->orderBy('nome')
-                ->paginate($this->porPaginaUbs, ['*'], 'page_ubs');
-        }
-
-        $todosCbos = Cbo::query()->ativos()->with('especialidades')->orderBy('codigo')->get();
-        $todasEspecialidades = Especialidade::query()->ativas()->orderBy('nome')->get(['id', 'nome']);
-        $todasUbs = UnidadeBasicaSaude::query()->ativas()->orderBy('nome')->get(['id', 'nome', 'cnes']);
-
-        // Carrega lista de UBS exclusivamente sob demanda (aba pacientes ou modal aberto) com cache de 1 hora
-        $listaUbs = [];
-        if ($podePacientes && ($this->abaAtiva === 'pacientes' || $this->modalPacienteAberto)) {
-            $listaUbs = Cache::remember('pacientes_lista_ubs_dropdown', 3600, function (): array {
-                $ubsEntidades = UnidadeBasicaSaude::query()
-                    ->where('ativo', true)
-                    ->orderBy('nome')
-                    ->pluck('nome')
-                    ->toArray();
-
-                $ubsDoBanco = Paciente::query()
-                    ->whereNotNull('ubs_referencia')
-                    ->where('ubs_referencia', '!=', '')
-                    ->distinct()
-                    ->pluck('ubs_referencia')
-                    ->toArray();
-
-                $padroes = [
-                    'UBS Centro / PSF Central',
-                    'UBS Dr. José Ferreira',
-                    'UBS Santa Luzia',
-                    'UBS Bela Vista',
-                    'UBS São José',
-                    'USF Esperança',
-                    'UBS Zona Rural',
-                ];
-
-                return array_values(array_unique(array_filter(array_merge($ubsEntidades, $padroes, $ubsDoBanco))));
-            });
-        }
+        [$cbos, $especialidades] = $this->carregarCbosEEspecialidades($isCoordenacao);
+        [$logsAuditoria, $logInspecionado] = $this->carregarAuditoria($isCoordenacao);
+        [$dispositivosTv, $solicitacoesTvPendentes] = $this->carregarTv($isCoordenacao);
 
         return view('livewire.configuracoes-sistema', [
             'abasPermitidas' => $this->abasPermitidas(),
-            'salas' => $salas,
-            'usuarios' => $usuarios,
-            'pacientes' => $pacientes,
-            'procedimentosSigtap' => $procedimentosSigtap,
+            'salas' => $this->carregarSalas($isCoordenacao),
+            'usuarios' => $this->carregarUsuarios($isCoordenacao),
+            'pacientes' => $this->carregarPacientes($podePacientes),
+            'procedimentosSigtap' => $this->carregarSigtap($podeSigtap),
             'cbos' => $cbos,
             'especialidades' => $especialidades,
-            'unidadesSaude' => $unidadesSaude,
-            'todosCbos' => $todosCbos,
-            'todasEspecialidades' => $todasEspecialidades,
-            'todasUbs' => $todasUbs,
+            'unidadesSaude' => $this->carregarUbs($isCoordenacao),
+            'todosCbos' => Cbo::query()->ativos()->with('especialidades')->orderBy('codigo')->get(),
+            'todasEspecialidades' => Especialidade::query()->ativas()->orderBy('nome')->get(['id', 'nome']),
+            'todasUbs' => UnidadeBasicaSaude::query()->ativas()->orderBy('nome')->get(['id', 'nome', 'cnes']),
             'logsAuditoria' => $logsAuditoria,
             'logInspecionado' => $logInspecionado,
-            'historicoEsus' => $historicoEsus,
-            'listaUbs' => $listaUbs,
+            'historicoEsus' => $this->carregarHistoricoEsus($isCoordenacao),
+            'listaUbs' => $this->carregarListaUbsDropdown($podePacientes),
             'dispositivosTv' => $dispositivosTv,
             'solicitacoesTvPendentes' => $solicitacoesTvPendentes,
         ]);
+    }
+
+    private function carregarSalas(bool $isCoordenacao): mixed
+    {
+        if (! $isCoordenacao || $this->abaAtiva !== 'salas') {
+            return collect();
+        }
+
+        return Sala::query()
+            ->when($this->buscaSala !== '', function ($q): void {
+                $termo = '%'.trim($this->buscaSala).'%';
+                $q->where(fn ($sub) => $sub->where('nome', 'like', $termo)->orWhere('tipo', 'like', $termo));
+            })
+            ->orderBy('nome')
+            ->get();
+    }
+
+    private function carregarUsuarios(bool $isCoordenacao): mixed
+    {
+        if (! $isCoordenacao || $this->abaAtiva !== 'profissionais') {
+            return collect();
+        }
+
+        return User::query()
+            ->with(['roles', 'profissional'])
+            ->when($this->buscaProfissional !== '', function ($q): void {
+                $termo = '%'.trim($this->buscaProfissional).'%';
+                $q->where(function ($sub) use ($termo): void {
+                    $sub->where('name', 'like', $termo)
+                        ->orWhere('email', 'like', $termo)
+                        ->orWhereHas('profissional', fn ($p) => $p->where('cns', 'like', $termo)->orWhere('cbo_padrao', 'like', $termo)->orWhere('especialidade', 'like', $termo));
+                });
+            })
+            ->orderBy('name')
+            ->get();
+    }
+
+    private function carregarPacientes(bool $podePacientes): mixed
+    {
+        if (! $podePacientes || $this->abaAtiva !== 'pacientes') {
+            return collect();
+        }
+
+        $termo = trim($this->buscaPaciente);
+        $termoDigitos = preg_replace('/\D/', '', $termo) ?? '';
+
+        $itensPorPagina = in_array($this->porPaginaPaciente, [15, 25, 50, 100], true)
+            ? $this->porPaginaPaciente
+            : 25;
+
+        $colunas = [
+            'id', 'nome', 'cpf', 'cns', 'data_nascimento', 'sexo',
+            'nome_mae', 'cid_principal', 'cid_secundario',
+            'modalidades_reabilitacao', 'ubs_referencia', 'nome_acs',
+            'telefone_contato', 'telefone_secundario', 'ativo',
+        ];
+
+        $query = Paciente::query()->select($colunas);
+
+        if ($termo !== '') {
+            $somenteDigitos = $termoDigitos !== '' && strlen(preg_replace('/[\s\.\-\/]/', '', $termo)) === strlen($termoDigitos);
+
+            $query->where(function (Builder $sub) use ($termo, $termoDigitos, $somenteDigitos): void {
+                if ($somenteDigitos) {
+                    if (strlen($termoDigitos) === 11) {
+                        $sub->where('cpf', $termoDigitos)->orWhere('cns', 'like', $termoDigitos.'%');
+
+                        return;
+                    }
+                    if (strlen($termoDigitos) === 15) {
+                        $sub->where('cns', $termoDigitos);
+
+                        return;
+                    }
+                    if (strlen($termoDigitos) >= 3) {
+                        $sub->where('cpf', 'like', $termoDigitos.'%')->orWhere('cns', 'like', $termoDigitos.'%');
+
+                        return;
+                    }
+                }
+
+                $sub->where('nome', 'like', $termo.'%')
+                    ->orWhere('cid_principal', 'like', $termo.'%');
+
+                if (strlen($termoDigitos) >= 3) {
+                    $sub->orWhere('cpf', 'like', $termoDigitos.'%')
+                        ->orWhere('cns', 'like', $termoDigitos.'%');
+                }
+
+                $driver = DB::connection()->getDriverName();
+                if ($driver === 'mysql' && mb_strlen($termo) >= 3) {
+                    $termoFulltext = preg_replace('/[+\-><()~*\"@]+/', ' ', $termo) ?? $termo;
+                    $palavras = array_filter(explode(' ', trim($termoFulltext)));
+                    if ($palavras !== []) {
+                        $expressao = implode(' ', array_map(fn (string $p): string => '+'.$p.'*', $palavras));
+                        $sub->orWhereRaw('MATCH(nome) AGAINST(? IN BOOLEAN MODE)', [$expressao]);
+                    }
+                } elseif ($driver !== 'mysql') {
+                    $sub->orWhere('nome', 'like', '%'.$termo.'%');
+                }
+            });
+        }
+
+        return $query->latest('id')->paginate($itensPorPagina);
+    }
+
+    private function carregarSigtap(bool $podeSigtap): mixed
+    {
+        if (! $podeSigtap || $this->abaAtiva !== 'sigtap') {
+            return collect();
+        }
+
+        return ProcedimentoSigtap::query()
+            ->when($this->buscaSigtap !== '', function ($q): void {
+                $termo = '%'.trim($this->buscaSigtap).'%';
+                $q->where(fn ($sub) => $sub->where('codigo', 'like', $termo)->orWhere('descricao', 'like', $termo));
+            })
+            ->orderBy('codigo')
+            ->get();
+    }
+
+    /**
+     * @return array{0: mixed, 1: mixed}
+     */
+    private function carregarCbosEEspecialidades(bool $isCoordenacao): array
+    {
+        if (! $isCoordenacao || $this->abaAtiva !== 'cbos') {
+            return [collect(), collect()];
+        }
+
+        $cbos = Cbo::query()
+            ->buscar($this->buscaCbo)
+            ->withCount('profissionais')
+            ->with('especialidades')
+            ->orderBy('codigo')
+            ->paginate($this->porPaginaCbo, ['*'], 'page_cbos');
+
+        $especialidades = Especialidade::query()
+            ->buscar($this->buscaEspecialidade)
+            ->withCount('profissionais')
+            ->with('cbos')
+            ->orderBy('nome')
+            ->paginate($this->porPaginaEspecialidade, ['*'], 'page_especialidades');
+
+        return [$cbos, $especialidades];
+    }
+
+    private function carregarUbs(bool $isCoordenacao): mixed
+    {
+        if (! $isCoordenacao || $this->abaAtiva !== 'ubs') {
+            return collect();
+        }
+
+        return UnidadeBasicaSaude::query()
+            ->buscar($this->buscaUbs)
+            ->withCount('pacientes')
+            ->orderBy('nome')
+            ->paginate($this->porPaginaUbs, ['*'], 'page_ubs');
+    }
+
+    /**
+     * @return array{0: mixed, 1: mixed}
+     */
+    private function carregarAuditoria(bool $isCoordenacao): array
+    {
+        if (! $isCoordenacao || $this->abaAtiva !== 'auditoria') {
+            return [collect(), null];
+        }
+
+        $logsAuditoria = LogAuditoria::query()
+            ->with('user')
+            ->when($this->filtroAcaoAuditoria !== '', fn ($q) => $q->where('acao', $this->filtroAcaoAuditoria))
+            ->latest('created_at')
+            ->limit(50)
+            ->get();
+
+        $logInspecionado = $this->logDetalhesId !== null
+            ? LogAuditoria::with('user')->find($this->logDetalhesId)
+            : null;
+
+        return [$logsAuditoria, $logInspecionado];
+    }
+
+    private function carregarHistoricoEsus(bool $isCoordenacao): mixed
+    {
+        if (! $isCoordenacao || $this->abaAtiva !== 'esus') {
+            return collect();
+        }
+
+        return HistoricoSincronizacaoEsus::query()
+            ->latest('iniciado_em')
+            ->limit(20)
+            ->get();
+    }
+
+    /**
+     * @return array{0: mixed, 1: mixed}
+     */
+    private function carregarTv(bool $isCoordenacao): array
+    {
+        if (! $isCoordenacao || $this->abaAtiva !== 'chamadas') {
+            return [collect(), collect()];
+        }
+
+        $dispositivosTv = DispositivoTv::query()
+            ->with(['autorizadoPor', 'revogadoPor'])
+            ->orderByDesc('created_at')
+            ->get();
+
+        $solicitacoesTvPendentes = SolicitacaoPareamentoTv::query()
+            ->validas()
+            ->orderByDesc('created_at')
+            ->get();
+
+        return [$dispositivosTv, $solicitacoesTvPendentes];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function carregarListaUbsDropdown(bool $podePacientes): array
+    {
+        if (! $podePacientes || ($this->abaAtiva !== 'pacientes' && ! $this->modalPacienteAberto)) {
+            return [];
+        }
+
+        return Cache::remember('pacientes_lista_ubs_dropdown', 3600, function (): array {
+            $ubsEntidades = UnidadeBasicaSaude::query()
+                ->where('ativo', true)
+                ->orderBy('nome')
+                ->pluck('nome')
+                ->toArray();
+
+            $ubsDoBanco = Paciente::query()
+                ->whereNotNull('ubs_referencia')
+                ->where('ubs_referencia', '!=', '')
+                ->distinct()
+                ->pluck('ubs_referencia')
+                ->toArray();
+
+            $padroes = [
+                'UBS Centro / PSF Central',
+                'UBS Dr. José Ferreira',
+                'UBS Santa Luzia',
+                'UBS Bela Vista',
+                'UBS São José',
+                'USF Esperança',
+                'UBS Zona Rural',
+            ];
+
+            return array_values(array_unique(array_filter(array_merge($ubsEntidades, $padroes, $ubsDoBanco))));
+        });
     }
 }

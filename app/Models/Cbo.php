@@ -75,4 +75,3 @@ class Cbo extends Model
         return $this->verificado_em !== null;
     }
 }
-

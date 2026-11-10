@@ -8,6 +8,20 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * @property int $id
+ * @property bool $ativo
+ * @property string $driver
+ * @property string $host
+ * @property int $porta
+ * @property string $banco
+ * @property string $usuario
+ * @property string|null $senha
+ * @property string|null $endereco_web_pec
+ * @property string $modo_sincronizacao
+ * @property int $tamanho_lote
+ * @property int $janela_seguranca_minutos
+ */
 class ConfiguracaoEsusPec extends Model
 {
     use HasFactory;
