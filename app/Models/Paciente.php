@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +27,7 @@ class Paciente extends Model
         'sexo',
         'nome_mae',
         'municipio_ibge',
+        'ubs_id',
         'ubs_referencia',
         'nome_acs',
         'endereco',
@@ -49,6 +51,11 @@ class Paciente extends Model
             'ativo' => 'boolean',
             'data_ultima_sincronizacao_esus' => 'datetime',
         ];
+    }
+
+    public function ubs(): BelongsTo
+    {
+        return $this->belongsTo(UnidadeBasicaSaude::class, 'ubs_id');
     }
 
     public function agendamentos(): HasMany

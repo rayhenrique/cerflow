@@ -68,7 +68,7 @@ Route::middleware(['auth'])->group(function (): void {
         ->name('configuracoes.index');
 
     Route::get('/configuracoes/{secao}', ConfiguracoesSistema::class)
-        ->whereIn('secao', ['pacientes', 'salas', 'profissionais', 'sigtap', 'auditoria', 'estabelecimento', 'esus', 'chamadas', 'perfil'])
+        ->whereIn('secao', ['pacientes', 'salas', 'profissionais', 'cbos', 'ubs', 'sigtap', 'auditoria', 'estabelecimento', 'esus', 'chamadas', 'perfil'])
         ->middleware('role:recepcao|terapeuta|faturamento|coordenacao')
         ->name('configuracoes.secao');
 

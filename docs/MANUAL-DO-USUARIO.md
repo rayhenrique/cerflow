@@ -62,9 +62,10 @@
    - [8.2 Dados do Estabelecimento e Logotipo Oficial](#82-dados-do-estabelecimento-e-logotipo-oficial)
    - [8.3 Cadastro e Manutenção de Pacientes com Paginação Ágil](#83-cadastro-e-manutenção-de-pacientes-com-paginação-ágil)
    - [8.4 Salas e Espaços Terapêuticos](#84-salas-e-espaços-terapêuticos)
-   - [8.5 Profissionais, Conselhos e CBOs SUS](#85-profissionais-conselhos-e-cbos-sus)
-   - [8.6 Integração e Sincronização com o e-SUS APS PEC](#86-integração-e-sincronização-com-o-e-sus-aps-pec)
-   - [8.7 Trilha de Auditoria e Segurança (LGPD)](#87-trilha-de-auditoria-e-segurança-lgpd)
+   - [8.5 Gestão Dinâmica de CBOs Oficiais e Especialidades Clínicas](#85-gestão-dinâmica-de-cbos-oficiais-e-especialidades-clínicas)
+   - [8.6 Cadastro da Rede de Atenção Primária / UBS](#86-cadastro-da-rede-de-atenção-primária--ubs)
+   - [8.7 Integração e Sincronização com o e-SUS APS PEC](#87-integração-e-sincronização-com-o-e-sus-aps-pec)
+   - [8.8 Trilha de Auditoria e Segurança (LGPD)](#88-trilha-de-auditoria-e-segurança-lgpd)
 9. [Central de Ajuda & Linha do Tempo SemVer](#9-central-de-ajuda--linha-do-tempo-semver)
    - [9.1 Modal Pós-Login de Novidades da Versão](#91-modal-pós-login-de-novidades-da-versão)
    - [9.2 Central de Ajuda Navegável e Download do Manual](#92-central-de-ajuda-navegável-e-download-do-manual)
@@ -444,12 +445,25 @@ Em **Configurações** → **Salas & Espaços**:
 - Cadastre e gerencie as salas da unidade: Consultórios de Fonoaudiologia e Psicologia, Sala de Integração Sensorial, Sala de AVD, Ginásios de Fisioterapia Adulto e Pediátrico e Anexos.
 - Salas inativadas deixam de aparecer para novos agendamentos, preservando o histórico passado.
 
-### 8.5 Profissionais, Conselhos e CBOs SUS
-Em **Configurações** → **Equipe & Perfis**:
-- Vincule cada colaborador ao seu respectivo conselho de classe (CREFITO, CRP, CRFa, CRESS, etc.) e número de registro.
-- Informe o Cartão SUS (CNS) do profissional e selecione o CBO Principal de atuação no SUS.
+### 8.5 Gestão Dinâmica de CBOs Oficiais e Especialidades Clínicas
+Em **Configurações** → **CBOs & Especialidades**:
+- **Catálogo de CBOs Oficiais:** Gerenciamento centralizado de ocupações oficiais reconhecidas pelo Ministério do Trabalho e Emprego (MTE) e Ministério da Saúde/SUS.
+  - O código CBO deve conter rigorosamente **6 dígitos numéricos**, impedindo duplicidades.
+  - Cada CBO possui metadados de auditoria e verificação oficial (`fonte_referencia`, `versao_referencia` e data de verificação).
+  - Inclui por padrão o CBO oficial `251545` (Neuropsicólogo).
+  - **Proteção do Faturamento BPA-i:** O cadastro de um novo CBO não altera nem insere procedimentos SIGTAP sem portaria oficial do Ministério da Saúde. O faturamento rejeita automaticamente procedimentos incompatíveis com o CBO.
+- **Catálogo de Especialidades:** Cadastro dinâmico de especialidades assistenciais (ex.: Neuropsicologia, Fisioterapia Neurofuncional) com relação N:N com os CBOs autorizados e controle de duplicidade inteligente (insensível a maiúsculas/minúsculas e acentuação).
+- **Vínculo com Profissionais:** Ao cadastrar ou editar um terapeuta em **Equipe & Perfis**, a escolha do CBO carrega automaticamente as especialidades compatíveis.
+- **Bloqueio de Exclusão:** CBOs ou especialidades com terapeutas vinculados não podem ser excluídos fisicamente, preservando o histórico clínico.
 
-### 8.6 Integração e Sincronização com o e-SUS APS PEC
+### 8.6 Cadastro da Rede de Atenção Primária / UBS
+Em **Configurações** → **Unidades de Saúde (UBS)**:
+- Cadastre e mantenha as Unidades Básicas de Saúde (UBS), Centros de Saúde e Unidades de Saúde da Família (USF) que referenciam usuários para o CER.
+- Campos estruturados: Nome Oficial, Código CNES de 7 dígitos (opcional e único), Município IBGE (6 dígitos), Bairro, Endereço completo, Telefone e Origem do cadastro (`MANUAL` ou `ESUS`).
+- **Associação de Pacientes:** No cadastro e edição de pacientes, a recepção pode selecionar diretamente a UBS a partir da rede cadastrada, sincronizando o campo legado de referência.
+- **Proteção de Integridade:** UBSs com pacientes vinculados têm exclusão física bloqueada.
+
+### 8.7 Integração e Sincronização com o e-SUS APS PEC
 O CER Digital conecta-se via rede segura ao banco de dados PostgreSQL do **e-SUS Atenção Primária (PEC)** municipal:
 - **Finalidade:** Importa os cidadãos já cadastrados pelas Unidades Básicas de Saúde (UBS) e equipes de Saúde da Família (eSF), vinculando automaticamente a UBS de origem e o Agente Comunitário de Saúde (ACS) responsável pelo território de cada família.
 - **Sincronização pela Interface:** Acesse **Configurações** → **Integração e-SUS PEC** e clique em **Sincronizar Pacientes e Vínculos Agora**.
@@ -458,11 +472,12 @@ O CER Digital conecta-se via rede segura ao banco de dados PostgreSQL do **e-SUS
   php artisan esus:sincronizar-pec
   ```
 
-### 8.7 Trilha de Auditoria e Segurança (LGPD)
+### 8.8 Trilha de Auditoria e Segurança (LGPD)
 Em **Configurações** → **Auditoria LGPD**:
 - O sistema registra de forma perene e imutável todas as ações sensíveis:
   - Consulta a prontuários clínicos (`ACESSO_PEP`);
   - Assinaturas de evolução e termos de adendo com registro de IP (`ASSINATURA_EVOLUCAO`);
+  - Cadastros, alterações e exclusões de CBOs, Especialidades e UBSs (`CADASTRO_CBO`, `CADASTRO_ESPECIALIDADE`, `CADASTRO_UBS`);
   - Exportações de lotes de faturamento magnético (`EXPORTACAO_BPA`).
 - Garante total conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018) para auditorias do Ministério Público, Conselhos Tutelares e Vigilância em Saúde.
 

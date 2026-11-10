@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             RoleAndPermissionSeeder::class,
             ProcedimentoSigtapSeeder::class,
             SalaSeeder::class,
+            CboEspecialidadeUbsSeeder::class,
             UserAdminSeeder::class,
         ]);
     }

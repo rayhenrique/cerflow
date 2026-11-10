@@ -8,6 +8,7 @@ use App\Models\ConfiguracaoEstabelecimento;
 use App\Models\ConfiguracaoEsusPec;
 use App\Models\HistoricoSincronizacaoEsus;
 use App\Models\Paciente;
+use App\Models\UnidadeBasicaSaude;
 use App\Rules\CnsValido;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -39,6 +40,65 @@ class EsusPecIntegrationService
     public static function obterPdoTeste(): ?PDO
     {
         return self::$pdoTeste;
+    }
+
+    /**
+     * Cache em memória de instâncias de UBS para otimização de processamento em lote.
+     *
+     * @var array<string, UnidadeBasicaSaude>
+     */
+    protected array $cacheUbsMemoria = [];
+
+    /**
+     * Resolve ou cria uma Unidade Básica de Saúde (UBS) a partir de CNES ou Nome sem duplicidade.
+     */
+    public function resolverOuCriarUbs(?string $nomeUbs, ?string $cnes = null): ?UnidadeBasicaSaude
+    {
+        $nomeUbs = trim((string) $nomeUbs);
+        $cnes = trim((string) $cnes);
+        if ($cnes !== '') {
+            $cnes = substr(preg_replace('/\D/', '', $cnes) ?? '', 0, 7);
+        }
+
+        if ($nomeUbs === '' && $cnes === '') {
+            return null;
+        }
+
+        $chaveCache = "{$cnes}|{$nomeUbs}";
+        if (isset($this->cacheUbsMemoria[$chaveCache])) {
+            return $this->cacheUbsMemoria[$chaveCache];
+        }
+
+        $ubs = null;
+        if ($cnes !== '') {
+            $ubs = UnidadeBasicaSaude::where('cnes', $cnes)->first();
+            if ($ubs) {
+                if ($nomeUbs !== '' && (empty($ubs->nome) || str_starts_with($ubs->nome, 'UBS CNES '))) {
+                    $ubs->update(['nome' => $nomeUbs]);
+                }
+            }
+        }
+
+        if (! $ubs && $nomeUbs !== '') {
+            $ubs = UnidadeBasicaSaude::where('nome', $nomeUbs)->first();
+            if ($ubs && $cnes !== '' && empty($ubs->cnes)) {
+                $ubs->update(['cnes' => $cnes]);
+            }
+        }
+
+        if (! $ubs) {
+            $ubs = UnidadeBasicaSaude::create([
+                'nome' => $nomeUbs !== '' ? $nomeUbs : ('UBS CNES '.$cnes),
+                'cnes' => $cnes !== '' ? $cnes : null,
+                'municipio_ibge' => '270430',
+                'origem' => 'ESUS',
+                'ativo' => true,
+            ]);
+        }
+
+        $this->cacheUbsMemoria[$chaveCache] = $ubs;
+
+        return $ubs;
     }
 
     /**
@@ -1614,6 +1674,7 @@ class EsusPecIntegrationService
             'endereco' => $enderecoCompleto,
             'bairro' => $bairro,
             'municipio_ibge' => $ibgeLimpo,
+            'cnes_ubs' => $cnesVinculado ? trim($cnesVinculado) : null,
             'ubs_referencia' => $ubs,
             'nome_acs' => $acs,
         ];
@@ -1820,6 +1881,8 @@ class EsusPecIntegrationService
             return $alterou ? 'ATUALIZADO' : 'SEM_ALTERACOES';
         }
 
+        $ubsModel = $this->resolverOuCriarUbs($dados['ubs_referencia'] ?? null, $dados['cnes_ubs'] ?? null);
+
         // 4. Inserção de novo paciente no banco do CER Digital
         $novoPaciente = Paciente::create([
             'nome' => $nome,
@@ -1829,7 +1892,8 @@ class EsusPecIntegrationService
             'sexo' => $dados['sexo'] ?? 'M',
             'nome_mae' => $dados['nome_mae'] ?? null,
             'municipio_ibge' => $dados['municipio_ibge'] ?? '270430',
-            'ubs_referencia' => $dados['ubs_referencia'] ?? null,
+            'ubs_id' => $ubsModel?->id,
+            'ubs_referencia' => $dados['ubs_referencia'] ?? $ubsModel?->nome,
             'nome_acs' => $dados['nome_acs'] ?? null,
             'telefone_contato' => $dados['telefone_contato'] ?? null,
             'telefone_secundario' => $dados['telefone_secundario'] ?? null,
@@ -1941,6 +2005,13 @@ class EsusPecIntegrationService
             if (empty($paciente->{$campo}) && ! empty($dadosNovos[$campo])) {
                 $camposParaAtualizar[$campo] = $dadosNovos[$campo];
                 $houveAlteracaoCadastral = true;
+            }
+        }
+
+        if (empty($paciente->ubs_id) && ! empty($camposParaAtualizar['ubs_referencia'])) {
+            $ubsModel = $this->resolverOuCriarUbs($camposParaAtualizar['ubs_referencia'], $dadosNovos['cnes_ubs'] ?? null);
+            if ($ubsModel) {
+                $camposParaAtualizar['ubs_id'] = $ubsModel->id;
             }
         }
 
@@ -2295,8 +2366,12 @@ class EsusPecIntegrationService
                 $houveAlteracao = false;
 
                 // Complementa UBS somente se estiver vazia no registro local
-                if (empty($paciente->ubs_referencia) && ! empty($dados['ubs_referencia'])) {
+                if (empty($paciente->ubs_referencia) && empty($paciente->ubs_id) && ! empty($dados['ubs_referencia'])) {
                     $camposParaAtualizar['ubs_referencia'] = $dados['ubs_referencia'];
+                    $ubsModel = $this->resolverOuCriarUbs($dados['ubs_referencia'], $dados['cnes_ubs'] ?? null);
+                    if ($ubsModel) {
+                        $camposParaAtualizar['ubs_id'] = $ubsModel->id;
+                    }
                     $metricas['ubs_complementadas']++;
                     $houveAlteracao = true;
                 }

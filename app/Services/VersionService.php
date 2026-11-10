@@ -44,6 +44,19 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.22.0',
+                'data' => '10/11/2026',
+                'titulo' => 'Cadastros Dinâmicos de CBOs, Especialidades e Unidades Básicas de Saúde (UBS)',
+                'tipo' => 'Novidades e Gestão',
+                'destaques' => [
+                    'Novidades: Adicionamos o gerenciamento dinâmico de CBOs oficiais (6 dígitos) com verificação de conformidade MTE/SUS e prevenção de duplicações.',
+                    'Novidades: Implementamos o catálogo dinâmico de Especialidades com vinculação N:N com ocupações CBO e deduplicação inteligente.',
+                    'Novidades: Criamos o cadastro da Rede de Atenção Primária / UBS com código CNES (7 dígitos), código IBGE e sincronização bidirecional com o e-SUS PEC.',
+                    'Novidades: Cadastramos o CBO oficial 251545 (Neuropsicólogo) e a especialidade Neuropsicologia, respeitando rigorosamente as regras de faturamento ambulatorial BPA-i.',
+                    'Segurança: Bloqueio automático de exclusão para CBOs, Especialidades e UBSs que possuam vínculos ativos com profissionais ou pacientes, garantindo a integridade dos prontuários.',
+                ],
+            ],
+            [
                 'versao' => '1.21.2',
                 'data' => '10/11/2026',
                 'titulo' => 'Correção de Segurança e Privacidade no Campo de Senha do Login',

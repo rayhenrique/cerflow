@@ -76,7 +76,15 @@ A plataforma substitui integralmente processos fragmentados baseados em planilha
 
 ### 9. Cadastros, Parâmetros e Integração e-SUS APS PEC (`/configuracoes`)
 - **Dados do Estabelecimento:** Configuração de Razão Social, Nome Fantasia, CNES oficial, Município IBGE, logotipo institucional e contato do gestor.
-- **Gestão de Espaços e Terapeutas:** Cadastro de salas (sensorial, AVD, consultórios, ginásios) e de profissionais com seus respectivos conselhos e CBOs SUS.
+- **Gestão de Espaços e Terapeutas:** Cadastro de salas (sensorial, AVD, consultórios, ginásios) e de profissionais com seus respectivos conselhos, CBOs e especialidades.
+- **Gestão Dinâmica de CBOs e Especialidades:**
+  - Cadastro e validação de ocupações CBO oficiais (6 dígitos) com conferência junto à classificação oficial MTE/SUS e prevenção de duplicações.
+  - Cadastro de Especialidades com relação N:N com CBOs e deduplicação inteligente.
+  - CBO inicial 251545 (Neuropsicólogo) e Especialidade Neuropsicologia cadastrados, com preservação estrita das regras de faturamento SIGTAP/BPA-i.
+  - Bloqueio de exclusão para CBOs ou especialidades com profissionais vinculados.
+- **Cadastro da Rede de Atenção Primária / UBS:**
+  - Cadastro estruturado de Unidades Básicas de Saúde com código CNES (7 dígitos), código IBGE, endereço, telefone e origem (`MANUAL` ou `ESUS`).
+  - Associação direta no prontuário do paciente com sincronização dos campos legados e bloqueio de exclusão quando houver vínculos.
 - **Gestão de Pacientes com Alta Performance:** Visualização e pesquisa em bases com dezenas de milhares de usuários com paginação configurável (15, 25, 50 ou 100 por página).
 - **Integração Nativa com e-SUS APS PEC:** Conexão direta via rede interna/VPN com o banco de dados PostgreSQL do e-SUS PEC do município, permitindo a importação de cadastros da Atenção Primária, vinculação com UBS de referência e Agente Comunitário de Saúde (ACS), tanto pela interface web quanto por comando CLI agendado (`php artisan esus:sincronizar-pec`).
 

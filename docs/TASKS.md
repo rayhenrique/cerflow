@@ -105,3 +105,16 @@
 - [x] 10.5 Exportação universal para planilhas em formato CSV e impressão otimizada em folha A4 limpa via CSS de impressão
 - [x] 10.6 Documentação integral e sincronizada com a versão v1.21.1 (`README.md`, `MANUAL-DO-USUARIO.md`, `DATABASE-SCHEMA.md`, `AjudaSobre`)
 - [x] 10.7 Correção de segurança no campo de senha da tela de login (`type="password"` nativo, toggle via JavaScript leve e acessibilidade por teclado) (v1.21.2)
+
+## 📌 Fase 11: Cadastros Dinâmicos de CBOs, Especialidades e Unidades Básicas de Saúde (UBS) (v1.22.0)
+- [x] 11.1 Migrations e modelos para `cbos`, `especialidades`, tabela pivot `cbo_especialidade` e `unidades_basicas_saude`
+- [x] 11.2 Foreign keys com `restrictOnDelete`: `cbo_id` e `especialidade_id` em `profissionais`, e `ubs_id` em `pacientes`, preservando colunas legadas
+- [x] 11.3 Seeder e conciliação de dados `CboEspecialidadeUbsSeeder` com ocupações oficiais, especialidades clínicas e rede básica de saúde
+- [x] 11.4 Cadastro inicial do CBO oficial `251545` (Neuropsicólogo) e Especialidade `Neuropsicologia` (Fonte: MTE)
+- [x] 11.5 Proteção e blindagem das regras de faturamento ambulatorial BPA-i (rejeição automática de procedimentos SIGTAP incompatíveis com CBO 251545)
+- [x] 11.6 Gestão dinâmica e CRUD completo em `ConfiguracoesSistema` para CBOs (código de 6 dígitos, verificação oficial MTE) e Especialidades (relação N:N, deduplicação inteligente)
+- [x] 11.7 Gestão dinâmica e CRUD completo de UBSs com CNES de 7 dígitos, município IBGE, endereço, telefone e origem (`MANUAL` ou `ESUS`)
+- [x] 11.8 Adaptação do `EsusPecIntegrationService` para vincular `ubs_id` sem duplicação de CNES e preservando vínculos manuais
+- [x] 11.9 Bloqueio de integridade referencial: proibição de exclusão física de CBOs/Especialidades com profissionais e de UBSs com pacientes
+- [x] 11.10 Integração com filtros dinâmicos de especialidades e UBS no módulo de Relatórios Gerenciais
+- [x] 11.11 Suíte completa de testes automatizados com 100% de aprovação (`CboEspecialidadesUbsTest`)

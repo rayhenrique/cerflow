@@ -31,6 +31,16 @@
                 'titulo' => 'Identificação do Estabelecimento',
                 'subtitulo' => 'Configure a logo institucional, o código IBGE padrão e o CNES utilizado no faturamento SUS.',
             ],
+            'cbos' => [
+                'badge' => 'Ocupações & Especialidades',
+                'titulo' => 'Cadastro Dinâmico de CBOs e Especialidades',
+                'subtitulo' => 'Cadastre e gerencie ocupações oficiais da Classificação Brasileira de Ocupações (MTE), verificação e especialidades clínicas.',
+            ],
+            'ubs' => [
+                'badge' => 'Rede de Atenção Primária',
+                'titulo' => 'Unidades Básicas de Saúde (UBS)',
+                'subtitulo' => 'Gerencie as Unidades Básicas de Saúde e Unidades de Saúde da Família de referência com código CNES e município.',
+            ],
             'chamadas' => [
                 'badge' => 'Recepção & Painel TV',
                 'titulo' => 'Painel de Chamadas para TV',
@@ -84,6 +94,26 @@
                     class="w-full sm:w-auto justify-center inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     Novo Procedimento SIGTAP
+                </button>
+            @elseif ($abaAtiva === 'cbos' && in_array('cbos', $abasPermitidas, true))
+                @if ($subAbaCbo === 'cbos')
+                    <button type="button" wire:click="abrirModalNovoCbo"
+                        class="w-full sm:w-auto justify-center inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Novo CBO Oficial
+                    </button>
+                @else
+                    <button type="button" wire:click="abrirModalNovaEspecialidade"
+                        class="w-full sm:w-auto justify-center inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Nova Especialidade
+                    </button>
+                @endif
+            @elseif ($abaAtiva === 'ubs' && in_array('ubs', $abasPermitidas, true))
+                <button type="button" wire:click="abrirModalNovaUbs"
+                    class="w-full sm:w-auto justify-center inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-700 transition cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    Nova UBS
                 </button>
             @elseif ($abaAtiva === 'esus' && in_array('esus', $abasPermitidas, true))
                 <button type="button" wire:click="testarConexaoEsus" wire:loading.attr="disabled"
@@ -1449,6 +1479,344 @@
     @endif
 
     {{-- ===================================================================== --}}
+    {{-- SUBMÓDULO: CBOs E ESPECIALIDADES (GESTÃO DINÂMICA)                   --}}
+    {{-- ===================================================================== --}}
+    @if ($abaAtiva === 'cbos' && in_array('cbos', $abasPermitidas, true))
+        <div class="space-y-4">
+            {{-- SUB-NAVEGAÇÃO INTERNA: CBOS X ESPECIALIDADES --}}
+            <div class="flex items-center gap-2 border-b border-slate-200">
+                <button type="button" wire:click="$set('subAbaCbo', 'cbos')"
+                    class="px-4 py-2 text-xs font-bold border-b-2 transition cursor-pointer {{ $subAbaCbo === 'cbos' ? 'border-teal-600 text-teal-700 bg-teal-50/50 rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-800' }}">
+                    Classificação Brasileira de Ocupações (CBO)
+                </button>
+                <button type="button" wire:click="$set('subAbaCbo', 'especialidades')"
+                    class="px-4 py-2 text-xs font-bold border-b-2 transition cursor-pointer {{ $subAbaCbo === 'especialidades' ? 'border-teal-600 text-teal-700 bg-teal-50/50 rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-800' }}">
+                    Especialidades Clínicas
+                </button>
+            </div>
+
+            @if ($subAbaCbo === 'cbos')
+                <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <h2 class="text-sm font-bold text-slate-800">Catálogo de CBOs Oficiais ({{ $cbos->total() ?? 0 }})</h2>
+                            <p class="text-xs text-slate-500">Ocupações reconhecidas pelo MTE/SUS com verificação oficial e vínculo com especialidades</p>
+                        </div>
+                        <div class="flex items-center gap-2 w-full sm:w-auto">
+                            <div class="relative w-full sm:w-72">
+                                <input type="text" wire:model.live.debounce.250ms="buscaCbo"
+                                    placeholder="Buscar código (6 dígitos) ou título..."
+                                    class="w-full rounded-lg border border-slate-300 pl-9 pr-3 py-2 text-xs focus:border-teal-600 focus:outline-none">
+                                <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.5 10.5a7.5 7.5 0 0013.15 6.15z"/>
+                                </svg>
+                            </div>
+                            <select wire:model.live="porPaginaCbo" class="rounded-lg border border-slate-300 px-2 py-2 text-xs text-slate-700 focus:border-teal-600 focus:outline-none">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-200 text-sm">
+                            <thead class="bg-slate-50 text-xs font-bold uppercase text-slate-500">
+                                <tr>
+                                    <th class="px-5 py-3 text-left">Código CBO</th>
+                                    <th class="px-5 py-3 text-left">Título Oficial</th>
+                                    <th class="px-5 py-3 text-left">Especialidades Vinculadas</th>
+                                    <th class="px-5 py-3 text-center">Profissionais</th>
+                                    <th class="px-5 py-3 text-center">Fonte / Verificação</th>
+                                    <th class="px-5 py-3 text-center">Status</th>
+                                    <th class="px-5 py-3 text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                @forelse ($cbos as $cboItem)
+                                    <tr class="hover:bg-slate-50/80">
+                                        <td class="px-5 py-3.5 font-mono text-xs font-bold text-teal-700 whitespace-nowrap">
+                                            {{ $cboItem->codigo }}
+                                        </td>
+                                        <td class="px-5 py-3.5 text-xs font-semibold text-slate-800">
+                                            {{ $cboItem->titulo_oficial }}
+                                        </td>
+                                        <td class="px-5 py-3.5 text-xs">
+                                            <div class="flex flex-wrap gap-1">
+                                                @forelse ($cboItem->especialidades as $esp)
+                                                    <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px] font-medium">
+                                                        {{ $esp->nome }}
+                                                    </span>
+                                                @empty
+                                                    <span class="text-slate-400 text-[11px] italic">Nenhuma especialidade vinculada</span>
+                                                @endforelse
+                                            </div>
+                                        </td>
+                                        <td class="px-5 py-3.5 text-center text-xs font-medium text-slate-600">
+                                            <span class="px-2 py-0.5 rounded-full {{ $cboItem->profissionais->count() > 0 ? 'bg-teal-50 text-teal-700 font-bold' : 'text-slate-400' }}">
+                                                {{ $cboItem->profissionais->count() }}
+                                            </span>
+                                        </td>
+                                        <td class="px-5 py-3.5 text-center text-xs whitespace-nowrap">
+                                            @if ($cboItem->verificado_em)
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200" title="Verificado em: {{ $cboItem->verificado_em->format('d/m/Y H:i') }} | Fonte: {{ $cboItem->fonte_referencia }}">
+                                                    <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                    {{ $cboItem->fonte_referencia ?? 'Oficial' }}
+                                                </span>
+                                            @else
+                                                <button type="button" wire:click="verificarCboOficial({{ $cboItem->id }})"
+                                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 cursor-pointer" title="Clique para validar com base oficial">
+                                                    Pendente
+                                                </button>
+                                            @endif
+                                        </td>
+                                        <td class="px-5 py-3.5 text-center whitespace-nowrap">
+                                            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold {{ $cboItem->ativo ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700' }}">
+                                                {{ $cboItem->ativo ? 'Ativo' : 'Inativo' }}
+                                            </span>
+                                        </td>
+                                        <td class="px-5 py-3.5 text-right whitespace-nowrap space-x-1">
+                                            <button type="button" wire:click="editarCbo({{ $cboItem->id }})"
+                                                class="inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
+                                                Editar
+                                            </button>
+                                            <button type="button" wire:click="alternarStatusCbo({{ $cboItem->id }})"
+                                                class="inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white text-xs font-semibold {{ $cboItem->ativo ? 'text-amber-700 hover:bg-amber-50' : 'text-emerald-700 hover:bg-emerald-50' }} cursor-pointer">
+                                                {{ $cboItem->ativo ? 'Inativar' : 'Ativar' }}
+                                            </button>
+                                            <button type="button" wire:click="confirmarExclusao('cbo', {{ $cboItem->id }})"
+                                                class="inline-flex items-center px-2.5 py-1 rounded-md border border-rose-200 bg-rose-50/60 text-xs font-semibold text-rose-700 hover:bg-rose-100 cursor-pointer">
+                                                Excluir
+                                            </button>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="7" class="px-5 py-8 text-center text-slate-400 text-xs">
+                                            Nenhum CBO localizado com os filtros informados.
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @if ($cbos->hasPages())
+                        <div class="px-6 py-4 border-t border-slate-100">
+                            {{ $cbos->links() }}
+                        </div>
+                    @endif
+                </div>
+            @else
+                <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <h2 class="text-sm font-bold text-slate-800">Catálogo de Especialidades Clínicas ({{ $especialidades->total() ?? 0 }})</h2>
+                            <p class="text-xs text-slate-500">Especialidades assistenciais e correlações com os CBOs oficiais</p>
+                        </div>
+                        <div class="flex items-center gap-2 w-full sm:w-auto">
+                            <div class="relative w-full sm:w-72">
+                                <input type="text" wire:model.live.debounce.250ms="buscaEspecialidade"
+                                    placeholder="Buscar especialidade..."
+                                    class="w-full rounded-lg border border-slate-300 pl-9 pr-3 py-2 text-xs focus:border-teal-600 focus:outline-none">
+                                <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.5 10.5a7.5 7.5 0 0013.15 6.15z"/>
+                                </svg>
+                            </div>
+                            <select wire:model.live="porPaginaEspecialidade" class="rounded-lg border border-slate-300 px-2 py-2 text-xs text-slate-700 focus:border-teal-600 focus:outline-none">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-200 text-sm">
+                            <thead class="bg-slate-50 text-xs font-bold uppercase text-slate-500">
+                                <tr>
+                                    <th class="px-5 py-3 text-left">Nome da Especialidade</th>
+                                    <th class="px-5 py-3 text-left">CBOs Associados</th>
+                                    <th class="px-5 py-3 text-center">Profissionais Vinculados</th>
+                                    <th class="px-5 py-3 text-center">Status</th>
+                                    <th class="px-5 py-3 text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                @forelse ($especialidades as $espItem)
+                                    <tr class="hover:bg-slate-50/80">
+                                        <td class="px-5 py-3.5 text-xs font-bold text-slate-800">
+                                            {{ $espItem->nome }}
+                                        </td>
+                                        <td class="px-5 py-3.5 text-xs">
+                                            <div class="flex flex-wrap gap-1">
+                                                @forelse ($espItem->cbos as $cboRel)
+                                                    <span class="px-2 py-0.5 rounded bg-teal-50 text-teal-800 font-mono text-[11px] font-semibold">
+                                                        {{ $cboRel->codigo }} — {{ $cboRel->titulo_oficial }}
+                                                    </span>
+                                                @empty
+                                                    <span class="text-slate-400 text-[11px] italic">Sem CBO associado</span>
+                                                @endforelse
+                                            </div>
+                                        </td>
+                                        <td class="px-5 py-3.5 text-center text-xs font-medium text-slate-600">
+                                            <span class="px-2 py-0.5 rounded-full {{ $espItem->profissionais->count() > 0 ? 'bg-teal-50 text-teal-700 font-bold' : 'text-slate-400' }}">
+                                                {{ $espItem->profissionais->count() }}
+                                            </span>
+                                        </td>
+                                        <td class="px-5 py-3.5 text-center whitespace-nowrap">
+                                            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold {{ $espItem->ativo ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700' }}">
+                                                {{ $espItem->ativo ? 'Ativo' : 'Inativo' }}
+                                            </span>
+                                        </td>
+                                        <td class="px-5 py-3.5 text-right whitespace-nowrap space-x-1">
+                                            <button type="button" wire:click="editarEspecialidade({{ $espItem->id }})"
+                                                class="inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
+                                                Editar
+                                            </button>
+                                            <button type="button" wire:click="alternarStatusEspecialidade({{ $espItem->id }})"
+                                                class="inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white text-xs font-semibold {{ $espItem->ativo ? 'text-amber-700 hover:bg-amber-50' : 'text-emerald-700 hover:bg-emerald-50' }} cursor-pointer">
+                                                {{ $espItem->ativo ? 'Inativar' : 'Ativar' }}
+                                            </button>
+                                            <button type="button" wire:click="confirmarExclusao('especialidade', {{ $espItem->id }})"
+                                                class="inline-flex items-center px-2.5 py-1 rounded-md border border-rose-200 bg-rose-50/60 text-xs font-semibold text-rose-700 hover:bg-rose-100 cursor-pointer">
+                                                Excluir
+                                            </button>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="5" class="px-5 py-8 text-center text-slate-400 text-xs">
+                                            Nenhuma especialidade localizada.
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @if ($especialidades->hasPages())
+                        <div class="px-6 py-4 border-t border-slate-100">
+                            {{ $especialidades->links() }}
+                        </div>
+                    @endif
+                </div>
+            @endif
+        </div>
+    @endif
+
+    {{-- ===================================================================== --}}
+    {{-- SUBMÓDULO: UNIDADES BÁSICAS DE SAÚDE (UBS / ATENÇÃO PRIMÁRIA)          --}}
+    {{-- ===================================================================== --}}
+    @if ($abaAtiva === 'ubs' && in_array('ubs', $abasPermitidas, true))
+        <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <h2 class="text-sm font-bold text-slate-800">Rede de Atenção Primária / UBSs ({{ $unidadesSaude->total() ?? 0 }})</h2>
+                    <p class="text-xs text-slate-500">Unidades Básicas de Saúde de referência para encaminhamentos e integração e-SUS PEC</p>
+                </div>
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <div class="relative w-full sm:w-72">
+                        <input type="text" wire:model.live.debounce.250ms="buscaUbs"
+                            placeholder="Buscar por nome, CNES ou bairro..."
+                            class="w-full rounded-lg border border-slate-300 pl-9 pr-3 py-2 text-xs focus:border-teal-600 focus:outline-none">
+                        <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.5 10.5a7.5 7.5 0 0013.15 6.15z"/>
+                        </svg>
+                    </div>
+                    <select wire:model.live="porPaginaUbs" class="rounded-lg border border-slate-300 px-2 py-2 text-xs text-slate-700 focus:border-teal-600 focus:outline-none">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                    <thead class="bg-slate-50 text-xs font-bold uppercase text-slate-500">
+                        <tr>
+                            <th class="px-5 py-3 text-left">Nome da Unidade</th>
+                            <th class="px-5 py-3 text-left">CNES</th>
+                            <th class="px-5 py-3 text-left">Município / Bairro</th>
+                            <th class="px-5 py-3 text-left">Telefone</th>
+                            <th class="px-5 py-3 text-center">Origem</th>
+                            <th class="px-5 py-3 text-center">Pacientes</th>
+                            <th class="px-5 py-3 text-center">Status</th>
+                            <th class="px-5 py-3 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @forelse ($unidadesSaude as $ubsItem)
+                            <tr class="hover:bg-slate-50/80">
+                                <td class="px-5 py-3.5 text-xs font-bold text-slate-800">
+                                    {{ $ubsItem->nome }}
+                                    @if ($ubsItem->endereco)
+                                        <p class="text-[11px] font-normal text-slate-500">{{ $ubsItem->endereco }}</p>
+                                    @endif
+                                </td>
+                                <td class="px-5 py-3.5 font-mono text-xs font-semibold text-teal-700 whitespace-nowrap">
+                                    {{ $ubsItem->cnes ?? '—' }}
+                                </td>
+                                <td class="px-5 py-3.5 text-xs text-slate-600 whitespace-nowrap">
+                                    {{ $ubsItem->bairro ?? '—' }}
+                                    @if ($ubsItem->municipio_ibge)
+                                        <span class="text-[10px] text-slate-400 block font-mono">IBGE: {{ $ubsItem->municipio_ibge }}</span>
+                                    @endif
+                                </td>
+                                <td class="px-5 py-3.5 text-xs text-slate-600 whitespace-nowrap">
+                                    {{ $ubsItem->telefone ?? '—' }}
+                                </td>
+                                <td class="px-5 py-3.5 text-center whitespace-nowrap">
+                                    <span class="px-2 py-0.5 rounded text-[11px] font-bold {{ $ubsItem->origem === 'ESUS' ? 'bg-sky-50 text-sky-700 border border-sky-200' : 'bg-slate-100 text-slate-700' }}">
+                                        {{ $ubsItem->origem }}
+                                    </span>
+                                </td>
+                                <td class="px-5 py-3.5 text-center text-xs font-medium text-slate-600">
+                                    <span class="px-2 py-0.5 rounded-full {{ $ubsItem->pacientes_count > 0 ? 'bg-teal-50 text-teal-700 font-bold' : 'text-slate-400' }}">
+                                        {{ $ubsItem->pacientes_count }}
+                                    </span>
+                                </td>
+                                <td class="px-5 py-3.5 text-center whitespace-nowrap">
+                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold {{ $ubsItem->ativo ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700' }}">
+                                        {{ $ubsItem->ativo ? 'Ativo' : 'Inativo' }}
+                                    </span>
+                                </td>
+                                <td class="px-5 py-3.5 text-right whitespace-nowrap space-x-1">
+                                    <button type="button" wire:click="editarUbs({{ $ubsItem->id }})"
+                                        class="inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
+                                        Editar
+                                    </button>
+                                    <button type="button" wire:click="alternarStatusUbs({{ $ubsItem->id }})"
+                                        class="inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white text-xs font-semibold {{ $ubsItem->ativo ? 'text-amber-700 hover:bg-amber-50' : 'text-emerald-700 hover:bg-emerald-50' }} cursor-pointer">
+                                        {{ $ubsItem->ativo ? 'Inativar' : 'Ativar' }}
+                                    </button>
+                                    <button type="button" wire:click="confirmarExclusao('ubs', {{ $ubsItem->id }})"
+                                        class="inline-flex items-center px-2.5 py-1 rounded-md border border-rose-200 bg-rose-50/60 text-xs font-semibold text-rose-700 hover:bg-rose-100 cursor-pointer">
+                                        Excluir
+                                    </button>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="8" class="px-5 py-8 text-center text-slate-400 text-xs">
+                                    Nenhuma Unidade Básica de Saúde localizada.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            @if ($unidadesSaude->hasPages())
+                <div class="px-6 py-4 border-t border-slate-100">
+                    {{ $unidadesSaude->links() }}
+                </div>
+            @endif
+        </div>
+    @endif
+
+    {{-- ===================================================================== --}}
     {{-- SUBMÓDULO 4: TABELA SIGTAP X CBO (CRUD COMPLETO COM MODAL)            --}}
     {{-- ===================================================================== --}}
     @if ($abaAtiva === 'sigtap' && in_array('sigtap', $abasPermitidas, true))
@@ -1755,14 +2123,22 @@
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1">UBS de Referência</label>
-                                <input list="ubs-list" wire:model="pac_ubs_referencia" placeholder="Selecione a UBS (opcional)"
-                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Unidade Básica de Saúde (UBS)</label>
+                                <select wire:model.live="pac_ubs_id"
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none mb-1.5">
+                                    <option value="">-- Selecionar da rede cadastrada --</option>
+                                    @foreach ($todasUbs as $ubsCadastrada)
+                                        <option value="{{ $ubsCadastrada->id }}">{{ $ubsCadastrada->nome }} @if($ubsCadastrada->cnes) (CNES: {{ $ubsCadastrada->cnes }}) @endif</option>
+                                    @endforeach
+                                </select>
+                                <input list="ubs-list" wire:model="pac_ubs_referencia" placeholder="Ou digite o nome da UBS de referência..."
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs focus:border-teal-600 focus:outline-none">
                                 <datalist id="ubs-list">
                                     @foreach ($listaUbs as $ubs)
                                         <option value="{{ $ubs }}"></option>
                                     @endforeach
                                 </datalist>
+                                @error('pac_ubs_id') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
                                 @error('pac_ubs_referencia') <span class="text-xs text-rose-600 mt-1 block">{{ $message }}</span> @enderror
                             </div>
 
@@ -1966,31 +2342,41 @@
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">CBO Oficial *</label>
+                                    <select wire:model.live="prof_cbo_id"
+                                        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm">
+                                        <option value="">-- Selecione o CBO Oficial --</option>
+                                        @foreach ($todosCbos as $cboOption)
+                                            <option value="{{ $cboOption->id }}">
+                                                {{ $cboOption->codigo }} — {{ $cboOption->titulo_oficial }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('prof_cbo') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
+                                </div>
+                                <div>
                                     <label class="block text-xs font-bold text-slate-700 mb-1">Conselho de Classe *</label>
                                     <input type="text" wire:model="prof_conselho" placeholder="CREFITO 12345-F"
                                         class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm">
-                                    @error('prof_conselho') <span class="text-xs text-rose-600">{{ $message }}</span> @enderror
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-700 mb-1">CBO Oficial *</label>
-                                    <select wire:model="prof_cbo"
-                                        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm">
-                                        <option value="223605">223605 — Fisioterapeuta</option>
-                                        <option value="223810">223810 — Fonoaudiólogo</option>
-                                        <option value="223905">223905 — Terapeuta Ocupacional</option>
-                                        <option value="251510">251510 — Psicólogo Clínico</option>
-                                        <option value="225112">225112 — Médico Neurologista</option>
-                                        <option value="225125">225125 — Médico Clínico / Fisiatra</option>
-                                        <option value="251605">251605 — Assistente Social</option>
-                                    </select>
+                                    @error('prof_conselho') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
                                 </div>
                             </div>
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-700 mb-1">Especialidade *</label>
-                                    <input type="text" wire:model="prof_especialidade" placeholder="Ex.: Fisioterapia"
-                                        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm">
+                                    @php($cboAtual = $todosCbos->firstWhere('id', (int) $prof_cbo_id))
+                                    @php($opcoesEspecialidades = ($cboAtual && $cboAtual->especialidades->isNotEmpty()) ? $cboAtual->especialidades : $todasEspecialidades)
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">Especialidade Assistencial *</label>
+                                    <select wire:model.live="prof_especialidade_id"
+                                        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm mb-1.5">
+                                        <option value="">-- Selecionar da lista --</option>
+                                        @foreach ($opcoesEspecialidades as $espOpt)
+                                            <option value="{{ $espOpt->id }}">{{ $espOpt->nome }}</option>
+                                        @endforeach
+                                    </select>
+                                    <input type="text" wire:model="prof_especialidade" placeholder="Nome da especialidade (ex.: Fisioterapia)"
+                                        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs">
+                                    @error('prof_especialidade') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 mb-1">
@@ -2129,6 +2515,253 @@
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- ===================================================================== --}}
+    {{-- MODAL: CBO OFICIAL (NOVO / EDITAR)                                    --}}
+    {{-- ===================================================================== --}}
+    @if ($modalCboAberto)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 overflow-y-auto">
+            <div class="w-full max-w-xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[90vh] flex flex-col">
+                <div class="bg-slate-900 px-6 py-4 text-white flex items-center justify-between shrink-0">
+                    <div>
+                        <h3 class="text-base font-bold">
+                            {{ $cboEditandoId ? 'Editar CBO Oficial' : 'Cadastrar Novo CBO Oficial' }}
+                        </h3>
+                        <p class="text-xs text-slate-400">Classificação Brasileira de Ocupações (MTE/SUS)</p>
+                    </div>
+                    <button type="button" wire:click="fecharModalCbo" class="text-slate-400 hover:text-white cursor-pointer">✕</button>
+                </div>
+
+                <form wire:submit="salvarCbo" class="p-6 space-y-4 overflow-y-auto">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Código CBO (6 dígitos) *</label>
+                            <input type="text" wire:model="cbo_codigo" maxlength="6" placeholder="251545"
+                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-teal-600 focus:outline-none">
+                            @error('cbo_codigo') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Título Oficial da Ocupação *</label>
+                            <input type="text" wire:model="cbo_titulo_oficial" placeholder="Ex.: Neuropsicólogo"
+                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                            @error('cbo_titulo_oficial') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Fonte Oficial de Referência *</label>
+                            <input type="text" wire:model="cbo_fonte_referencia" placeholder="Ministério do Trabalho e Emprego (MTE)"
+                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-teal-600 focus:outline-none">
+                            @error('cbo_fonte_referencia') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Versão / Publicação</label>
+                            <input type="text" wire:model="cbo_versao_referencia" placeholder="CBO/2026"
+                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-teal-600 focus:outline-none">
+                            @error('cbo_versao_referencia') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Vincular Especialidades Clínicas</label>
+                        <div class="max-h-40 overflow-y-auto rounded-lg border border-slate-200 p-2.5 bg-slate-50 space-y-1.5">
+                            @forelse ($todasEspecialidades as $esp)
+                                <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-100 p-1 rounded cursor-pointer">
+                                    <input type="checkbox" wire:model="cbo_especialidades_selecionadas" value="{{ $esp->id }}"
+                                        class="rounded text-teal-600 focus:ring-teal-500">
+                                    <span>{{ $esp->nome }}</span>
+                                </label>
+                            @empty
+                                <p class="text-[11px] text-slate-400 italic">Nenhuma especialidade cadastrada ainda.</p>
+                            @endforelse
+                        </div>
+                        <span class="text-[11px] text-slate-500 mt-1 block">Selecione as especialidades que podem ser desempenhadas por este CBO.</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                        <label class="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                            <input type="checkbox" wire:model="cbo_ativo" class="rounded text-teal-600">
+                            <span>CBO Ativo para Novos Vínculos</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                            <input type="checkbox" wire:model="cbo_verificado" class="rounded text-teal-600">
+                            <span>Confirmar Conformidade Oficial MTE</span>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                        <button type="button" wire:click="fecharModalCbo"
+                            class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                            class="rounded-lg bg-teal-600 px-5 py-2 text-xs font-bold text-white hover:bg-teal-700 transition cursor-pointer">
+                            {{ $cboEditandoId ? 'Salvar Alterações' : 'Cadastrar CBO' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
+    {{-- ===================================================================== --}}
+    {{-- MODAL: ESPECIALIDADE (NOVA / EDITAR)                                  --}}
+    {{-- ===================================================================== --}}
+    @if ($modalEspecialidadeAberto)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 overflow-y-auto">
+            <div class="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[90vh] flex flex-col">
+                <div class="bg-slate-900 px-6 py-4 text-white flex items-center justify-between shrink-0">
+                    <div>
+                        <h3 class="text-base font-bold">
+                            {{ $especialidadeEditandoId ? 'Editar Especialidade' : 'Nova Especialidade' }}
+                        </h3>
+                        <p class="text-xs text-slate-400">Especialidade assistencial do CER e vínculos de ocupação</p>
+                    </div>
+                    <button type="button" wire:click="fecharModalEspecialidade" class="text-slate-400 hover:text-white cursor-pointer">✕</button>
+                </div>
+
+                <form wire:submit="salvarEspecialidade" class="p-6 space-y-4 overflow-y-auto">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Nome da Especialidade *</label>
+                        <input type="text" wire:model="esp_nome" placeholder="Ex.: Neuropsicologia"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                        @error('esp_nome') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Descrição / Observações (opcional)</label>
+                        <textarea wire:model="esp_descricao" rows="2" placeholder="Observações clínicas ou escopo da especialidade..."
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-teal-600 focus:outline-none"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Associar aos CBOs Correspondentes</label>
+                        <div class="max-h-44 overflow-y-auto rounded-lg border border-slate-200 p-2.5 bg-slate-50 space-y-1.5">
+                            @foreach ($todosCbos as $cboOption)
+                                <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-100 p-1 rounded cursor-pointer">
+                                    <input type="checkbox" wire:model="esp_cbos_vinculados" value="{{ $cboOption->id }}"
+                                        class="rounded text-teal-600 focus:ring-teal-500">
+                                    <span class="font-mono font-bold text-teal-700">{{ $cboOption->codigo }}</span>
+                                    <span>— {{ $cboOption->titulo_oficial }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                            <input type="checkbox" wire:model="esp_ativo" class="rounded text-teal-600">
+                            <span>Especialidade Ativa no Sistema</span>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                        <button type="button" wire:click="fecharModalEspecialidade"
+                            class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                            class="rounded-lg bg-teal-600 px-5 py-2 text-xs font-bold text-white hover:bg-teal-700 transition cursor-pointer">
+                            {{ $especialidadeEditandoId ? 'Salvar Alterações' : 'Cadastrar Especialidade' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
+    {{-- ===================================================================== --}}
+    {{-- MODAL: UNIDADE BÁSICA DE SAÚDE (NOVA / EDITAR)                        --}}
+    {{-- ===================================================================== --}}
+    @if ($modalUbsAberto)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 overflow-y-auto">
+            <div class="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[90vh] flex flex-col">
+                <div class="bg-slate-900 px-6 py-4 text-white flex items-center justify-between shrink-0">
+                    <div>
+                        <h3 class="text-base font-bold">
+                            {{ $ubsEditandoId ? 'Editar Unidade Básica de Saúde' : 'Cadastrar Nova UBS' }}
+                        </h3>
+                        <p class="text-xs text-slate-400">Ponto da Rede de Atenção Primária para vínculo e regulação</p>
+                    </div>
+                    <button type="button" wire:click="fecharModalUbs" class="text-slate-400 hover:text-white cursor-pointer">✕</button>
+                </div>
+
+                <form wire:submit="salvarUbs" class="p-6 space-y-4 overflow-y-auto">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Nome Oficial da UBS *</label>
+                        <input type="text" wire:model="ubs_nome" placeholder="Ex.: UBS Dr. José Ferreira"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none">
+                        @error('ubs_nome') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Código CNES (7 dígitos)</label>
+                            <input type="text" wire:model="ubs_cnes" maxlength="7" placeholder="Ex.: 2005432"
+                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-teal-600 focus:outline-none">
+                            @error('ubs_cnes') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Município IBGE (6 dígitos)</label>
+                            <input type="text" wire:model="ubs_municipio_ibge" maxlength="6" placeholder="270430"
+                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-teal-600 focus:outline-none">
+                            @error('ubs_municipio_ibge') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Bairro</label>
+                            <input type="text" wire:model="ubs_bairro" placeholder="Ex.: Centro"
+                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-teal-600 focus:outline-none">
+                            @error('ubs_bairro') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Telefone / Ramal</label>
+                            <input type="text" wire:model="ubs_telefone" placeholder="(82) 3333-0000"
+                                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-teal-600 focus:outline-none">
+                            @error('ubs_telefone') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Logradouro / Endereço Completo</label>
+                        <input type="text" wire:model="ubs_endereco" placeholder="Rua das Flores, 123"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-teal-600 focus:outline-none">
+                            @error('ubs_endereco') <span class="text-xs text-rose-600 block mt-1">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Origem do Cadastro</label>
+                            <select wire:model="ubs_origem" class="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs">
+                                <option value="MANUAL">MANUAL (Administrativo)</option>
+                                <option value="ESUS">ESUS (Integração e-SUS PEC)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center">
+                            <label class="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer mt-4">
+                                <input type="checkbox" wire:model="ubs_ativo" class="rounded text-teal-600">
+                                <span>UBS Ativa no Sistema</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                        <button type="button" wire:click="fecharModalUbs"
+                            class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                            class="rounded-lg bg-teal-600 px-5 py-2 text-xs font-bold text-white hover:bg-teal-700 transition cursor-pointer">
+                            {{ $ubsEditandoId ? 'Salvar Alterações' : 'Cadastrar UBS' }}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     @endif

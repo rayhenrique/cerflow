@@ -23,6 +23,8 @@ class Profissional extends Model
         'cpf',
         'cns',
         'registro_conselho',
+        'cbo_id',
+        'especialidade_id',
         'cbo_padrao',
         'especialidade',
         'pin_assinatura_hash',
@@ -43,6 +45,16 @@ class Profissional extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function cbo(): BelongsTo
+    {
+        return $this->belongsTo(Cbo::class, 'cbo_id');
+    }
+
+    public function especialidadeRelacionada(): BelongsTo
+    {
+        return $this->belongsTo(Especialidade::class, 'especialidade_id');
     }
 
     public function agendamentos(): BelongsToMany

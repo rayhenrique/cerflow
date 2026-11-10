@@ -7,8 +7,9 @@ Documentação técnica oficial da estrutura de banco de dados do **CER Digital*
 ## 1. Diagrama de Relacionamentos (ERD Textual)
 
 ```
-users (1) ──────────────────────────────── (1) profissionais
-  │                                                │
+users (1) ──────────────────────────────── (1) profissionais ───── (N) ◄─── (1) cbos ◄──┐
+  │                                                │                                  │ (M)
+  │                                                ├───── (N) ◄─── (1) especialidades ─┴──┘
   │ (1)                                            │ (1)
   ▼ (N)                                            ▼ (N)
 logs_auditoria                            agendamento_profissionais (N)
@@ -19,10 +20,13 @@ salas (1) ────────────────── (N) agendamento
   │ (1)                            │ (1)
   ▼ (N)                            ▼ (N)
 chamadas_painel (N) ◄──────────── pacientes (1) ── (N) evolucoes_clinicas ─── (1) ── producoes_bpai
-                                   │                    │                             │
-                                   │ (1)                │ (1)                         │ (N)
-                                   ▼ (N)                ▼ (N)                         ▼
-                               (histórico)      evolucao_adendos          procedimentos_sigtap (1)
+                                   │   ▲                │                             │
+                                   │   │ (N)            │ (1)                         │ (N)
+                                   │   └── unidades_    ▼ (N)                         ▼
+                                   │       basicas_  evolucao_adendos          procedimentos_sigtap (1)
+                                   │       saude (1)
+                                   ▼ (N)
+                               (histórico)
 
 configuracoes_estabelecimento (1)
 dispositivos_tv (1) ◄─────────────── (N) solicitacoes_pareamento_tv
@@ -412,5 +416,70 @@ CREATE TABLE solicitacoes_pareamento_tv (
     updated_at TIMESTAMP NULL,
     CONSTRAINT fk_pareamento_tv_dispositivo FOREIGN KEY (dispositivo_tv_id) REFERENCES dispositivos_tv(id) ON DELETE SET NULL,
     INDEX idx_pareamento_tv_status_expira (status, expira_em)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ========================================================
+-- 18. TABELA DE CBOs (CLASSIFICAÇÃO BRASILEIRA DE OCUPAÇÕES)
+-- ========================================================
+CREATE TABLE cbos (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    codigo CHAR(6) NOT NULL UNIQUE,
+    titulo_oficial VARCHAR(255) NOT NULL,
+    ativo BOOLEAN DEFAULT TRUE,
+    fonte_referencia VARCHAR(255) NOT NULL DEFAULT 'Ministério do Trabalho e Emprego (MTE) - CBO',
+    versao_referencia VARCHAR(50) NULL DEFAULT 'CBO/2026',
+    verificado_em TIMESTAMP NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_cbos_ativo (ativo),
+    INDEX idx_cbos_codigo (codigo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ========================================================
+-- 19. TABELA DE ESPECIALIDADES CLÍNICAS
+-- ========================================================
+CREATE TABLE especialidades (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(150) NOT NULL UNIQUE,
+    descricao TEXT NULL,
+    ativo BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_especialidades_ativo (ativo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ========================================================
+-- 20. TABELA PIVOT CBO X ESPECIALIDADE (N:N)
+-- ========================================================
+CREATE TABLE cbo_especialidade (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    cbo_id BIGINT UNSIGNED NOT NULL,
+    especialidade_id BIGINT UNSIGNED NOT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    CONSTRAINT fk_pivot_cbo FOREIGN KEY (cbo_id) REFERENCES cbos(id) ON DELETE CASCADE,
+    CONSTRAINT fk_pivot_especialidade FOREIGN KEY (especialidade_id) REFERENCES especialidades(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_cbo_especialidade (cbo_id, especialidade_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ========================================================
+-- 21. TABELA DE UNIDADES BÁSICAS DE SAÚDE (UBS / ATENÇÃO PRIMÁRIA)
+-- ========================================================
+CREATE TABLE unidades_basicas_saude (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    cnes CHAR(7) NULL UNIQUE,
+    municipio_ibge CHAR(6) NOT NULL DEFAULT '270430',
+    bairro VARCHAR(100) NULL,
+    endereco VARCHAR(255) NULL,
+    telefone VARCHAR(20) NULL,
+    origem ENUM('MANUAL', 'ESUS') NOT NULL DEFAULT 'MANUAL',
+    identificador_externo VARCHAR(64) NULL,
+    ativo BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX idx_ubs_cnes (cnes),
+    INDEX idx_ubs_ativo (ativo),
+    INDEX idx_ubs_municipio (municipio_ibge)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```

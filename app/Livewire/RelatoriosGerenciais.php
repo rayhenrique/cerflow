@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Livewire;
 
+use App\Models\Especialidade;
 use App\Models\Profissional;
 use App\Models\Sala;
+use App\Models\UnidadeBasicaSaude;
 use App\Services\RelatorioService;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -140,8 +142,12 @@ class RelatoriosGerenciais extends Component
 
         // Listas auxiliares para preenchimento de filtros
         $listaProfissionais = Profissional::query()->ativos()->orderBy('nome')->get(['id', 'nome', 'especialidade']);
-        $listaEspecialidades = Profissional::query()->ativos()->whereNotNull('especialidade')->where('especialidade', '!=', '')->distinct()->orderBy('especialidade')->pluck('especialidade');
+        $espBanco = Especialidade::query()->ativas()->orderBy('nome')->pluck('nome')->toArray();
+        $espProf = Profissional::query()->ativos()->whereNotNull('especialidade')->where('especialidade', '!=', '')->distinct()->orderBy('especialidade')->pluck('especialidade')->toArray();
+        $listaEspecialidades = array_values(array_unique(array_filter(array_merge($espBanco, $espProf))));
+        sort($listaEspecialidades);
         $listaSalas = Sala::query()->ativas()->orderBy('nome')->get(['id', 'nome']);
+        $listaUbs = UnidadeBasicaSaude::query()->ativas()->orderBy('nome')->get(['id', 'nome', 'cnes']);
 
         // Competências disponíveis (últimas 12 competências)
         $competenciasDisponiveis = $this->gerarCompetenciasDisponiveis();
@@ -177,6 +183,7 @@ class RelatoriosGerenciais extends Component
             'listaProfissionais' => $listaProfissionais,
             'listaEspecialidades' => $listaEspecialidades,
             'listaSalas' => $listaSalas,
+            'listaUbs' => $listaUbs,
             'competenciasDisponiveis' => $competenciasDisponiveis,
             'abasPermitidas' => $this->abasPermitidasUsuario(),
         ], $dadosAba));

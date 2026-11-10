@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Livewire;
 
 use App\Jobs\SincronizarEsusPecJob;
+use App\Models\Cbo;
 use App\Models\ConfiguracaoEstabelecimento;
 use App\Models\ConfiguracaoEsusPec;
 use App\Models\DispositivoTv;
+use App\Models\Especialidade;
 use App\Models\HistoricoSincronizacaoEsus;
 use App\Models\LogAuditoria;
 use App\Models\Paciente;
@@ -15,6 +17,7 @@ use App\Models\ProcedimentoSigtap;
 use App\Models\Profissional;
 use App\Models\Sala;
 use App\Models\SolicitacaoPareamentoTv;
+use App\Models\UnidadeBasicaSaude;
 use App\Models\User;
 use App\Rules\CnsValido;
 use App\Services\EsusPecIntegrationService;
@@ -100,6 +103,20 @@ class ConfiguracoesSistema extends Component
 
     public string $buscaSigtap = '';
 
+    public string $buscaCbo = '';
+
+    public int $porPaginaCbo = 15;
+
+    public string $buscaEspecialidade = '';
+
+    public int $porPaginaEspecialidade = 15;
+
+    public string $buscaUbs = '';
+
+    public int $porPaginaUbs = 15;
+
+    public string $subAbaCbo = 'cbos'; // 'cbos' ou 'especialidades'
+
     public string $filtroAcaoAuditoria = '';
 
     // --- Controle de Modais ---
@@ -108,6 +125,12 @@ class ConfiguracoesSistema extends Component
     public bool $modalPacienteAberto = false;
 
     public bool $modalProfissionalAberto = false;
+
+    public bool $modalCboAberto = false;
+
+    public bool $modalEspecialidadeAberto = false;
+
+    public bool $modalUbsAberto = false;
 
     public bool $modalSigtapAberto = false;
 
@@ -147,6 +170,8 @@ class ConfiguracoesSistema extends Component
 
     public string $pac_municipio_ibge = '270430';
 
+    public ?int $pac_ubs_id = null;
+
     public string $pac_ubs_referencia = '';
 
     public string $pac_nome_acs = '';
@@ -185,11 +210,64 @@ class ConfiguracoesSistema extends Component
 
     public string $prof_conselho = '';
 
+    public ?int $prof_cbo_id = null;
+
+    public ?int $prof_especialidade_id = null;
+
     public string $prof_cbo = '223605';
 
     public string $prof_especialidade = 'Fisioterapia';
 
     public string $prof_pin = '';
+
+    // --- Formulário CBO ---
+    public ?int $cboEditandoId = null;
+
+    public string $cbo_codigo = '';
+
+    public string $cbo_titulo_oficial = '';
+
+    public bool $cbo_ativo = true;
+
+    public string $cbo_fonte_referencia = 'Ministério do Trabalho e Emprego (MTE) - CBO';
+
+    public string $cbo_versao_referencia = 'CBO/2026';
+
+    public bool $cbo_verificado = true;
+
+    /** @var array<int, int> */
+    public array $cbo_especialidades_selecionadas = [];
+
+    // --- Formulário Especialidade ---
+    public ?int $especialidadeEditandoId = null;
+
+    public string $esp_nome = '';
+
+    public string $esp_descricao = '';
+
+    public bool $esp_ativo = true;
+
+    /** @var array<int, int> */
+    public array $esp_cbos_vinculados = [];
+
+    // --- Formulário UBS ---
+    public ?int $ubsEditandoId = null;
+
+    public string $ubs_nome = '';
+
+    public string $ubs_cnes = '';
+
+    public string $ubs_municipio_ibge = '270430';
+
+    public string $ubs_bairro = '';
+
+    public string $ubs_endereco = '';
+
+    public string $ubs_telefone = '';
+
+    public string $ubs_origem = 'MANUAL';
+
+    public bool $ubs_ativo = true;
 
     // --- Formulário SIGTAP ---
     public ?int $sigtapEditandoId = null;
@@ -341,6 +419,56 @@ class ConfiguracoesSistema extends Component
         $this->resetPage();
     }
 
+    public function updatedBuscaCbo(): void
+    {
+        $this->resetPage('page_cbos');
+    }
+
+    public function updatedBuscaEspecialidade(): void
+    {
+        $this->resetPage('page_especialidades');
+    }
+
+    public function updatedBuscaUbs(): void
+    {
+        $this->resetPage('page_ubs');
+    }
+
+    public function updatedProfCboId(?int $cboId): void
+    {
+        if ($cboId) {
+            $cbo = Cbo::with('especialidades')->find($cboId);
+            if ($cbo) {
+                $this->prof_cbo = $cbo->codigo;
+                $primeiraEsp = $cbo->especialidades->first();
+                if ($primeiraEsp) {
+                    $this->prof_especialidade_id = $primeiraEsp->id;
+                    $this->prof_especialidade = $primeiraEsp->nome;
+                }
+            }
+        }
+    }
+
+    public function updatedProfEspecialidadeId(?int $espId): void
+    {
+        if ($espId) {
+            $esp = Especialidade::find($espId);
+            if ($esp) {
+                $this->prof_especialidade = $esp->nome;
+            }
+        }
+    }
+
+    public function updatedPacUbsId(?int $ubsId): void
+    {
+        if ($ubsId) {
+            $ubs = UnidadeBasicaSaude::find($ubsId);
+            if ($ubs) {
+                $this->pac_ubs_referencia = $ubs->nome;
+            }
+        }
+    }
+
     public function selecionarAba(string $aba): void
     {
         $permitidas = $this->abasPermitidas();
@@ -364,7 +492,7 @@ class ConfiguracoesSistema extends Component
         }
 
         if ($user->hasRole('coordenacao')) {
-            return ['pacientes', 'salas', 'profissionais', 'sigtap', 'auditoria', 'estabelecimento', 'esus', 'chamadas', 'perfil'];
+            return ['pacientes', 'salas', 'profissionais', 'cbos', 'ubs', 'sigtap', 'auditoria', 'estabelecimento', 'esus', 'chamadas', 'perfil'];
         }
 
         $abas = ['perfil'];
@@ -1081,6 +1209,7 @@ class ConfiguracoesSistema extends Component
             'pac_cpf',
             'pac_data_nascimento',
             'pac_nome_mae',
+            'pac_ubs_id',
             'pac_ubs_referencia',
             'pac_nome_acs',
             'pac_telefone_contato',
@@ -1091,6 +1220,7 @@ class ConfiguracoesSistema extends Component
             'pac_cid_secundario',
             'pac_modalidades',
         ]);
+        $this->pac_ubs_id = null;
         $this->pac_sexo = 'M';
         $this->pac_municipio_ibge = ConfiguracaoEstabelecimento::atual()->codigo_ibge_padrao;
         $this->modalPacienteAberto = true;
@@ -1111,6 +1241,7 @@ class ConfiguracoesSistema extends Component
         $this->pac_sexo = $pac->sexo;
         $this->pac_nome_mae = (string) ($pac->nome_mae ?? '');
         $this->pac_municipio_ibge = (string) ($pac->municipio_ibge ?? ConfiguracaoEstabelecimento::atual()->codigo_ibge_padrao);
+        $this->pac_ubs_id = $pac->ubs_id;
         $this->pac_ubs_referencia = (string) ($pac->ubs_referencia ?? '');
         $this->pac_nome_acs = (string) ($pac->nome_acs ?? '');
         $this->pac_telefone_contato = (string) ($pac->telefone_contato ?? '');
@@ -1209,6 +1340,26 @@ class ConfiguracoesSistema extends Component
             ? $this->pac_modalidades
             : ($pacienteExistente?->modalidades_reabilitacao);
 
+        $ubsIdFinal = $this->pac_ubs_id;
+        $ubsNomeFinal = $this->pac_ubs_referencia !== '' ? trim($this->pac_ubs_referencia) : null;
+
+        if ($ubsIdFinal) {
+            $ubsModel = UnidadeBasicaSaude::find($ubsIdFinal);
+            if ($ubsModel) {
+                $ubsNomeFinal = $ubsModel->nome;
+            }
+        } elseif ($ubsNomeFinal !== null && $ubsNomeFinal !== '') {
+            $ubsModel = UnidadeBasicaSaude::firstOrCreate(
+                ['nome' => $ubsNomeFinal],
+                [
+                    'municipio_ibge' => $this->pac_municipio_ibge,
+                    'origem' => 'MANUAL',
+                    'ativo' => true,
+                ]
+            );
+            $ubsIdFinal = $ubsModel->id;
+        }
+
         Paciente::updateOrCreate(
             ['id' => $this->pacienteEditandoId],
             [
@@ -1219,7 +1370,8 @@ class ConfiguracoesSistema extends Component
                 'sexo' => $this->pac_sexo,
                 'nome_mae' => $this->pac_nome_mae !== '' ? trim($this->pac_nome_mae) : null,
                 'municipio_ibge' => $this->pac_municipio_ibge,
-                'ubs_referencia' => $this->pac_ubs_referencia !== '' ? trim($this->pac_ubs_referencia) : null,
+                'ubs_id' => $ubsIdFinal,
+                'ubs_referencia' => $ubsNomeFinal,
                 'nome_acs' => $this->pac_nome_acs !== '' ? trim($this->pac_nome_acs) : null,
                 'telefone_contato' => $this->pac_telefone_contato !== '' ? trim($this->pac_telefone_contato) : null,
                 'telefone_secundario' => $this->pac_telefone_secundario !== '' ? trim($this->pac_telefone_secundario) : null,
@@ -1247,6 +1399,7 @@ class ConfiguracoesSistema extends Component
             'pac_cpf',
             'pac_data_nascimento',
             'pac_nome_mae',
+            'pac_ubs_id',
             'pac_ubs_referencia',
             'pac_nome_acs',
             'pac_telefone_contato',
@@ -1298,12 +1451,18 @@ class ConfiguracoesSistema extends Component
             'prof_cpf',
             'prof_cns',
             'prof_conselho',
+            'prof_cbo_id',
+            'prof_especialidade_id',
             'prof_pin',
         ]);
         $this->usr_role = 'terapeuta';
         $this->vincular_profissional = true;
-        $this->prof_cbo = '223605';
-        $this->prof_especialidade = 'Fisioterapia';
+        $primeiroCbo = Cbo::ativos()->orderBy('titulo_oficial')->first();
+        $this->prof_cbo_id = $primeiroCbo?->id;
+        $this->prof_cbo = $primeiroCbo?->codigo ?? '223605';
+        $primeiraEsp = $primeiroCbo?->especialidades()->first() ?? Especialidade::ativas()->first();
+        $this->prof_especialidade_id = $primeiraEsp?->id;
+        $this->prof_especialidade = $primeiraEsp?->nome ?? 'Fisioterapia';
         $this->modalProfissionalAberto = true;
     }
 
@@ -1325,6 +1484,8 @@ class ConfiguracoesSistema extends Component
             $this->prof_cpf = $usuario->profissional->cpf;
             $this->prof_cns = $usuario->profissional->cns;
             $this->prof_conselho = $usuario->profissional->registro_conselho;
+            $this->prof_cbo_id = $usuario->profissional->cbo_id ?? Cbo::where('codigo', $usuario->profissional->cbo_padrao)->value('id');
+            $this->prof_especialidade_id = $usuario->profissional->especialidade_id ?? Especialidade::where('nome', $usuario->profissional->especialidade)->value('id');
             $this->prof_cbo = $usuario->profissional->cbo_padrao;
             $this->prof_especialidade = $usuario->profissional->especialidade;
             $this->prof_pin = '';
@@ -1333,8 +1494,12 @@ class ConfiguracoesSistema extends Component
             $this->prof_cpf = '';
             $this->prof_cns = '';
             $this->prof_conselho = '';
-            $this->prof_cbo = '223605';
-            $this->prof_especialidade = 'Fisioterapia';
+            $primeiroCbo = Cbo::ativos()->orderBy('titulo_oficial')->first();
+            $this->prof_cbo_id = $primeiroCbo?->id;
+            $this->prof_cbo = $primeiroCbo?->codigo ?? '223605';
+            $primeiraEsp = $primeiroCbo?->especialidades()->first() ?? Especialidade::ativas()->first();
+            $this->prof_especialidade_id = $primeiraEsp?->id;
+            $this->prof_especialidade = $primeiraEsp?->nome ?? 'Fisioterapia';
             $this->prof_pin = '';
         }
 
@@ -1418,13 +1583,32 @@ class ConfiguracoesSistema extends Component
             }
 
             if ($this->vincular_profissional) {
+                $cboModel = null;
+                if ($this->prof_cbo_id) {
+                    $cboModel = Cbo::find($this->prof_cbo_id);
+                } elseif ($this->prof_cbo !== '') {
+                    $cboModel = Cbo::where('codigo', trim($this->prof_cbo))->first();
+                }
+
+                $espModel = null;
+                if ($this->prof_especialidade_id) {
+                    $espModel = Especialidade::find($this->prof_especialidade_id);
+                } elseif ($this->prof_especialidade !== '') {
+                    $espModel = Especialidade::where('nome', trim($this->prof_especialidade))->first();
+                }
+
+                $cboCodigoFinal = $cboModel ? $cboModel->codigo : trim($this->prof_cbo);
+                $espNomeFinal = $espModel ? $espModel->nome : trim($this->prof_especialidade);
+
                 $dadosProf = [
                     'nome' => trim($this->usr_name),
                     'cpf' => $this->prof_cpf,
                     'cns' => $this->prof_cns,
                     'registro_conselho' => trim($this->prof_conselho),
-                    'cbo_padrao' => trim($this->prof_cbo),
-                    'especialidade' => trim($this->prof_especialidade),
+                    'cbo_id' => $cboModel?->id,
+                    'especialidade_id' => $espModel?->id,
+                    'cbo_padrao' => $cboCodigoFinal,
+                    'especialidade' => $espNomeFinal,
                     'ativo' => (bool) $userAlvo->ativo,
                 ];
 
@@ -1448,6 +1632,8 @@ class ConfiguracoesSistema extends Component
             'prof_cpf',
             'prof_cns',
             'prof_conselho',
+            'prof_cbo_id',
+            'prof_especialidade_id',
             'prof_pin',
         ]);
 
@@ -1482,6 +1668,416 @@ class ConfiguracoesSistema extends Component
             tipo: $novoStatus ? 'sucesso' : 'alerta',
             titulo: $novoStatus ? 'Conta reativada' : 'Conta suspensa',
             mensagem: "O acesso de '{$usuario->name}' foi ".($novoStatus ? 'REATIVADO.' : 'INATIVADO.')
+        );
+    }
+
+    // =========================================================================
+    // 3.1 GESTÃO DE CBOS E ESPECIALIDADES (Coordenação)
+    // =========================================================================
+    public function selecionarSubAbaCbo(string $subAba): void
+    {
+        if (in_array($subAba, ['cbos', 'especialidades'], true)) {
+            $this->subAbaCbo = $subAba;
+        }
+    }
+
+    public function abrirModalNovoCbo(): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $this->resetValidation();
+        $this->cboEditandoId = null;
+        $this->cbo_codigo = '';
+        $this->cbo_titulo_oficial = '';
+        $this->cbo_ativo = true;
+        $this->cbo_fonte_referencia = 'Ministério do Trabalho e Emprego (MTE) - CBO';
+        $this->cbo_versao_referencia = 'CBO/2026';
+        $this->cbo_verificado = true;
+        $this->cbo_especialidades_selecionadas = [];
+        $this->modalCboAberto = true;
+    }
+
+    public function editarCbo(int $cboId): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $this->resetValidation();
+        $cbo = Cbo::with('especialidades')->findOrFail($cboId);
+
+        $this->cboEditandoId = $cbo->id;
+        $this->cbo_codigo = $cbo->codigo;
+        $this->cbo_titulo_oficial = $cbo->titulo_oficial;
+        $this->cbo_ativo = (bool) $cbo->ativo;
+        $this->cbo_fonte_referencia = (string) $cbo->fonte_referencia;
+        $this->cbo_versao_referencia = (string) ($cbo->versao_referencia ?? '');
+        $this->cbo_verificado = $cbo->estaVerificado();
+        $this->cbo_especialidades_selecionadas = $cbo->especialidades->pluck('id')->toArray();
+        $this->modalCboAberto = true;
+    }
+
+    public function fecharModalCbo(): void
+    {
+        $this->modalCboAberto = false;
+        $this->resetValidation();
+    }
+
+    public function salvarCbo(): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $this->cbo_codigo = preg_replace('/\D/', '', $this->cbo_codigo) ?? '';
+
+        $this->validate([
+            'cbo_codigo' => [
+                'required',
+                'string',
+                'digits:6',
+                Rule::unique('cbos', 'codigo')->ignore($this->cboEditandoId),
+            ],
+            'cbo_titulo_oficial' => ['required', 'string', 'max:255'],
+            'cbo_fonte_referencia' => ['required', 'string', 'max:255'],
+            'cbo_versao_referencia' => ['nullable', 'string', 'max:50'],
+            'cbo_especialidades_selecionadas' => ['nullable', 'array'],
+        ]);
+
+        $editando = $this->cboEditandoId !== null;
+        $verificadoEm = $this->cbo_verificado ? now() : null;
+
+        DB::transaction(function () use ($editando, $verificadoEm): void {
+            $dados = [
+                'codigo' => $this->cbo_codigo,
+                'titulo_oficial' => trim($this->cbo_titulo_oficial),
+                'ativo' => $this->cbo_ativo,
+                'fonte_referencia' => trim($this->cbo_fonte_referencia),
+                'versao_referencia' => $this->cbo_versao_referencia !== '' ? trim($this->cbo_versao_referencia) : null,
+                'verificado_em' => $verificadoEm,
+            ];
+
+            if ($editando && $this->cboEditandoId !== null) {
+                $cbo = Cbo::findOrFail($this->cboEditandoId);
+                $cbo->update($dados);
+            } else {
+                $cbo = Cbo::create($dados);
+            }
+
+            $cbo->especialidades()->sync($this->cbo_especialidades_selecionadas);
+
+            LogAuditoria::create([
+                'user_id' => auth()->id(),
+                'acao' => $editando ? 'ATUALIZACAO_CBO' : 'CADASTRO_CBO',
+                'tabela_afetada' => 'cbos',
+                'registro_id' => $cbo->id,
+                'ip_address' => request()->ip(),
+                'detalhes' => [
+                    'codigo' => $cbo->codigo,
+                    'titulo' => $cbo->titulo_oficial,
+                    'ativo' => $cbo->ativo,
+                    'verificado' => $cbo->estaVerificado(),
+                ],
+            ]);
+        });
+
+        $this->modalCboAberto = false;
+        $this->reset(['cboEditandoId', 'cbo_codigo', 'cbo_titulo_oficial', 'cbo_especialidades_selecionadas']);
+
+        $msg = $editando ? 'CBO oficial atualizado com sucesso.' : 'Novo CBO oficial registrado com sucesso.';
+        session()->flash('sucesso_config', $msg);
+        $this->dispatch('toast', tipo: 'sucesso', titulo: $editando ? 'CBO atualizado' : 'CBO cadastrado', mensagem: $msg);
+    }
+
+    public function alternarStatusCbo(int $cboId): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $cbo = Cbo::findOrFail($cboId);
+        $novoStatus = ! $cbo->ativo;
+        $cbo->update(['ativo' => $novoStatus]);
+
+        LogAuditoria::create([
+            'user_id' => auth()->id(),
+            'acao' => $novoStatus ? 'ATIVACAO_CBO' : 'DESATIVACAO_CBO',
+            'tabela_afetada' => 'cbos',
+            'registro_id' => $cbo->id,
+            'ip_address' => request()->ip(),
+            'detalhes' => ['codigo' => $cbo->codigo, 'novo_status' => $novoStatus],
+        ]);
+
+        $this->dispatch(
+            'toast',
+            tipo: $novoStatus ? 'sucesso' : 'alerta',
+            titulo: $novoStatus ? 'CBO reativado' : 'CBO inativado',
+            mensagem: "A ocupação CBO {$cbo->codigo} foi ".($novoStatus ? 'REATIVADA.' : 'INATIVADA.')
+        );
+    }
+
+    public function verificarCboOficial(int $cboId): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $cbo = Cbo::findOrFail($cboId);
+        $novo = $cbo->verificado_em ? null : now();
+        $cbo->update(['verificado_em' => $novo]);
+
+        $this->dispatch(
+            'toast',
+            tipo: $novo ? 'sucesso' : 'info',
+            titulo: $novo ? 'CBO verificado' : 'Verificação revogada',
+            mensagem: "O status de validação oficial do CBO {$cbo->codigo} foi atualizado."
+        );
+    }
+
+    public function abrirModalNovaEspecialidade(): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $this->resetValidation();
+        $this->especialidadeEditandoId = null;
+        $this->esp_nome = '';
+        $this->esp_descricao = '';
+        $this->esp_ativo = true;
+        $this->esp_cbos_vinculados = [];
+        $this->modalEspecialidadeAberto = true;
+    }
+
+    public function editarEspecialidade(int $especialidadeId): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $this->resetValidation();
+        $esp = Especialidade::with('cbos')->findOrFail($especialidadeId);
+
+        $this->especialidadeEditandoId = $esp->id;
+        $this->esp_nome = $esp->nome;
+        $this->esp_descricao = (string) ($esp->descricao ?? '');
+        $this->esp_ativo = (bool) $esp->ativo;
+        $this->esp_cbos_vinculados = $esp->cbos->pluck('id')->toArray();
+        $this->modalEspecialidadeAberto = true;
+    }
+
+    public function fecharModalEspecialidade(): void
+    {
+        $this->modalEspecialidadeAberto = false;
+        $this->resetValidation();
+    }
+
+    public function salvarEspecialidade(): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $this->validate([
+            'esp_nome' => [
+                'required',
+                'string',
+                'max:150',
+                Rule::unique('especialidades', 'nome')->ignore($this->especialidadeEditandoId),
+            ],
+            'esp_descricao' => ['nullable', 'string', 'max:500'],
+            'esp_cbos_vinculados' => ['nullable', 'array'],
+        ]);
+
+        $nomeNormalizado = trim($this->esp_nome);
+        $existeOutra = Especialidade::query()
+            ->whereRaw('LOWER(TRIM(nome)) = ?', [mb_strtolower($nomeNormalizado, 'UTF-8')])
+            ->when($this->especialidadeEditandoId !== null, fn ($q) => $q->where('id', '!=', $this->especialidadeEditandoId))
+            ->exists();
+
+        if ($existeOutra) {
+            $this->addError('esp_nome', 'Já existe uma especialidade cadastrada com este nome.');
+
+            return;
+        }
+
+        $editando = $this->especialidadeEditandoId !== null;
+
+        DB::transaction(function () use ($editando): void {
+            $dados = [
+                'nome' => trim($this->esp_nome),
+                'descricao' => $this->esp_descricao !== '' ? trim($this->esp_descricao) : null,
+                'ativo' => $this->esp_ativo,
+            ];
+
+            if ($editando && $this->especialidadeEditandoId !== null) {
+                $esp = Especialidade::findOrFail($this->especialidadeEditandoId);
+                $esp->update($dados);
+            } else {
+                $esp = Especialidade::create($dados);
+            }
+
+            $esp->cbos()->sync($this->esp_cbos_vinculados);
+
+            LogAuditoria::create([
+                'user_id' => auth()->id(),
+                'acao' => $editando ? 'ATUALIZACAO_ESPECIALIDADE' : 'CADASTRO_ESPECIALIDADE',
+                'tabela_afetada' => 'especialidades',
+                'registro_id' => $esp->id,
+                'ip_address' => request()->ip(),
+                'detalhes' => ['nome' => $esp->nome, 'ativo' => $esp->ativo],
+            ]);
+        });
+
+        $this->modalEspecialidadeAberto = false;
+        $this->reset(['especialidadeEditandoId', 'esp_nome', 'esp_descricao', 'esp_cbos_vinculados']);
+
+        $msg = $editando ? 'Especialidade atualizada com sucesso.' : 'Especialidade cadastrada com sucesso.';
+        session()->flash('sucesso_config', $msg);
+        $this->dispatch('toast', tipo: 'sucesso', titulo: $editando ? 'Especialidade atualizada' : 'Especialidade cadastrada', mensagem: $msg);
+    }
+
+    public function alternarStatusEspecialidade(int $especialidadeId): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $esp = Especialidade::findOrFail($especialidadeId);
+        $novoStatus = ! $esp->ativo;
+        $esp->update(['ativo' => $novoStatus]);
+
+        LogAuditoria::create([
+            'user_id' => auth()->id(),
+            'acao' => $novoStatus ? 'ATIVACAO_ESPECIALIDADE' : 'DESATIVACAO_ESPECIALIDADE',
+            'tabela_afetada' => 'especialidades',
+            'registro_id' => $esp->id,
+            'ip_address' => request()->ip(),
+            'detalhes' => ['nome' => $esp->nome, 'novo_status' => $novoStatus],
+        ]);
+
+        $this->dispatch(
+            'toast',
+            tipo: $novoStatus ? 'sucesso' : 'alerta',
+            titulo: $novoStatus ? 'Especialidade ativada' : 'Especialidade inativada',
+            mensagem: "A especialidade '{$esp->nome}' foi ".($novoStatus ? 'REATIVADA.' : 'INATIVADA.')
+        );
+    }
+
+    // =========================================================================
+    // 3.2 GESTÃO DE UNIDADES BÁSICAS DE SAÚDE - UBS (Coordenação)
+    // =========================================================================
+    public function abrirModalNovaUbs(): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $this->resetValidation();
+        $this->ubsEditandoId = null;
+        $this->ubs_nome = '';
+        $this->ubs_cnes = '';
+        $this->ubs_municipio_ibge = '270430';
+        $this->ubs_bairro = '';
+        $this->ubs_endereco = '';
+        $this->ubs_telefone = '';
+        $this->ubs_origem = 'MANUAL';
+        $this->ubs_ativo = true;
+        $this->modalUbsAberto = true;
+    }
+
+    public function editarUbs(int $ubsId): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $this->resetValidation();
+        $ubs = UnidadeBasicaSaude::findOrFail($ubsId);
+
+        $this->ubsEditandoId = $ubs->id;
+        $this->ubs_nome = $ubs->nome;
+        $this->ubs_cnes = (string) ($ubs->cnes ?? '');
+        $this->ubs_municipio_ibge = (string) ($ubs->municipio_ibge ?? '270430');
+        $this->ubs_bairro = (string) ($ubs->bairro ?? '');
+        $this->ubs_endereco = (string) ($ubs->endereco ?? '');
+        $this->ubs_telefone = (string) ($ubs->telefone ?? '');
+        $this->ubs_origem = (string) ($ubs->origem ?? 'MANUAL');
+        $this->ubs_ativo = (bool) $ubs->ativo;
+        $this->modalUbsAberto = true;
+    }
+
+    public function fecharModalUbs(): void
+    {
+        $this->modalUbsAberto = false;
+        $this->resetValidation();
+    }
+
+    public function salvarUbs(): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $this->ubs_cnes = preg_replace('/\D/', '', $this->ubs_cnes ?? '') ?? '';
+        $this->ubs_municipio_ibge = preg_replace('/\D/', '', $this->ubs_municipio_ibge ?? '') ?? '270430';
+
+        $this->validate([
+            'ubs_nome' => ['required', 'string', 'max:255'],
+            'ubs_cnes' => [
+                'nullable',
+                Rule::when($this->ubs_cnes !== '', [
+                    'digits:7',
+                    Rule::unique('unidades_basicas_saude', 'cnes')->ignore($this->ubsEditandoId),
+                ]),
+            ],
+            'ubs_municipio_ibge' => ['required', 'string', 'digits:6'],
+            'ubs_bairro' => ['nullable', 'string', 'max:100'],
+            'ubs_endereco' => ['nullable', 'string', 'max:255'],
+            'ubs_telefone' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $editando = $this->ubsEditandoId !== null;
+
+        $dados = [
+            'nome' => trim($this->ubs_nome),
+            'cnes' => $this->ubs_cnes !== '' ? $this->ubs_cnes : null,
+            'municipio_ibge' => $this->ubs_municipio_ibge,
+            'bairro' => $this->ubs_bairro !== '' ? trim($this->ubs_bairro) : null,
+            'endereco' => $this->ubs_endereco !== '' ? trim($this->ubs_endereco) : null,
+            'telefone' => $this->ubs_telefone !== '' ? trim($this->ubs_telefone) : null,
+            'origem' => $this->ubs_origem,
+            'ativo' => $this->ubs_ativo,
+        ];
+
+        if ($editando && $this->ubsEditandoId !== null) {
+            $ubs = UnidadeBasicaSaude::findOrFail($this->ubsEditandoId);
+            $ubs->update($dados);
+        } else {
+            $ubs = UnidadeBasicaSaude::create($dados);
+        }
+
+        Cache::forget('pacientes_lista_ubs_dropdown');
+
+        LogAuditoria::create([
+            'user_id' => auth()->id(),
+            'acao' => $editando ? 'ATUALIZACAO_UBS' : 'CADASTRO_UBS',
+            'tabela_afetada' => 'unidades_basicas_saude',
+            'registro_id' => $ubs->id,
+            'ip_address' => request()->ip(),
+            'detalhes' => ['nome' => $ubs->nome, 'cnes' => $ubs->cnes, 'ativo' => $ubs->ativo],
+        ]);
+
+        $this->modalUbsAberto = false;
+        $this->reset(['ubsEditandoId', 'ubs_nome', 'ubs_cnes', 'ubs_bairro', 'ubs_endereco', 'ubs_telefone']);
+
+        $msg = $editando ? 'Unidade Básica de Saúde atualizada com sucesso.' : 'UBS cadastrada com sucesso.';
+        session()->flash('sucesso_config', $msg);
+        $this->dispatch('toast', tipo: 'sucesso', titulo: $editando ? 'UBS atualizada' : 'UBS cadastrada', mensagem: $msg);
+    }
+
+    public function alternarStatusUbs(int $ubsId): void
+    {
+        abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+
+        $ubs = UnidadeBasicaSaude::findOrFail($ubsId);
+        $novoStatus = ! $ubs->ativo;
+        $ubs->update(['ativo' => $novoStatus]);
+
+        Cache::forget('pacientes_lista_ubs_dropdown');
+
+        LogAuditoria::create([
+            'user_id' => auth()->id(),
+            'acao' => $novoStatus ? 'ATIVACAO_UBS' : 'DESATIVACAO_UBS',
+            'tabela_afetada' => 'unidades_basicas_saude',
+            'registro_id' => $ubs->id,
+            'ip_address' => request()->ip(),
+            'detalhes' => ['nome' => $ubs->nome, 'novo_status' => $novoStatus],
+        ]);
+
+        $this->dispatch(
+            'toast',
+            tipo: $novoStatus ? 'sucesso' : 'alerta',
+            titulo: $novoStatus ? 'UBS reativada' : 'UBS inativada',
+            mensagem: "A unidade '{$ubs->nome}' foi ".($novoStatus ? 'REATIVADA.' : 'INATIVADA.')
         );
     }
 
@@ -1677,6 +2273,18 @@ class ConfiguracoesSistema extends Component
             abort_unless(auth()->user()?->hasAnyRole(['faturamento', 'coordenacao']) === true, 403);
             $proc = ProcedimentoSigtap::findOrFail($id);
             $this->exclusaoDescricao = "Procedimento SIGTAP: {$proc->codigo} — {$proc->descricao}";
+        } elseif ($entidade === 'cbo') {
+            abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+            $cbo = Cbo::findOrFail($id);
+            $this->exclusaoDescricao = "Ocupação CBO: {$cbo->codigo} — {$cbo->titulo_oficial}";
+        } elseif ($entidade === 'especialidade') {
+            abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+            $esp = Especialidade::findOrFail($id);
+            $this->exclusaoDescricao = "Especialidade: {$esp->nome}";
+        } elseif ($entidade === 'ubs') {
+            abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+            $ubs = UnidadeBasicaSaude::findOrFail($id);
+            $this->exclusaoDescricao = "Unidade Básica de Saúde (UBS): {$ubs->nome}".($ubs->cnes ? " (CNES: {$ubs->cnes})" : '');
         } else {
             abort(400);
         }
@@ -1801,6 +2409,112 @@ class ConfiguracoesSistema extends Component
                 $proc->delete();
                 $this->cancelarExclusao();
                 $this->dispatch('toast', tipo: 'sucesso', titulo: 'Procedimento excluído', mensagem: "O procedimento SIGTAP {$codigo} foi excluído.");
+
+                return;
+            }
+
+            if ($entidade === 'cbo') {
+                abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+                $cbo = Cbo::findOrFail($id);
+
+                if (! $cbo->podeSerExcluido()) {
+                    $this->cancelarExclusao();
+                    $this->dispatch(
+                        'toast',
+                        tipo: 'alerta',
+                        titulo: 'Exclusão bloqueada por vínculo',
+                        mensagem: "O CBO {$cbo->codigo} ({$cbo->titulo_oficial}) possui profissionais vinculados. Inative-o em vez de excluir."
+                    );
+
+                    return;
+                }
+
+                $codigo = $cbo->codigo;
+                $titulo = $cbo->titulo_oficial;
+
+                LogAuditoria::create([
+                    'user_id' => auth()->id(),
+                    'acao' => 'EXCLUSAO_CBO',
+                    'tabela_afetada' => 'cbos',
+                    'registro_id' => $cbo->id,
+                    'ip_address' => request()->ip(),
+                    'detalhes' => ['codigo' => $codigo, 'titulo' => $titulo],
+                ]);
+
+                $cbo->delete();
+                $this->cancelarExclusao();
+                $this->dispatch('toast', tipo: 'sucesso', titulo: 'CBO excluído', mensagem: "O CBO {$codigo} ({$titulo}) foi removido.");
+
+                return;
+            }
+
+            if ($entidade === 'especialidade') {
+                abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+                $esp = Especialidade::findOrFail($id);
+
+                if (! $esp->podeSerExcluida()) {
+                    $this->cancelarExclusao();
+                    $this->dispatch(
+                        'toast',
+                        tipo: 'alerta',
+                        titulo: 'Exclusão bloqueada por vínculo',
+                        mensagem: "A especialidade '{$esp->nome}' possui profissionais vinculados. Inative-a em vez de excluir."
+                    );
+
+                    return;
+                }
+
+                $nome = $esp->nome;
+
+                LogAuditoria::create([
+                    'user_id' => auth()->id(),
+                    'acao' => 'EXCLUSAO_ESPECIALIDADE',
+                    'tabela_afetada' => 'especialidades',
+                    'registro_id' => $esp->id,
+                    'ip_address' => request()->ip(),
+                    'detalhes' => ['nome' => $nome],
+                ]);
+
+                $esp->delete();
+                $this->cancelarExclusao();
+                $this->dispatch('toast', tipo: 'sucesso', titulo: 'Especialidade excluída', mensagem: "A especialidade '{$nome}' foi removida.");
+
+                return;
+            }
+
+            if ($entidade === 'ubs') {
+                abort_unless(auth()->user()?->hasRole('coordenacao') === true, 403);
+                $ubs = UnidadeBasicaSaude::findOrFail($id);
+
+                if (! $ubs->podeSerExcluida()) {
+                    $this->cancelarExclusao();
+                    $this->dispatch(
+                        'toast',
+                        tipo: 'alerta',
+                        titulo: 'Exclusão bloqueada por vínculo',
+                        mensagem: "A UBS '{$ubs->nome}' possui pacientes vinculados. Inative-a em vez de excluir."
+                    );
+
+                    return;
+                }
+
+                $nome = $ubs->nome;
+
+                LogAuditoria::create([
+                    'user_id' => auth()->id(),
+                    'acao' => 'EXCLUSAO_UBS',
+                    'tabela_afetada' => 'unidades_basicas_saude',
+                    'registro_id' => $ubs->id,
+                    'ip_address' => request()->ip(),
+                    'detalhes' => ['nome' => $nome, 'cnes' => $ubs->cnes],
+                ]);
+
+                $ubs->delete();
+                Cache::forget('pacientes_lista_ubs_dropdown');
+                $this->cancelarExclusao();
+                $this->dispatch('toast', tipo: 'sucesso', titulo: 'UBS excluída', mensagem: "A UBS '{$nome}' foi removida.");
+
+                return;
             }
         } catch (QueryException) {
             $this->cancelarExclusao();
@@ -1976,10 +2690,47 @@ class ConfiguracoesSistema extends Component
                 ->get();
         }
 
+        $cbos = collect();
+        $especialidades = collect();
+        if ($isCoordenacao && $this->abaAtiva === 'cbos') {
+            $cbos = Cbo::query()
+                ->buscar($this->buscaCbo)
+                ->withCount('profissionais')
+                ->with('especialidades')
+                ->orderBy('codigo')
+                ->paginate($this->porPaginaCbo, ['*'], 'page_cbos');
+
+            $especialidades = Especialidade::query()
+                ->buscar($this->buscaEspecialidade)
+                ->withCount('profissionais')
+                ->with('cbos')
+                ->orderBy('nome')
+                ->paginate($this->porPaginaEspecialidade, ['*'], 'page_especialidades');
+        }
+
+        $unidadesSaude = collect();
+        if ($isCoordenacao && $this->abaAtiva === 'ubs') {
+            $unidadesSaude = UnidadeBasicaSaude::query()
+                ->buscar($this->buscaUbs)
+                ->withCount('pacientes')
+                ->orderBy('nome')
+                ->paginate($this->porPaginaUbs, ['*'], 'page_ubs');
+        }
+
+        $todosCbos = Cbo::query()->ativos()->with('especialidades')->orderBy('codigo')->get();
+        $todasEspecialidades = Especialidade::query()->ativas()->orderBy('nome')->get(['id', 'nome']);
+        $todasUbs = UnidadeBasicaSaude::query()->ativas()->orderBy('nome')->get(['id', 'nome', 'cnes']);
+
         // Carrega lista de UBS exclusivamente sob demanda (aba pacientes ou modal aberto) com cache de 1 hora
         $listaUbs = [];
         if ($podePacientes && ($this->abaAtiva === 'pacientes' || $this->modalPacienteAberto)) {
             $listaUbs = Cache::remember('pacientes_lista_ubs_dropdown', 3600, function (): array {
+                $ubsEntidades = UnidadeBasicaSaude::query()
+                    ->where('ativo', true)
+                    ->orderBy('nome')
+                    ->pluck('nome')
+                    ->toArray();
+
                 $ubsDoBanco = Paciente::query()
                     ->whereNotNull('ubs_referencia')
                     ->where('ubs_referencia', '!=', '')
@@ -1997,7 +2748,7 @@ class ConfiguracoesSistema extends Component
                     'UBS Zona Rural',
                 ];
 
-                return array_values(array_unique(array_filter(array_merge($padroes, $ubsDoBanco))));
+                return array_values(array_unique(array_filter(array_merge($ubsEntidades, $padroes, $ubsDoBanco))));
             });
         }
 
@@ -2007,6 +2758,12 @@ class ConfiguracoesSistema extends Component
             'usuarios' => $usuarios,
             'pacientes' => $pacientes,
             'procedimentosSigtap' => $procedimentosSigtap,
+            'cbos' => $cbos,
+            'especialidades' => $especialidades,
+            'unidadesSaude' => $unidadesSaude,
+            'todosCbos' => $todosCbos,
+            'todasEspecialidades' => $todasEspecialidades,
+            'todasUbs' => $todasUbs,
             'logsAuditoria' => $logsAuditoria,
             'logInspecionado' => $logInspecionado,
             'historicoEsus' => $historicoEsus,
