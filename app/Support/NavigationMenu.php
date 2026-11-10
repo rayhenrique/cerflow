@@ -295,13 +295,13 @@ class NavigationMenu
         $grupo->adicionarItem(new NavigationItem(
             id: 'cbos',
             grupo: 'cadastros',
-            rotulo: 'CBOs e Especialidades',
+            rotulo: 'Profissões e CBOs',
             icone: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v1.069m7.5 0c.98.057 1.95.132 2.91.225m-13.32 0A48.655 48.655 0 0112 6.75c.98.057 1.95.132 2.91.225m-2.91-.225v.001M12 11.25v3.75m-1.875-1.875h3.75" />',
             rota: 'configuracoes.secao',
             parametros: ['secao' => 'cbos'],
             perfis: ['coordenacao'],
             ordem: 30,
-            tooltip: 'CBOs e Especialidades',
+            tooltip: 'Profissões e CBOs',
         ));
 
         $grupo->adicionarItem(new NavigationItem(

@@ -443,14 +443,9 @@ class ConfiguracoesSistema extends Component
     public function updatedProfCboId(?int $cboId): void
     {
         if ($cboId) {
-            $cbo = Cbo::with('especialidades')->find($cboId);
+            $cbo = Cbo::find($cboId);
             if ($cbo) {
                 $this->prof_cbo = $cbo->codigo;
-                $primeiraEsp = $cbo->especialidades->first();
-                if ($primeiraEsp) {
-                    $this->prof_especialidade_id = $primeiraEsp->id;
-                    $this->prof_especialidade = $primeiraEsp->nome;
-                }
             }
         }
     }
@@ -1487,9 +1482,8 @@ class ConfiguracoesSistema extends Component
         $primeiroCbo = Cbo::ativos()->orderBy('titulo_oficial')->first();
         $this->prof_cbo_id = $primeiroCbo?->id;
         $this->prof_cbo = $primeiroCbo?->codigo ?? '223605';
-        $primeiraEsp = $primeiroCbo?->especialidades()->first() ?? Especialidade::ativas()->first();
-        $this->prof_especialidade_id = $primeiraEsp?->id;
-        $this->prof_especialidade = $primeiraEsp?->nome ?? 'Fisioterapia';
+        $this->prof_especialidade_id = null;
+        $this->prof_especialidade = '';
         $this->modalProfissionalAberto = true;
     }
 
@@ -1579,7 +1573,6 @@ class ConfiguracoesSistema extends Component
             ];
             $regras['prof_conselho'] = ['required', 'string', 'max:50'];
             $regras['prof_cbo'] = ['required', 'string', 'max:10'];
-            $regras['prof_especialidade'] = ['required', 'string', 'max:100'];
             $regras['prof_pin'] = ($editando && $profissionalExistenteId !== null)
                 ? ['nullable', 'string', 'min:4', 'max:12']
                 : ['required', 'string', 'min:4', 'max:12'];
@@ -1618,15 +1611,13 @@ class ConfiguracoesSistema extends Component
                     $cboModel = Cbo::where('codigo', trim($this->prof_cbo))->first();
                 }
 
-                $espModel = null;
-                if ($this->prof_especialidade_id) {
-                    $espModel = Especialidade::find($this->prof_especialidade_id);
-                } elseif ($this->prof_especialidade !== '') {
-                    $espModel = Especialidade::where('nome', trim($this->prof_especialidade))->first();
-                }
-
                 $cboCodigoFinal = $cboModel ? $cboModel->codigo : trim($this->prof_cbo);
-                $espNomeFinal = $espModel ? $espModel->nome : trim($this->prof_especialidade);
+
+                // Preserva especialidade histórica do profissional se existente
+                $especialidadeHistorica = $usuarioExistente?->profissional?->especialidade
+                    ?? ($this->prof_especialidade !== '' ? trim($this->prof_especialidade) : null);
+                $especialidadeIdHistorica = $usuarioExistente?->profissional?->especialidade_id
+                    ?? $this->prof_especialidade_id;
 
                 $dadosProf = [
                     'nome' => trim($this->usr_name),
@@ -1634,9 +1625,9 @@ class ConfiguracoesSistema extends Component
                     'cns' => $this->prof_cns,
                     'registro_conselho' => trim($this->prof_conselho),
                     'cbo_id' => $cboModel?->id,
-                    'especialidade_id' => $espModel?->id,
+                    'especialidade_id' => $especialidadeIdHistorica,
                     'cbo_padrao' => $cboCodigoFinal,
-                    'especialidade' => $espNomeFinal,
+                    'especialidade' => $especialidadeHistorica,
                     'ativo' => (bool) $userAlvo->ativo,
                 ];
 
@@ -1788,7 +1779,9 @@ class ConfiguracoesSistema extends Component
                 $cbo = Cbo::create($dados);
             }
 
-            $cbo->especialidades()->sync($this->cbo_especialidades_selecionadas);
+            if (! empty($this->cbo_especialidades_selecionadas)) {
+                $cbo->especialidades()->sync($this->cbo_especialidades_selecionadas);
+            }
 
             LogAuditoria::create([
                 'user_id' => auth()->id(),

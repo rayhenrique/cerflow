@@ -62,7 +62,7 @@
    - [8.2 Dados do Estabelecimento e Logotipo Oficial](#82-dados-do-estabelecimento-e-logotipo-oficial)
    - [8.3 Cadastro e Manutenção de Pacientes com Paginação Ágil](#83-cadastro-e-manutenção-de-pacientes-com-paginação-ágil)
    - [8.4 Salas e Espaços Terapêuticos](#84-salas-e-espaços-terapêuticos)
-   - [8.5 Gestão Dinâmica de CBOs Oficiais e Especialidades Clínicas](#85-gestão-dinâmica-de-cbos-oficiais-e-especialidades-clínicas)
+   - [8.5 Gestão Unificada de Profissões e CBOs](#85-gestão-unificada-de-profissões-e-cbos)
    - [8.6 Cadastro da Rede de Atenção Primária / UBS](#86-cadastro-da-rede-de-atenção-primária--ubs)
    - [8.7 Integração e Sincronização com o e-SUS APS PEC](#87-integração-e-sincronização-com-o-e-sus-aps-pec)
    - [8.8 Trilha de Auditoria e Segurança (LGPD)](#88-trilha-de-auditoria-e-segurança-lgpd)
@@ -189,7 +189,7 @@ Para proporcionar uma experiência de uso ágil, intuitiva e sem sobrecarga visu
 4. **CADASTROS** (recolhido inicialmente para poupar espaço)
    - **Equipe e Profissionais:** Gestão de usuários, senhas, papéis RBAC e CBOs vinculados.
    - **Salas e Espaços:** Consultórios e ginásios da unidade.
-   - **CBOs e Especialidades:** Classificação Brasileira de Ocupações e especialidades clínicas.
+   - **Profissões e CBOs:** Classificação Brasileira de Ocupações oficial do MTE/SUS.
    - **Unidades de Saúde (UBS):** Rede de atenção primária de referência da região.
    - **Procedimentos SIGTAP:** Parametrização da tabela SUS e matriz de compatibilidade CBO.
 5. **ADMINISTRAÇÃO** (recolhido inicialmente para poupar espaço)
@@ -476,16 +476,23 @@ Em **Configurações** → **Salas & Espaços**:
 - Cadastre e gerencie as salas da unidade: Consultórios de Fonoaudiologia e Psicologia, Sala de Integração Sensorial, Sala de AVD, Ginásios de Fisioterapia Adulto e Pediátrico e Anexos.
 - Salas inativadas deixam de aparecer para novos agendamentos, preservando o histórico passado.
 
-### 8.5 Gestão Dinâmica de CBOs Oficiais e Especialidades Clínicas
-Em **Configurações** → **CBOs & Especialidades**:
-- **Catálogo de CBOs Oficiais:** Gerenciamento centralizado de ocupações oficiais reconhecidas pelo Ministério do Trabalho e Emprego (MTE) e Ministério da Saúde/SUS.
-  - O código CBO deve conter rigorosamente **6 dígitos numéricos**, impedindo duplicidades.
-  - Cada CBO possui metadados de auditoria e verificação oficial (`fonte_referencia`, `versao_referencia` e data de verificação).
+### 8.5 Gestão Unificada de Profissões e CBOs
+Em **Configurações** → **Profissões e CBOs**:
+- **Catálogo Oficial Unificado de Profissões e CBOs:** Gerenciamento simplificado de ocupações oficiais reconhecidas pelo Ministério do Trabalho e Emprego (MTE) e Ministério da Saúde/SUS.
+  - O código CBO contém rigorosamente **6 dígitos numéricos**, impedindo duplicações.
+  - Cada registro possui metadados de auditoria e verificação oficial (`fonte_referencia`, `versao_referencia` e data de verificação).
   - Inclui por padrão o CBO oficial `251545` (Neuropsicólogo).
-  - **Proteção do Faturamento BPA-i:** O cadastro de um novo CBO não altera nem insere procedimentos SIGTAP sem portaria oficial do Ministério da Saúde. O faturamento rejeita automaticamente procedimentos incompatíveis com o CBO.
-- **Catálogo de Especialidades:** Cadastro dinâmico de especialidades assistenciais (ex.: Neuropsicologia, Fisioterapia Neurofuncional) com relação N:N com os CBOs autorizados e controle de duplicidade inteligente (insensível a maiúsculas/minúsculas e acentuação).
-- **Vínculo com Profissionais:** Ao cadastrar ou editar um terapeuta em **Equipe & Perfis**, a escolha do CBO carrega automaticamente as especialidades compatíveis.
-- **Bloqueio de Exclusão:** CBOs ou especialidades com terapeutas vinculados não podem ser excluídos fisicamente, preservando o histórico clínico.
+  - Ações disponíveis: cadastrar nova profissão, editar, consultar quantidade de profissionais vinculados e inativar/ativar.
+- **Novo Fluxo de Cadastro de Profissionais:**
+  - O formulário de colaboradores foi simplificado: os campos separados de CBO e Especialidade foram substituídos por um único campo **Profissão / CBO**.
+  - O seletor oferece pesquisa rápida em tempo real por código numérico ou título oficial, exibindo o selo de validação do MTE.
+  - Não é mais exigido o cadastro separado de especialidades clínicas para novos profissionais.
+- **Preservação de Dados Históricos:** Especialidades assistenciais anteriormente cadastradas, relatórios gerenciais e dados de atendimentos históricos permanecem 100% preservados no banco de dados.
+- **Comandos Artisan para Produção:**
+  - `php artisan cer:recuperar-cbos-legados`: Concilia com segurança e idempotência os CBOs dos profissionais já cadastrados na base, com suporte a `--dry-run`.
+  - `php artisan cer:importar-cbos`: Importa o catálogo oficial completo CBO 2002 do MTE (2.614 ocupações válidas) em lotes otimizados de 250 registros.
+- **Proteção Estrita do Faturamento BPA-i:** O cadastro ou importação de uma ocupação CBO não autoriza automaticamente procedimentos para faturamento. O sistema mantém rigorosamente a matriz oficial de compatibilidade `CBO x SIGTAP`.
+- **Bloqueio de Exclusão:** Profissões e CBOs com profissionais vinculados têm exclusão física bloqueada, garantindo a integridade dos registros.
 
 ### 8.6 Cadastro da Rede de Atenção Primária / UBS
 Em **Configurações** → **Unidades de Saúde (UBS)**:

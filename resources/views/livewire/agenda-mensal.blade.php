@@ -191,7 +191,7 @@
                         class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-2xs focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500">
                     <option value="">Todos os Profissionais</option>
                     @foreach($profissionaisDisponiveis as $prof)
-                        <option value="{{ $prof->id }}">{{ $prof->nome }} ({{ $prof->especialidade }})</option>
+                        <option value="{{ $prof->id }}">{{ $prof->nome }} ({{ $prof->profissao_ou_especialidade }})</option>
                     @endforeach
                 </select>
             </div>

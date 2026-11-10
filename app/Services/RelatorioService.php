@@ -536,7 +536,7 @@ class RelatorioService
             $linhas[] = [
                 'id' => $prof->id,
                 'nome' => $prof->nome,
-                'especialidade' => $prof->especialidade ?? 'Geral',
+                'especialidade' => $prof->especialidade ?: ($prof->cbo?->titulo_oficial ?? 'Geral'),
                 'cbo' => $prof->cbo_padrao ?? '-',
                 'total_agendamentos' => $totalAgend,
                 'concluidos' => $concluidos,

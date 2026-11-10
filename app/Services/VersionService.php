@@ -44,6 +44,19 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.24.0',
+                'data' => '10/11/2026',
+                'titulo' => 'Unificação de Profissões e CBOs e Simplificação de Cadastros',
+                'tipo' => 'Novidades e Usabilidade',
+                'destaques' => [
+                    'Novidades: Unificamos o módulo em Profissões e CBOs, simplificando o cadastro profissional sem a necessidade de cadastrar especialidades clínicas separadamente.',
+                    'Melhorias: O cadastro de profissionais agora conta com um único campo unificado "Profissão / CBO", com busca rápida em tempo real por código de 6 dígitos e nome oficial.',
+                    'Melhorias: A interface administrativa foi simplificada com a remoção da aba independente de especialidades, mantendo foco nas ocupações oficiais do MTE.',
+                    'Segurança: Todos os dados históricos de especialidades clínicas, relatórios e atendimentos anteriores foram integralmente preservados com compatibilidade transparente.',
+                    'Faturamento: As regras de compatibilidade entre CBO e procedimentos SIGTAP para faturamento BPA-i permanecem 100% protegidas e inalteradas.',
+                ],
+            ],
+            [
                 'versao' => '1.23.1',
                 'data' => '10/11/2026',
                 'titulo' => 'Recuperação de CBOs Legados e Importação do Catálogo Oficial MTE',

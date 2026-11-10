@@ -125,7 +125,7 @@
                     <select wire:model.live="filtroProfissionalId" class="rounded-lg border border-slate-300 px-3 py-1.5 bg-white text-slate-700 focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
                         <option value="">Todos os Profissionais</option>
                         @foreach($profissionais as $prof)
-                            <option value="{{ $prof->id }}">{{ $prof->nome }} ({{ $prof->especialidade }})</option>
+                            <option value="{{ $prof->id }}">{{ $prof->nome }} ({{ $prof->profissao_ou_especialidade }})</option>
                         @endforeach
                     </select>
 
@@ -410,7 +410,7 @@
                                             <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] bg-slate-100 text-slate-700">
                                                 {{ $ag->sala->nome }}
                                             </span>
-                                            <span>• {{ $ag->profissionais->pluck('especialidade')->filter()->unique()->implode(', ') }}</span>
+                                            <span>• {{ $ag->profissionais->map(fn ($p) => $p->profissao_ou_especialidade)->filter()->unique()->implode(', ') }}</span>
                                         </div>
                                     </td>
 
@@ -977,7 +977,7 @@
                                 class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-2xs focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500">
                             <option value="">Todos os Profissionais</option>
                             @foreach($profissionaisDisponiveisMensal as $prof)
-                                <option value="{{ $prof->id }}">{{ $prof->nome }} ({{ $prof->especialidade }})</option>
+                                <option value="{{ $prof->id }}">{{ $prof->nome }} ({{ $prof->profissao_ou_especialidade }})</option>
                             @endforeach
                         </select>
                     </div>
@@ -1326,7 +1326,7 @@
                                 <label class="flex items-center gap-2 p-1.5 rounded hover:bg-slate-50 cursor-pointer">
                                     <input type="checkbox" wire:model="novo_profissionais" value="{{ $prof->id }}" class="rounded text-teal-600 focus:ring-teal-500">
                                     <span class="text-slate-800">{{ $prof->nome }}</span>
-                                    <span class="text-[11px] text-slate-400">({{ $prof->especialidade }})</span>
+                                    <span class="text-[11px] text-slate-400">({{ $prof->profissao_ou_especialidade }})</span>
                                 </label>
                             @endforeach
                         </div>

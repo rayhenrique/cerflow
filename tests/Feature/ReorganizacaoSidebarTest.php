@@ -69,7 +69,7 @@ class ReorganizacaoSidebarTest extends TestCase
         $itensCadastros = $grupos[3]->itens;
         $this->assertCount(5, $itensCadastros);
         $this->assertSame(['profissionais', 'salas', 'cbos', 'ubs', 'sigtap'], array_column($itensCadastros, 'id'));
-        $this->assertSame(['Equipe e Profissionais', 'Salas e Espaços', 'CBOs e Especialidades', 'Unidades de Saúde (UBS)', 'Procedimentos SIGTAP'], array_column($itensCadastros, 'rotulo'));
+        $this->assertSame(['Equipe e Profissionais', 'Salas e Espaços', 'Profissões e CBOs', 'Unidades de Saúde (UBS)', 'Procedimentos SIGTAP'], array_column($itensCadastros, 'rotulo'));
 
         // 5. ADMINISTRAÇÃO (Recolhido inicialmente)
         $this->assertSame('administracao', $grupos[4]->id);
@@ -337,7 +337,7 @@ class ReorganizacaoSidebarTest extends TestCase
         $response->assertSee('Faturamento BPA-i');
         $response->assertSee('Equipe e Profissionais');
         $response->assertSee('Salas e Espaços');
-        $response->assertSee('CBOs e Especialidades');
+        $response->assertSee('Profissões e CBOs');
         $response->assertSee('Unidades de Saúde (UBS)');
         $response->assertSee('Procedimentos SIGTAP');
         $response->assertSee('Dados do Estabelecimento');

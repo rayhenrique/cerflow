@@ -112,7 +112,7 @@
                         class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:border-teal-600 focus:ring-1 focus:ring-teal-600">
                     <option value="">Todos os profissionais</option>
                     @foreach ($listaProfissionais as $prof)
-                        <option value="{{ $prof->id }}">{{ $prof->nome }} ({{ $prof->especialidade ?? 'Geral' }})</option>
+                        <option value="{{ $prof->id }}">{{ $prof->nome }} ({{ $prof->profissao_ou_especialidade }})</option>
                     @endforeach
                 </select>
             </div>
@@ -482,7 +482,7 @@
                                     <td class="py-2.5 px-3">
                                         @forelse ($agendamento->profissionais as $prof)
                                             <div class="font-medium text-slate-800">{{ $prof->nome }}</div>
-                                            <div class="text-[10px] text-slate-400">{{ $prof->especialidade ?? 'Geral' }}</div>
+                                            <div class="text-[10px] text-slate-400">{{ $prof->profissao_ou_especialidade }}</div>
                                         @empty
                                             <span class="text-slate-400 italic">Não atribuído</span>
                                         @endforelse
@@ -951,7 +951,7 @@
                                 @forelse ($dadosProducaoBpai['por_profissional'] as $prof)
                                     <tr>
                                         <td class="py-2 px-3 font-semibold text-slate-900">{{ $prof->nome }}</td>
-                                        <td class="py-2 px-3 text-slate-500">{{ $prof->especialidade }}</td>
+                                        <td class="py-2 px-3 text-slate-500">{{ $prof->profissao_ou_especialidade }}</td>
                                         <td class="py-2 px-3 text-center font-bold text-teal-700">{{ $prof->aptos }}</td>
                                         <td class="py-2 px-3 text-center font-bold text-rose-700">{{ $prof->inconsistentes }}</td>
                                         <td class="py-2 px-3 text-right font-bold text-slate-900">{{ $prof->total }}</td>

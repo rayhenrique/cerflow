@@ -77,11 +77,13 @@ A plataforma substitui integralmente processos fragmentados baseados em planilha
 ### 9. Cadastros, Parâmetros e Integração e-SUS APS PEC (`/configuracoes`)
 - **Dados do Estabelecimento:** Configuração de Razão Social, Nome Fantasia, CNES oficial, Município IBGE, logotipo institucional e contato do gestor.
 - **Gestão de Espaços e Terapeutas:** Cadastro de salas (sensorial, AVD, consultórios, ginásios) e de profissionais com seus respectivos conselhos, CBOs e especialidades.
-- **Gestão Dinâmica de CBOs e Especialidades:**
-  - Cadastro e validação de ocupações CBO oficiais (6 dígitos) com conferência junto à classificação oficial MTE/SUS e prevenção de duplicações.
-  - Cadastro de Especialidades com relação N:N com CBOs e deduplicação inteligente.
-  - CBO inicial 251545 (Neuropsicólogo) e Especialidade Neuropsicologia cadastrados, com preservação estrita das regras de faturamento SIGTAP/BPA-i.
-  - Bloqueio de exclusão para CBOs ou especialidades com profissionais vinculados.
+- **Gestão de Profissões e CBOs (Módulo Unificado):**
+  - Módulo simplificado de **Profissões e CBOs** baseado no catálogo oficial do Ministério do Trabalho e Emprego (MTE).
+  - Fluxo integrado: Configurações → Profissões e CBOs → Cadastrar/Importar → Selecionar profissão no cadastro do profissional.
+  - Seleção por campo único **Profissão / CBO** com pesquisa rápida por código (6 dígitos) ou nome oficial e exibição de selo de validação.
+  - Comandos Artisan idempotentes: `php artisan cer:recuperar-cbos-legados` para conciliação segura e `php artisan cer:importar-cbos` para o catálogo oficial MTE (2.614 ocupações).
+  - Preservação integral das especialidades históricas, relatórios gerenciais e regras estritas de faturamento `CBO × SIGTAP` para BPA-i (incluindo CBO 251545 — Neuropsicólogo).
+  - Bloqueio de exclusão para CBOs com profissionais vinculados.
 - **Cadastro da Rede de Atenção Primária / UBS:**
   - Cadastro estruturado de Unidades Básicas de Saúde com código CNES (7 dígitos), código IBGE, endereço, telefone e origem (`MANUAL` ou `ESUS`).
   - Associação direta no prontuário do paciente com sincronização dos campos legados e bloqueio de exclusão quando houver vínculos.

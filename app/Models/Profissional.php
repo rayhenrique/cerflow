@@ -88,4 +88,17 @@ class Profissional extends Model
     {
         return $query->where('ativo', true);
     }
+
+    /**
+     * Retorna a profissão oficial vinculada (ou especialidade histórica existente).
+     */
+    public function getProfissaoOuEspecialidadeAttribute(): string
+    {
+        if (! empty($this->especialidade)) {
+            return $this->especialidade;
+        }
+
+        return $this->cbo?->titulo_oficial
+            ?? ($this->cbo_padrao ? "CBO {$this->cbo_padrao}" : 'Profissional');
+    }
 }

@@ -103,7 +103,7 @@
                                                 <div class="mt-1 flex flex-wrap gap-1">
                                                     @foreach($ag->profissionais as $prof)
                                                         <span class="inline-flex items-center rounded bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-700 border border-slate-200">
-                                                            {{ $prof->nome }} ({{ $prof->especialidade }})
+                                                            {{ $prof->nome }} ({{ $prof->profissao_ou_especialidade }})
                                                         </span>
                                                     @endforeach
                                                 </div>
@@ -340,7 +340,7 @@
                             @foreach($profissionaisDisponiveis as $prof)
                                 <label class="flex items-start gap-2 cursor-pointer">
                                     <input type="checkbox" wire:model="profissionaisSelecionados" value="{{ $prof->id }}" class="mt-0.5 rounded border-slate-300 text-teal-600">
-                                    <span>{{ $prof->nome }} — <span class="text-slate-500">{{ $prof->especialidade }} (CBO {{ $prof->cbo_padrao }})</span></span>
+                                    <span>{{ $prof->nome }} — <span class="text-slate-500">{{ $prof->profissao_ou_especialidade }} (CBO {{ $prof->cbo_padrao }})</span></span>
                                 </label>
                             @endforeach
                         </div>

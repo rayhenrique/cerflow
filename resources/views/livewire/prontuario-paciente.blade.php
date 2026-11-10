@@ -17,7 +17,7 @@
                             </span>
                         </div>
                         <p class="text-xs text-slate-300">
-                            Fila de espera de <strong class="text-white">{{ $profissionalAutenticado->nome }}</strong> • {{ $profissionalAutenticado->especialidade }}
+                            Fila de espera de <strong class="text-white">{{ $profissionalAutenticado->nome }}</strong> • {{ $profissionalAutenticado->profissao_ou_especialidade }}
                         </p>
                     </div>
                 </div>
@@ -460,7 +460,7 @@
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-3">
                             <div>
                                 <span class="font-bold text-slate-900">{{ $ev->profissional?->nome }}</span>
-                                <span class="text-slate-500">• {{ $ev->profissional?->especialidade }} (CBO {{ $ev->profissional?->cbo_padrao }})</span>
+                                <span class="text-slate-500">• {{ $ev->profissional?->profissao_ou_especialidade }} (CBO {{ $ev->profissional?->cbo_padrao }})</span>
                                 <span class="block text-[11px] text-slate-400">
                                     Assinado em {{ $ev->assinado_em?->format('d/m/Y H:i') }} • Hash SHA-256: <code class="font-mono">{{ substr($ev->assinatura_hash, 0, 16) }}...</code>
                                 </span>
