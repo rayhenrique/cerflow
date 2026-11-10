@@ -58,6 +58,51 @@ class ControleVersaoAjudaTest extends TestCase
             ->assertSet('aberto', false);
     }
 
+    public function test_acesso_http_ao_dashboard_renderiza_modal_novidades_quando_versao_nao_vista(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'coord@cerflow.gov.br',
+            'ativo' => true,
+            'ultima_versao_novidades_vista' => null,
+        ]);
+        $user->assignRole('coordenacao');
+
+        $response = $this->actingAs($user)->get('/dashboard');
+
+        $response->assertOk();
+        $response->assertSee('Novidades da Versão');
+    }
+
+    public function test_recarregar_pagina_mantem_modal_aberto_ate_fechamento_explicito(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'coord2@cerflow.gov.br',
+            'ativo' => true,
+            'ultima_versao_novidades_vista' => null,
+        ]);
+        $user->assignRole('coordenacao');
+
+        // Primeiro acesso (após login): modal deve aparecer
+        $response1 = $this->actingAs($user)->get('/dashboard');
+        $response1->assertOk();
+        $response1->assertSee('Novidades da Versão');
+
+        // Recarregar a página (F5) sem fechar o modal: modal continua aberto
+        $response2 = $this->actingAs($user)->get('/dashboard');
+        $response2->assertOk();
+        $response2->assertSee('Novidades da Versão');
+
+        // Usuário fecha explicitamente o modal
+        Livewire::actingAs($user)
+            ->test(ModalNovidadesVersao::class)
+            ->call('fecharModal');
+
+        // Próximo recarregamento: modal não aparece mais
+        $response3 = $this->actingAs($user)->get('/dashboard');
+        $response3->assertOk();
+        $response3->assertDontSee('Novidades da Versão');
+    }
+
     public function test_apos_fechar_nao_aparece_novamente_nos_proximos_logins(): void
     {
         $versaoAtiva = app(VersionService::class)->versaoAtual();
@@ -192,6 +237,10 @@ class ControleVersaoAjudaTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Central de Ajuda & Sobre o CER Digital', false);
+        $response->assertSee('v1.27.0');
+        $response->assertSee('v1.26.0');
+        $response->assertSee('v1.25.0');
+        $response->assertSee('v1.24.0');
         $response->assertSee('v1.21.2');
         $response->assertSee('v1.21.1');
         $response->assertSee('v1.21.0');

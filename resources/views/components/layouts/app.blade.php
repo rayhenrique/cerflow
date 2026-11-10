@@ -198,7 +198,8 @@
                 </div>
                 <div class="flex items-center gap-1.5 sm:gap-3 text-xs text-slate-500 shrink-0">
                     <button type="button"
-                            onclick="Livewire.dispatch('abrir-modal-versao')"
+                            @click="$dispatch('abrir-modal-versao')"
+                            onclick="if (window.Livewire) { Livewire.dispatch('abrir-modal-versao'); }"
                             class="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2 sm:px-2.5 py-1 font-mono text-[11px] sm:text-xs font-semibold text-teal-700 border border-teal-200 hover:bg-teal-100 transition cursor-pointer"
                             title="Clique para ver as novidades desta versão">
                         <span>✨ v{{ $versaoSistema }}</span>

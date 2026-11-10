@@ -17,6 +17,18 @@ class ModalNovidadesVersao extends Component
 
     public function mount(VersionService $versionService): void
     {
+        $this->verificarAberturaAutomatica($versionService);
+    }
+
+    public function booted(VersionService $versionService): void
+    {
+        if (! $this->aberto) {
+            $this->verificarAberturaAutomatica($versionService);
+        }
+    }
+
+    private function verificarAberturaAutomatica(VersionService $versionService): void
+    {
         $user = Auth::user();
 
         if ($user instanceof User) {

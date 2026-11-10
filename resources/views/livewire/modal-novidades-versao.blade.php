@@ -3,9 +3,10 @@
         <div x-data="{ visivel: true }"
              x-show="visivel"
              x-on:keydown.escape.window="visivel = false; $wire.fecharModal()"
+             @click.self="visivel = false; $wire.fecharModal()"
              class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
             <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 space-y-5"
-                 @click.outside="visivel = false; $wire.fecharModal()">
+                 @click.stop>
                 <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
                     <div>
                         <div class="flex items-center gap-2">

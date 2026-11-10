@@ -44,6 +44,20 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.27.0',
+                'data' => '10/11/2026',
+                'titulo' => 'Unificação de UBS, Conciliação e-SUS PEC e Catálogo Oficial CLI',
+                'tipo' => 'Novidades e Integração',
+                'destaques' => [
+                    'Unificação de UBS no Cadastro: Campo único de seleção de UBS oficial via código CNES ou nome, eliminando campos duplicados e sugestões mockadas fictícias.',
+                    'Fim da Criação Implícita de UBS: Bloqueio de cadastros avulsos gerados por digitação livre no prontuário, mantendo o controle exclusivo no catálogo administrativo.',
+                    'Conciliação Segura e-SUS PEC: Novo comando Artisan esus:conciliar-pacientes para associar a UBS de referência aos pacientes existentes sem sobrescrever nomes ou dados manuais.',
+                    'Sanitização de Vínculo de ACS: O campo de Agente Comunitário de Saúde agora salva nulo limpo no banco de dados para pacientes sem ACS identificado.',
+                    'Guia Permanente de Comandos CLI: Catálogo normativo comandos-cli.md documentando todos os 149 comandos Artisan padronizados em php8.5 artisan com análise de riscos.',
+                    'Proteção Total em Dry-Run: Modo de simulação seguro com execução somente-leitura e isolamento completo sem gravação acidental no banco de dados.',
+                ],
+            ],
+            [
                 'versao' => '1.26.0',
                 'data' => '10/11/2026',
                 'titulo' => 'Busca Inteligente e Autocomplete de Profissão e CBO',

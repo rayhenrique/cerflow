@@ -2,7 +2,7 @@
 
 > **Documento Vivo e Normativo**  
 > Projeto: `rayhenrique/cerflow`  
-> Versão do Sistema: v1.26.0+ | Stack: Laravel 13, Livewire 4, MySQL, PostgreSQL (e-SUS APS PEC)  
+> Versão do Sistema: v1.27.0 | Stack: Laravel 13, Livewire 4, MySQL, PostgreSQL (e-SUS APS PEC)  
 > Padrão Operacional Obrigatório em Servidores Linux / VPS: **`php8.5 artisan <comando>`**  
 > Última Atualização: 10/11/2026
 
