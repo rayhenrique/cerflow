@@ -17,10 +17,12 @@
 6. Chaves primárias usam `bigIncrements` (ou `$table->id()`), datas usam objetos Carbon imutáveis, e foreign keys são declaradas explicitamente com regras de integridade (`restrictOnDelete` ou `cascadeOnDelete`).
 
 ## Regras de Domínio SUS / Saúde
-1. O CNS (Cartão Nacional de Saúde) deve conter exatamente 15 dígitos numéricos.
+1. O CNS (Cartão Nacional de Saúde) deve conter exatamente 15 dígitos numéricos e respeitar o algoritmo Módulo 11 do Ministério da Saúde.
 2. O código do procedimento SIGTAP deve conter exatamente 10 dígitos numéricos.
 3. A evolução clínica torna-se IMUTÁVEL após 24 horas da assinatura eletrônica. Nunca crie rotas de update direto que ignorem o campo `assinado_em`. Retificações posteriores devem utilizar exclusivamente o modelo `EvolucaoAdendo`.
 4. Atendimentos compartilhados geram registros separados na tabela `producoes_bpai`, associando o CBO e o procedimento de cada profissional participante.
+5. O módulo de Relatórios e Indicadores é ESTRITAMENTE CONSULTIVO: nenhuma rotina de relatório pode alterar o status de agendamentos, evoluções ou produções. Horários futuros e cancelados não devem ser computados como faltas.
+6. A interface deve manter fidelidade ao design system Mobile-First do CER Digital, assegurando usabilidade tátil, cards responsivos e ausência de rolagem horizontal desnecessária.
 
 ## Gestão de Tarefas
 - Sempre consulte o arquivo `TASKS.md` antes de iniciar uma nova implementação.

@@ -155,6 +155,11 @@
                         💰 Faturamento SUS (BPA-i)
                     </button>
                     <button type="button"
+                            wire:click="selecionarSecaoManual('relatorios')"
+                            class="px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer {{ $secaoManual === 'relatorios' ? 'bg-teal-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+                        📊 Relatórios & Indicadores
+                    </button>
+                    <button type="button"
                             wire:click="selecionarSecaoManual('coordenacao')"
                             class="px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer {{ $secaoManual === 'coordenacao' ? 'bg-teal-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
                         ⚙️ Coordenação & Gestão
@@ -226,51 +231,61 @@
                     <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                         <div class="flex items-center gap-2">
                             <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-teal-700 font-bold text-xs">2</span>
-                            <h3 class="text-sm font-bold text-slate-900">Recepção, Grade Semanal e Agendamentos</h3>
+                            <h3 class="text-sm font-bold text-slate-900">Recepção, Agenda Operacional, TV e Chamadas</h3>
                         </div>
                         <span class="rounded bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">Recepção e Coordenação</span>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                         <div class="space-y-2 bg-slate-50 p-4 rounded-lg border border-slate-100">
-                            <h4 class="font-bold text-slate-900">📅 Grade Semanal em Blocos</h4>
+                            <h4 class="font-bold text-slate-900">📅 Agenda Operacional Unificada</h4>
                             <p class="text-slate-600 leading-relaxed">
-                                A grade é estruturada em blocos de 30 minutos (08h às 12h e 13h às 17h) por sala e terapeuta.
+                                Navegue facilmente entre os modos <strong>Dia</strong>, <strong>Grade Semanal</strong> e <strong>Mês</strong>. Blocos de 30 minutos organizados por sala e terapeuta.
                             </p>
                             <p class="text-slate-700 font-medium">
-                                <strong>Anti-choque de horário:</strong> O sistema impede marcar o mesmo paciente ou a mesma sala em duplicidade no mesmo horário.
+                                <strong>Anti-choque de horário:</strong> Impede duplicidade de sala ou paciente no mesmo horário, além de suportar horários fixos (cativos) para múltiplas semanas.
                             </p>
                         </div>
 
                         <div class="space-y-2 bg-slate-50 p-4 rounded-lg border border-slate-100">
-                            <h4 class="font-bold text-slate-900">🔍 Novo Agendamento Ágil</h4>
+                            <h4 class="font-bold text-slate-900">🔍 Busca Rápida e Alertas do Cartão SUS</h4>
                             <p class="text-slate-600 leading-relaxed">
-                                O modal abre instantaneamente sem carregar pacientes antecipadamente.
+                                Localize pacientes instantaneamente por Nome, CPF ou Cartão SUS (CNS).
                             </p>
                             <p class="text-slate-700">
-                                <strong>Como buscar:</strong> Digite pelo menos 3 letras do Nome, ou CPF (com ou sem pontuação), ou os 15 dígitos do Cartão SUS. O sistema traz até 20 resultados em tempo real.
+                                <strong>Aviso Imediato:</strong> Se o paciente não tiver Cartão SUS cadastrado ou se o número for inválido, o sistema alerta de imediato e oferece atalho para atualizar o cadastro sem perder o formulário.
                             </p>
                         </div>
 
                         <div class="space-y-2 bg-slate-50 p-4 rounded-lg border border-slate-100">
-                            <h4 class="font-bold text-slate-900">👥 Atendimento Compartilhado</h4>
+                            <h4 class="font-bold text-slate-900">📺 Painel de Chamadas na TV</h4>
                             <p class="text-slate-600 leading-relaxed">
-                                Quando dois terapeutas atendem a mesma criança juntos (ex: Fisioterapeuta e TO na sala sensorial).
+                                Chame o paciente diretamente da recepção ou do consultório para o painel de TV da sala de espera.
                             </p>
                             <p class="text-slate-700">
-                                Marque o segundo profissional no agendamento. O sistema divide a produção BPA-i automaticamente sem conflito!
+                                <strong>Chamada por Voz:</strong> Síntese de voz com campainha sonora e histórico visível na tela. Pareamento seguro de TVs via código numérico de 6 dígitos.
                             </p>
                         </div>
                     </div>
 
-                    <div class="rounded-lg bg-amber-50 p-4 border border-amber-200 text-xs text-amber-900 space-y-1.5">
-                        <div class="font-bold flex items-center gap-1.5">
-                            <span>⚠️ Controle de Faltas e Alerta de Absenteísmo</span>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                        <div class="rounded-lg bg-teal-50/60 p-4 border border-teal-100 space-y-1.5 text-teal-900">
+                            <div class="font-bold flex items-center gap-1.5">
+                                <span>👥 Atendimento Compartilhado (Co-atendimento)</span>
+                            </div>
+                            <p class="leading-relaxed">
+                                Permite que dois terapeutas atendam a mesma criança juntos no mesmo espaço (ex.: Fisio + TO na sala sensorial). Marque o segundo profissional e o sistema divide a produção BPA-i automaticamente.
+                            </p>
                         </div>
-                        <p class="leading-relaxed">
-                            Ao registrar a chegada do paciente, use o botão <strong>Presente</strong>. Caso o paciente falte, registre se a falta foi <strong>Justificada</strong> ou <strong>Injustificada</strong>.
-                            Se o paciente acumular <strong>3 faltas seguidas ou 5 no mês</strong>, o sistema emite uma tarja vermelha de alerta para contato social imediato antes de perder a vaga.
-                        </p>
+
+                        <div class="rounded-lg bg-amber-50 p-4 border border-amber-200 text-xs text-amber-900 space-y-1.5">
+                            <div class="font-bold flex items-center gap-1.5">
+                                <span>⚠️ Controle de Faltas e Alerta de Absenteísmo</span>
+                            </div>
+                            <p class="leading-relaxed">
+                                Marque <strong>Presente</strong> assim que o paciente chegar. Se o paciente acumular <strong>3 faltas seguidas ou 5 no mês</strong>, o sistema emite alerta visual imediato para busca ativa e contato social.
+                            </p>
+                        </div>
                     </div>
                 </div>
             @endif
@@ -354,12 +369,54 @@
                 </div>
             @endif
 
-            <!-- CAPÍTULO 5: COORDENAÇÃO, CADASTROS E E-SUS PEC -->
-            @if(in_array($secaoManual, ['todos', 'coordenacao']))
+            <!-- CAPÍTULO 5: RELATÓRIOS E INDICADORES GERENCIAIS -->
+            @if(in_array($secaoManual, ['todos', 'relatorios']))
                 <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                         <div class="flex items-center gap-2">
                             <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-teal-700 font-bold text-xs">5</span>
+                            <h3 class="text-sm font-bold text-slate-900">Relatórios e Indicadores Gerenciais</h3>
+                        </div>
+                        <span class="rounded bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700">Coordenação, Faturamento e Gestão</span>
+                    </div>
+
+                    <div class="space-y-3 text-xs text-slate-600">
+                        <p class="leading-relaxed">
+                            O módulo de <strong>Relatórios</strong> é uma ferramenta exclusivamente consultiva para monitorar a operação do CER, produtividade dos profissionais, utilização de salas, absenteísmo e faturamento ambulatorial SUS sem alterar qualquer agendamento ou prontuário.
+                        </p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="space-y-2 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                                <h4 class="font-bold text-slate-900">🎯 Filtros Dinâmicos Globais</h4>
+                                <p class="text-slate-600 leading-relaxed">
+                                    Filtre por período com atalhos rápidos (Hoje, 7 dias, Mês Atual, Mês Anterior, Ano), Profissional, Especialidade/CBO, Sala e Modalidade. Para BPA-i, consulte por Competência (AAAAMM).
+                                </p>
+                            </div>
+
+                            <div class="space-y-2 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                                <h4 class="font-bold text-slate-900">📈 6 Áreas Temáticas Especializadas</h4>
+                                <p class="text-slate-600 leading-relaxed">
+                                    Navegue entre Visão Geral (cards executivos e evolução diária), Atendimentos (status e horários de pico), Pacientes Críticos (3+ faltas seguidas ou 5+ no mês), Profissionais, Salas/Ocupação e Produção SUS/BPA-i.
+                                </p>
+                            </div>
+
+                            <div class="space-y-2 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                                <h4 class="font-bold text-slate-900">📄 Exportação em Planilha e PDF</h4>
+                                <p class="text-slate-600 leading-relaxed">
+                                    Exporte qualquer tela filtrada diretamente para arquivo CSV (compatível com Excel e Google Planilhas) ou utilize a impressão em folha A4 limpa e institucional para reuniões e prestação de contas.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            <!-- CAPÍTULO 6: COORDENAÇÃO, CADASTROS E E-SUS PEC -->
+            @if(in_array($secaoManual, ['todos', 'coordenacao']))
+                <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-teal-700 font-bold text-xs">6</span>
                             <h3 class="text-sm font-bold text-slate-900">Coordenação, Gestão de Cadastros e Integração e-SUS PEC</h3>
                         </div>
                         <span class="rounded bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">Coordenação Geral & TI</span>
@@ -389,12 +446,12 @@
                 </div>
             @endif
 
-            <!-- CAPÍTULO 6: CHECKLISTS DIÁRIOS -->
+            <!-- CAPÍTULO 7: CHECKLISTS DIÁRIOS -->
             @if(in_array($secaoManual, ['todos', 'checklists']))
                 <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                         <div class="flex items-center gap-2">
-                            <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-teal-700 font-bold text-xs">6</span>
+                            <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-teal-700 font-bold text-xs">7</span>
                             <h3 class="text-sm font-bold text-slate-900">Checklists Diários Operacionais por Função</h3>
                         </div>
                         <span class="rounded bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">Rotina da Unidade</span>
@@ -437,7 +494,7 @@
                         <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2">
                             <h4 class="font-bold text-slate-900 text-xs">⚙️ Coordenação</h4>
                             <ul class="space-y-1 text-slate-600">
-                                <li>✓ Monitorar taxa de ocupação no Dashboard.</li>
+                                <li>✓ Monitorar taxa de ocupação e relatórios gerenciais.</li>
                                 <li>✓ Gerenciar salas, espaços e terapeutas.</li>
                                 <li>✓ Rodar sincronização e-SUS PEC periodicamente.</li>
                                 <li>✓ Verificar trilha de auditoria LGPD.</li>
@@ -448,12 +505,12 @@
                 </div>
             @endif
 
-            <!-- CAPÍTULO 7: PERGUNTAS FREQUENTES (FAQ) -->
+            <!-- CAPÍTULO 8: PERGUNTAS FREQUENTES (FAQ) -->
             @if(in_array($secaoManual, ['todos', 'faq']))
                 <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                         <div class="flex items-center gap-2">
-                            <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-teal-700 font-bold text-xs">7</span>
+                            <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-teal-700 font-bold text-xs">8</span>
                             <h3 class="text-sm font-bold text-slate-900">Perguntas Frequentes (FAQ) & Resolução Rápida</h3>
                         </div>
                         <span class="rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">Dúvidas Comuns</span>
@@ -498,12 +555,12 @@
                 </div>
             @endif
 
-            <!-- CAPÍTULO 8: GLOSSÁRIO SUS -->
+            <!-- CAPÍTULO 9: GLOSSÁRIO SUS -->
             @if(in_array($secaoManual, ['todos', 'glossario']))
                 <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                         <div class="flex items-center gap-2">
-                            <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-teal-700 font-bold text-xs">8</span>
+                            <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-teal-700 font-bold text-xs">9</span>
                             <h3 class="text-sm font-bold text-slate-900">Glossário de Termos do SUS e do CER Digital</h3>
                         </div>
                         <span class="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">Dicionário Prático</span>

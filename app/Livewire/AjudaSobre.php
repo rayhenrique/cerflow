@@ -29,16 +29,18 @@ class AjudaSobre extends Component
 
     public function selecionarSecaoManual(string $secao): void
     {
-        if (in_array($secao, ['todos', 'acesso', 'recepcao', 'terapeutas', 'faturamento', 'coordenacao', 'checklists', 'faq', 'glossario'], true)) {
+        if (in_array($secao, ['todos', 'acesso', 'recepcao', 'terapeutas', 'faturamento', 'relatorios', 'coordenacao', 'checklists', 'faq', 'glossario'], true)) {
             $this->secaoManual = $secao;
         }
     }
 
-    public function baixarManual(): ?BinaryFileResponse
+    public function baixarManual(VersionService $versionService): ?BinaryFileResponse
     {
         $caminho = base_path('docs/MANUAL-DO-USUARIO.md');
         if (file_exists($caminho)) {
-            return response()->download($caminho, 'Manual-do-Usuario-CER-Digital-v1.16.0.md', [
+            $versao = $versionService->versaoAtual();
+
+            return response()->download($caminho, "Manual-do-Usuario-CER-Digital-v{$versao}.md", [
                 'Content-Type' => 'text/markdown; charset=UTF-8',
             ]);
         }

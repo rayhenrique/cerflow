@@ -1,10 +1,11 @@
-# Manual do Usuário — CER Digital (CER Flow)
-**Sistema Integrado de Gestão Especializada em Reabilitação & Faturamento SIA/SUS**
+# Manual do Usuário — CER Digital
 
-> **Versão do Sistema:** v1.16.0  
+**Plataforma Integrada de Gestão Especializada em Reabilitação, Grade Multiprofissional e Faturamento SIA/SUS**
+
+> **Versão do Sistema:** v1.21.1  
 > **Público-alvo:** Recepção, Terapeutas e Equipe Clínica Multiprofissional, Faturamento SUS, Coordenação Geral e Tecnologia da Informação  
 > **Homologação:** Ministério da Saúde / Datasus (BPA-i / SIA-SUS) e e-SUS APS PEC  
-> **Desenvolvido por:** KL Tecnologia
+> **Desenvolvido por:** [KL Tecnologia](https://kltecnologia.com)
 
 ---
 
@@ -12,477 +13,564 @@
 
 1. [Apresentação e Visão Geral do Sistema](#1-apresentação-e-visão-geral-do-sistema)
 2. [Primeiros Passos, Login e Segurança](#2-primeiros-passos-login-e-segurança)
-   - [2.1 Acessando o Sistema](#21-acessando-o-sistema)
-   - [2.2 Primeiro Acesso e Troca de Senha](#22-primeiro-acesso-e-troca-de-senha)
-   - [2.3 O PIN Eletrônico de Assinatura](#23-o-pin-eletrônico-de-assinatura)
-   - [2.4 Perfis de Acesso e Matriz de Permissões](#24-perfis-de-acesso-e-matriz-de-permissões)
-3. [Módulo Recepção & Gestão de Agendamentos](#3-módulo-recepção--gestão-de-agendamentos)
-   - [3.1 A Grade Semanal por Salas e Terapeutas](#31-a-grade-semanal-por-salas-e-terapeutas)
-   - [3.2 Novo Agendamento com Busca Inteligente](#32-novo-agendamento-com-busca-inteligente)
-   - [3.3 Atendimento Compartilhado (Co-atendimento)](#33-atendimento-compartilhado-co-atendimento)
-   - [3.4 Horários Cativos / Recorrentes](#34-horários-cativos--recorrentes)
-   - [3.5 Check-in e Acolhimento Diário](#35-check-in-e-acolhimento-diário)
-   - [3.6 Alerta de Faltas e Controle de Absenteísmo](#36-alerta-de-faltas-e-controle-de-absenteísmo)
-   - [3.7 Mapa Mensal de Ocupação](#37-mapa-mensal-de-ocupação)
-4. [Módulo Prontuário Eletrônico do Paciente (PEP Multiprofissional)](#4-módulo-prontuário-eletrônico-do-paciente-pep-multiprofissional)
-   - [4.1 Abertura e Busca Sob Demanda no PEP](#41-abertura-e-busca-sob-demanda-no-pep)
-   - [4.2 Ficha Cadastral e Diagnóstico do Paciente](#42-ficha-cadastral-e-diagnóstico-do-paciente)
-   - [4.3 Registro de Evolução Clínica Estruturada](#43-registro-de-evolução-clínica-estruturada)
-   - [4.4 Assinatura Eletrônica com PIN e Hash SHA-256](#44-assinatura-eletrônica-com-pin-e-hash-sha-256)
-   - [4.5 A Regra de 24 Horas e a Imutabilidade Clínica](#45-a-regra-de-24-horas-e-a-imutabilidade-clínica)
-   - [4.6 Termos de Adendo Retificadores](#46-termos-de-adendo-retificadores)
-   - [4.7 Linha do Tempo e Leitura Interdisciplinar](#47-linha-do-tempo-e-leitura-interdisciplinar)
-5. [Módulo Faturamento SUS & BPA-i (SIA/SUS)](#5-módulo-faturamento-sus--bpa-i-siasus)
-   - [5.1 O que é o BPA-i e o Fluxo de Faturamento](#51-o-que-é-o-bpa-i-e-o-fluxo-de-faturamento)
-   - [5.2 Regras Automáticas da Tabela SIGTAP](#52-regras-automáticas-da-tabela-sigtap)
-   - [5.3 Painel de Auditoria Prévia de Produção](#53-painel-de-auditoria-prévia-de-produção)
-   - [5.4 Exportação do Arquivo Magnético Datasus (.txt)](#54-exportação-do-arquivo-magnético-datasus-txt)
-   - [5.5 Importação no Software Oficial BPA Magnético](#55-importação-no-software-oficial-bpa-magnético)
-6. [Módulo Gestão, Cadastros e Configurações](#6-módulo-gestão-cadastros-e-configurações)
-   - [6.1 Painel Inicial Operacional (Dashboard)](#61-painel-inicial-operacional-dashboard)
-   - [6.2 Cadastro e Manutenção de Pacientes (com Paginação)](#62-cadastro-e-manutenção-de-pacientes-com-paginação)
-   - [6.3 Salas e Espaços Terapêuticos](#63-salas-e-espaços-terapêuticos)
-   - [6.4 Profissionais, Conselhos e CBOs SUS](#64-profissionais-conselhos-e-cbos-sus)
-   - [6.5 Integração e Sincronização com o e-SUS APS PEC](#65-integração-e-sincronização-com-o-e-sus-aps-pec)
-   - [6.6 Trilha de Auditoria e Segurança (LGPD)](#66-trilha-de-auditoria-e-segurança-lgpd)
-7. [Checklists Diários por Perfil de Usuário](#7-checklists-diários-por-perfil-de-usuário)
-   - [7.1 Checklist da Recepção](#71-checklist-da-recepção)
-   - [7.2 Checklist do Terapeuta / Especialista](#72-checklist-do-terapeuta--especialista)
-   - [7.3 Checklist do Faturamento SUS](#73-checklist-do-faturamento-sus)
-   - [7.4 Checklist da Coordenação e Gestão](#74-checklist-da-coordenação-e-gestão)
-8. [Perguntas Frequentes (FAQ) & Resolução de Problemas](#8-perguntas-frequentes-faq--resolução-de-problemas)
-9. [Glossário de Termos do SUS e do Sistema](#9-glossário-de-termos-do-sus-e-do-sistema)
+   - [2.1 Acessando a Plataforma e a Nova Landing Page](#21-acessando-a-plataforma-e-a-nova-landing-page)
+   - [2.2 Nova Tela de Login Institucional](#22-nova-tela-de-login-institucional)
+   - [2.3 Primeiro Acesso, Troca de Senha e Segurança](#23-primeiro-acesso-troca-de-senha-e-segurança)
+   - [2.4 O PIN Eletrônico de Assinatura Clínica (Hash SHA-256)](#24-o-pin-eletrônico-de-assinatura-clínica-hash-sha-256)
+   - [2.5 Perfis de Acesso e Matriz de Permissões (RBAC)](#25-perfis-de-acesso-e-matriz-de-permissões-rbac)
+   - [2.6 Navegação Adaptada para Celulares e Tablets (Mobile-First)](#26-navegação-adaptada-para-celulares-e-tablets-mobile-first)
+3. [Agenda Operacional Unificada & Recepção Inteligente](#3-agenda-operacional-unificada--recepção-inteligente)
+   - [3.1 Visões Flexíveis: Dia, Grade Semanal e Mapa Mensal](#31-visões-flexíveis-dia-grade-semanal-e-mapa-mensal)
+   - [3.2 Novo Agendamento com Alertas do Cartão SUS e Data de Nascimento](#32-novo-agendamento-com-alertas-do-cartão-sus-e-data-de-nascimento)
+   - [3.3 Horários Cativos Recorrentes](#33-horários-cativos-recorrentes)
+   - [3.4 Atendimento Compartilhado (Co-atendimento)](#34-atendimento-compartilhado-co-atendimento)
+   - [3.5 Anti-choque de Horários e Trabalho Interno (Evolução)](#35-anti-choque-de-horários-e-trabalho-interno-evolução)
+   - [3.6 Check-in Rápido, Acolhimento Diário e Horário de Chegada](#36-check-in-rápido-acolhimento-diário-e-horário-de-chegada)
+   - [3.7 Alerta de Faltas e Controle Preventivo de Absenteísmo](#37-alerta-de-faltas-e-controle-preventivo-de-absenteísmo)
+4. [Sistema de Chamada de Pacientes por Painel / TV](#4-sistema-de-chamada-de-pacientes-por-painel--tv)
+   - [4.1 Como Funciona o Painel de TV](#41-como-funciona-o-painel-de-tv)
+   - [4.2 Chamada por Voz com Alerta Sonoro](#42-chamada-por-voz-com-alerta-sonoro)
+   - [4.3 Disparo pela Recepção e pelo Consultório](#43-disparo-pela-recepção-e-pelo-consultório)
+   - [4.4 Pareamento Seguro de Dispositivos de TV via Código](#44-pareamento-seguro-de-dispositivos-de-tv-via-código)
+5. [Prontuário Eletrônico Multiprofissional (PEP Multi)](#5-prontuário-eletrônico-multiprofissional-pep-multi)
+   - [5.1 Busca Ágil e Abertura do PEP](#51-busca-ágil-e-abertura-do-pep)
+   - [5.2 Ficha Cadastral, Diagnóstico CID-10 e Linhas de Cuidado](#52-ficha-cadastral-diagnóstico-cid-10-e-linhas-de-cuidado)
+   - [5.3 Registro de Evolução Clínica Estruturada](#53-registro-de-evolução-clínica-estruturada)
+   - [5.4 Assinatura Eletrônica com PIN e Hash SHA-256](#54-assinatura-eletrônica-com-pin-e-hash-sha-256)
+   - [5.5 A Regra das 24 Horas e a Imutabilidade Clínica](#55-a-regra-das-24-horas-e-a-imutabilidade-clínica)
+   - [5.6 Termos de Adendo Retificadores](#56-termos-de-adendo-retificadores)
+   - [5.7 Linha do Tempo e Interdisciplinaridade](#57-linha-do-tempo-e-interdisciplinaridade)
+   - [5.8 Impressão Oficial de Prontuário em Folha A4](#58-impressão-oficial-de-prontuário-em-folha-a4)
+6. [Faturamento SUS & Lote Magnético BPA-i (SIA/SUS)](#6-faturamento-sus--lote-magnético-bpa-i-siasus)
+   - [6.1 Fluxo Automático de Produção a partir do PEP](#61-fluxo-automático-de-produção-a-partir-do-pep)
+   - [6.2 Validação Prévia e Regras SIGTAP](#62-validação-prévia-e-regras-sigtap)
+   - [6.3 Painel de Auditoria de Lote por Competência](#63-painel-de-auditoria-de-lote-por-competência)
+   - [6.4 Exportação do Arquivo Magnético Oficial (.txt Datasus)](#64-exportação-do-arquivo-magnético-oficial-txt-datasus)
+   - [6.5 Importação no Software Oficial BPA Magnético](#65-importação-no-software-oficial-bpa-magnético)
+7. [Módulo de Relatórios e Indicadores Gerenciais](#7-módulo-de-relatórios-e-indicadores-gerenciais)
+   - [7.1 Apresentação e Caráter Exclusivamente Consultivo](#71-apresentação-e-caráter-exclusivamente-consultivo)
+   - [7.2 Filtros Globais Dinâmicos e Atalhos de Período](#72-filtros-globais-dinâmicos-e-atalhos-de-período)
+   - [7.3 Área 1: Visão Geral e Indicadores Executivos](#73-área-1-visão-geral-e-indicadores-executivos)
+   - [7.4 Área 2: Análise de Atendimentos e Horários de Pico](#74-área-2-análise-de-atendimentos-e-horários-de-pico)
+   - [7.5 Área 3: Monitoramento de Pacientes e Busca Ativa de Casos Críticos (3+ Faltas)](#75-área-3-monitoramento-de-pacientes-e-busca-ativa-de-casos-críticos-3-faltas)
+   - [7.6 Área 4: Produtividade e Ocupação dos Profissionais](#76-área-4-produtividade-e-ocupação-dos-profissionais)
+   - [7.7 Área 5: Taxa de Ocupação de Salas e Otimização da Grade](#77-área-5-taxa-de-ocupação-de-salas-e-otimização-da-grade)
+   - [7.8 Área 6: Produção SUS / BPA-i e Estimativa Financeira SIGTAP](#78-área-6-produção-sus--bpa-i-e-estimativa-financeira-sigtap)
+   - [7.9 Exportação em Planilha Universal (CSV) e Impressão Limpa em PDF](#79-exportação-em-planilha-universal-csv-e-impressão-limpa-em-pdf)
+8. [Cadastros, Parâmetros e Integração e-SUS APS PEC](#8-cadastros-parâmetros-e-integração-e-sus-aps-pec)
+   - [8.1 Painel Inicial Operacional (Dashboard)](#81-painel-inicial-operacional-dashboard)
+   - [8.2 Dados do Estabelecimento e Logotipo Oficial](#82-dados-do-estabelecimento-e-logotipo-oficial)
+   - [8.3 Cadastro e Manutenção de Pacientes com Paginação Ágil](#83-cadastro-e-manutenção-de-pacientes-com-paginação-ágil)
+   - [8.4 Salas e Espaços Terapêuticos](#84-salas-e-espaços-terapêuticos)
+   - [8.5 Profissionais, Conselhos e CBOs SUS](#85-profissionais-conselhos-e-cbos-sus)
+   - [8.6 Integração e Sincronização com o e-SUS APS PEC](#86-integração-e-sincronização-com-o-e-sus-aps-pec)
+   - [8.7 Trilha de Auditoria e Segurança (LGPD)](#87-trilha-de-auditoria-e-segurança-lgpd)
+9. [Central de Ajuda & Linha do Tempo SemVer](#9-central-de-ajuda--linha-do-tempo-semver)
+   - [9.1 Modal Pós-Login de Novidades da Versão](#91-modal-pós-login-de-novidades-da-versão)
+   - [9.2 Central de Ajuda Navegável e Download do Manual](#92-central-de-ajuda-navegável-e-download-do-manual)
+10. [Checklists Diários Operacionais por Função](#10-checklists-diários-operacionais-por-função)
+    - [10.1 Checklist da Recepção](#101-checklist-da-recepção)
+    - [10.2 Checklist do Terapeuta / Especialista](#102-checklist-do-terapeuta--especialista)
+    - [10.3 Checklist do Faturamento SUS](#103-checklist-do-faturamento-sus)
+    - [10.4 Checklist da Coordenação e Gestão](#104-checklist-da-coordenação-e-gestão)
+11. [Perguntas Frequentes (FAQ) & Resolução de Dúvidas](#11-perguntas-frequentes-faq--resolução-de-dúvidas)
+12. [Glossário de Termos do SUS e do Sistema](#12-glossário-de-termos-do-sus-e-do-sistema)
 
 ---
 
 ## 1. Apresentação e Visão Geral do Sistema
 
-O **CER Digital** (CER Flow) é uma plataforma integrada desenvolvida sob medida para a rotina de Centros Especializados em Reabilitação (CER II, CER III e CER IV).
+O **CER Digital** é uma plataforma corporativa web desenvolvida pela **KL Tecnologia** para atender às rotinas assistenciais, de agendamento, prontuário multiprofissional e faturamento ambulatorial de Centros Especializados em Reabilitação (CER II, CER III e CER IV) no âmbito do Sistema Único de Saúde (SUS).
 
-O sistema foi concebido para resolver quatro desafios críticos das unidades de reabilitação:
-1. **Substituição de ferramentas paralelas:** Elimina planilhas de agendamento em Excel, fichas em papel e formulários avulsos do Google Forms.
-2. **Segurança Jurídica e Clínica:** Prontuário Eletrônico Multiprofissional (PEP) com assinatura via PIN individual, registro de hash SHA-256 e trava legal de imutabilidade após 24 horas, conforme resoluções dos conselhos de classe (CFM, COFFITO, CFP, CFFa, CRESS) e Lei Geral de Proteção de Dados (LGPD).
-3. **Agilidade no Atendimento:** Interfaces rápidas e responsivas, busca de pacientes em milissegundos sem travamento do navegador, mesmo em bases com mais de 38.000 cadastros.
-4. **Faturamento SUS Automatizado (BPA-i):** Conversão automática dos atendimentos clínicos validados em arquivo magnético padrão Datasus (SIA/SUS), com pré-auditoria das regras SIGTAP (CBO, faixa etária, sexo e CID-10), evitando glosas e rejeições de faturamento.
+A plataforma foi arquitetada com foco em quatro objetivos fundamentais:
+1. **Substituição de processos manuais e planilhas avulsas:** Centraliza em um único ambiente web seguro o cronograma semanal, os formulários de produção e as fichas de evolução clínica em papel.
+2. **Segurança Jurídica e Clínica para a Equipe:** Prontuário Eletrônico Multiprofissional (PEP) com assinatura eletrônica por PIN individual, cálculo de hash criptográfico SHA-256 e aplicação estrita da trava legal de 24 horas para imutabilidade clínica, conforme resoluções dos conselhos de classe (CFM, COFFITO, CFP, CFFa, CRESS) e diretrizes da LGPD.
+3. **Agilidade no Acolhimento e Alta Performance:** Interfaces responsivas e leves, busca dinâmica de pacientes em milissegundos sem travamento de tela e painel audiovisual de chamada de pacientes na sala de espera.
+4. **Faturamento SUS Automatizado (BPA-i):** Conversão imediata das evoluções clínicas assinadas em linhas de produção ambulatorial validadas preventivamente contra as regras da tabela SIGTAP do Ministério da Saúde (CBO, idade, sexo, CID-10 e Cartão SUS), permitindo a exportação oficial do arquivo magnético sem glosas.
+5. **Governança e Inteligência Assistencial:** Módulo completo de relatórios e indicadores gerenciais exclusivamente consultivo para apoiar a coordenação na tomada de decisões, monitoramento de absenteísmo, ocupação das salas e cumprimento de metas contratuais com o SUS.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                        CICLO OPERACIONAL DO CER DIGITAL                 │
+│                      CICLO OPERACIONAL DO CER DIGITAL                   │
 └─────────────────────────────────────────────────────────────────────────┘
         │
         ▼
- 1. RECEPÇÃO & AGENDAMENTO
-    • Agendamento individual ou compartilhado (Grade Semanal de 30 min)
-    • Busca dinâmica do paciente (Nome, CPF ou Cartão SUS)
-    • Check-in diário de presença / falta
+ 1. ACOLHIMENTO, AGENDAMENTO & RECEPÇÃO
+    • Modos Dia, Grade Semanal e Mapa Mensal (turnos e blocos de 30 min)
+    • Horário Cativo Recorrente e Co-atendimento compartilhado
+    • Alerta imediato sobre Cartão SUS ausente ou inválido no agendamento
+    • Check-in diário com registro do horário de chegada
+    • Chamada sonora e visual de pacientes no Painel de TV
         │
         ▼
- 2. ATENDIMENTO CLÍNICO (PEP)
-    • Leitura do histórico multiprofissional integrado
-    • Registro da evolução clínica estruturada
-    • Assinatura eletrônica com PIN individual (Hash SHA-256)
-    • Trava legal após 24 horas (Retificações apenas via Termo de Adendo)
+ 2. ATENDIMENTO CLÍNICO MULTIPROFISSIONAL (PEP)
+    • Linha do tempo multidisciplinar integrada (Fisio, TO, Fono, Psico, etc.)
+    • Registro de evolução estruturada com Procedimento SIGTAP executado
+    • Assinatura eletrônica mediante confirmação de PIN pessoal (SHA-256)
+    • Trava legal de 24 horas (Retificações posteriores via Termo de Adendo)
         │
         ▼
- 3. PRODUÇÃO & FATURAMENTO SUS
-    • Validação automática SIGTAP (CBO x Procedimento x CID-10 x Idade)
-    • Conferência prévia do lote sem inconsistências
-    • Exportação magnética oficial BPA-i (.txt Datasus)
+ 3. PRODUÇÃO & FATURAMENTO SUS (BPA-i)
+    • Desmembramento automático de sessões compartilhadas
+    • Pré-auditoria em memória contra regras oficiais do SIGTAP
+    • Fechamento e exportação do arquivo magnético posicional (.txt Datasus)
         │
         ▼
- 4. GESTÃO E INTEGRAÇÃO
-    • Painel de indicadores de produção, modalidades e absenteísmo
-    • Sincronização direta com banco de dados do e-SUS APS PEC
+ 4. GESTÃO, INDICADORES & INTEGRAÇÃO
+    • Relatórios gerenciais de produtividade, absenteísmo e ocupação
+    • Exportação de dados para planilhas (CSV) e impressão limpa
+    • Sincronização direta com a base de dados do e-SUS APS PEC
 ```
 
 ---
 
 ## 2. Primeiros Passos, Login e Segurança
 
-### 2.1 Acessando o Sistema
-- Abra seu navegador web de preferência (**Google Chrome**, **Microsoft Edge**, **Mozilla Firefox** ou **Safari**).
-- Digite o endereço web oficial fornecido pela coordenação da sua unidade (exemplo: `https://cer.sua-unidade.gov.br`).
-- O sistema opera em conexão criptografada segura HTTPS (`cadeado verde`).
+### 2.1 Acessando a Plataforma e a Nova Landing Page
+- Abra o navegador de sua preferência (**Google Chrome**, **Microsoft Edge**, **Mozilla Firefox** ou **Safari**). O sistema opera em conexão criptografada segura HTTPS (`cadeado de segurança`).
+- Digite o endereço oficial fornecido pela coordenação da sua unidade (exemplo: `https://cer.municipio.gov.br`).
+- Visitantes não autenticados visualizam a **Página Institucional Pública (Landing Page)**, que apresenta:
+  - As modalidades de reabilitação atendidas pelo CER (Física, Intelectual, Auditiva e Visual);
+  - Os princípios do cuidado humanizado interdisciplinar no SUS;
+  - O botão de acesso restrito **Acessar o Sistema**, que direciona para a tela de login.
 
-### 2.2 Primeiro Acesso e Troca de Senha
-1. Na tela de login, insira seu **E-mail institucional** e a **Senha provisória** fornecida pela coordenação.
-2. Clique em **Entrar no Sistema**.
-3. No primeiro login, o sistema pode apresentar o modal com as novidades da versão mais recente. Leia os destaques e clique em **Entendi e Quero Continuar**.
-4. Para alterar sua senha a qualquer momento:
-   - Clique em **Configurações** no menu lateral e selecione **Minha Conta & PIN**.
+### 2.2 Nova Tela de Login Institucional
+A tela de entrada foi concebida com design institucional contemporâneo, proporcionando clareza e segurança:
+- Digite seu **E-mail institucional**.
+- Digite sua **Senha de acesso**. Você pode utilizar o ícone de olho no campo de senha para **visualizar ou ocultar** os caracteres digitados, evitando erros de digitação.
+- Clique em **Entrar no Sistema**.
+
+### 2.3 Primeiro Acesso, Troca de Senha e Segurança
+1. No primeiro acesso, utilize o e-mail e a senha provisória cadastrados pela coordenação.
+2. Para alterar sua senha a qualquer momento:
+   - Acesse o menu lateral em **Configurações** → **Minha Conta & PIN**.
    - No painel "Trocar Minha Senha de Acesso", informe sua senha atual, digite a nova senha desejada (mínimo de 8 caracteres) e confirme.
    - Clique em **Salvar Nova Senha**.
+3. Se esquecer sua senha, solicite a redefinição à Coordenação Geral ou à equipe de TI da unidade.
 
-### 2.3 O PIN Eletrônico de Assinatura
-> 🔒 **O que é o PIN?**  
-> O PIN é uma senha numérica secreta (de 4 a 6 dígitos) de uso pessoal e intransferível. Ele é exigido **exclusivamente no momento em que você assina uma evolução clínica ou um termo de adendo** no Prontuário Eletrônico.
+### 2.4 O PIN Eletrônico de Assinatura Clínica (Hash SHA-256)
+> 🔒 **O que é o PIN Eletrônico?**  
+> É uma senha numérica pessoal de 4 a 6 dígitos solicitada **exclusivamente no momento em que você assina uma evolução clínica ou um termo de adendo** no Prontuário Eletrônico.
 
-- **Por que ele é necessário?**  
-  O PIN substitui a assinatura física em papel e o carimbo de conselho, garantindo autenticidade jurídica à sua nota técnica e impedindo que outra pessoa assine em seu nome.
+- **Validade Jurídica:** O PIN substitui o carimbo físico e a assinatura em papel. Ao confirmar o PIN, o sistema processa a nota clínica e gera uma assinatura criptográfica com **Hash SHA-256 de 64 caracteres**, garantindo autenticidade perante os Conselhos de Classe e a Auditoria do SUS.
 - **Como cadastrar ou alterar seu PIN:**
-  1. Acesse o menu lateral: **Configurações** → **Minha Conta & PIN**.
-  2. Localize o bloco **PIN Eletrônico de Assinatura Clínica**.
-  3. Digite o seu novo PIN numérico (ex: `1234` ou `567890`) e confirme no campo ao lado.
-  4. Digite a sua senha de login atual para confirmar que é você mesmo.
-  5. Clique em **Salvar PIN de Assinatura**.
+  1. Acesse **Configurações** → **Minha Conta & PIN**.
+  2. No painel "PIN Eletrônico de Assinatura Clínica", informe o novo PIN desejado (ex.: `4829` ou `192837`) e confirme.
+  3. Digite sua senha de login atual para confirmar sua identidade e clique em **Salvar PIN de Assinatura**.
 
-> ⚠️ **Aviso de Segurança Ética:**  
-> Nunca compartilhe seu PIN com colegas de trabalho, estagiários ou recepcionistas. Todo atendimento assinado com seu PIN é de sua inteira responsabilidade profissional e legal perante o Conselho de Classe (CREFITO, CRP, CRFa, etc.) e o SUS.
+> ⚠️ **Aviso Ético:** O PIN é estritamente pessoal e intransferível. Jamais repasse seu PIN a recepcionistas, colegas ou estagiários. Qualquer anotação clínica assinada sob seu PIN é de sua inteira responsabilidade profissional e legal.
 
-### 2.4 Perfis de Acesso e Matriz de Permissões
-O CER Digital opera com controle estrito de papéis (RBAC):
+### 2.5 Perfis de Acesso e Matriz de Permissões (RBAC)
 
-| Perfil de Usuário | O que pode acessar e fazer | O que NÃO pode acessar |
+O CER Digital protege os dados dos pacientes por meio de controle rigoroso de papéis de acesso:
+
+| Perfil de Usuário | Atribuições e Acessos Permitidos | Restrições de Sigilo e Segurança |
 | :--- | :--- | :--- |
-| **Recepção** (`recepcao`) | Visualiza Grade Semanal e Mapa Mensal; realiza novo agendamento; registra Check-in (presença/falta); consulta e cadastra pacientes; visualiza alertas de faltas. | Não tem acesso a anotações clínicas detalhadas do prontuário nem a telas de faturamento BPA-i. |
-| **Terapeuta / Clínico** (`terapeuta`) | Acessa Grade Semanal; consulta histórico clínico no PEP; preenche e assina evoluções clínicas com PIN; lança termos de adendo; atualiza seu perfil e PIN. | Não altera configurações do sistema nem exporta lotes financeiros do SUS. |
-| **Faturamento** (`faturamento`) | Audita a produção ambulatorial do mês; confere críticas SIGTAP de procedimentos; exporta arquivo magnético BPA-i (.txt); cadastra/consulta tabela SIGTAP. | Não assina evoluções clínicas de pacientes. |
-| **Coordenação / Direção** (`coordenacao`) | Acesso irrestrito a todos os módulos: Dashboard de indicadores, gestão de usuários, salas, profissionais, pacientes, auditoria LGPD e sincronização e-SUS PEC. | — |
+| **Recepção** (`recepcao`) | Visualiza Agenda nos modos Dia, Grade e Mês; realiza novos agendamentos; executa check-in diário; chama pacientes na TV; cadastra pacientes; consulta alertas de absenteísmo. | **Acesso estritamente bloqueado** a anotações clínicas, diagnósticos detalhados do prontuário e telas de faturamento financeiro. |
+| **Terapeuta** (`terapeuta`) | Visualiza a agenda de atendimentos; consulta histórico clínico no PEP; preenche e assina evoluções clínicas estruturadas com PIN; adiciona termos de adendo; chama pacientes na TV pelo consultório. | Não pode alterar parâmetros do sistema, cadastros de salas ou exportar lotes do BPA-i. |
+| **Faturamento** (`faturamento`) | Audita a produção ambulatorial do mês; revisa consistências SIGTAP; consulta tabelas de procedimentos; exporta arquivo magnético BPA-i (.txt) para o Datasus. | Não assina evoluções clínicas nem tem acesso de edição a anotações terapêuticas. |
+| **Coordenação** (`coordenacao`) | Acesso integral: relatórios e indicadores gerenciais, gestão de usuários, salas, profissionais, pacientes, auditoria LGPD e integração com o e-SUS PEC. | Acesso total com trilha de auditoria contínua de todas as ações. |
+
+### 2.6 Navegação Adaptada para Celulares e Tablets (Mobile-First)
+Todas as telas do CER Digital foram aprimoradas para operar de maneira perfeita em dispositivos móveis (smartphones e tablets):
+- **Barra de Navegação Inferior (Mobile Bottom Nav):** No celular, os principais atalhos operacionais ficam acessíveis ao alcance do polegar na parte inferior da tela.
+- **Menu Lateral Retrátil (Drawer):** Deslize ou toque no menu para acessar as opções completas sem perda de espaço útil.
+- **Tabelas em Formato de Cartões:** As listas de agendamentos, pacientes e relatórios adaptam-se automaticamente em cartões de leitura fácil, eliminando a necessidade de rolar a tela horizontalmente.
+- **Formulários e Modais Otimizados:** Campos confortáveis para o toque, com rolagem vertical automática e teclados numéricos apropriados para campos de CPF, CNS e PIN.
 
 ---
 
-## 3. Módulo Recepção & Gestão de Agendamentos
+## 3. Agenda Operacional Unificada & Recepção Inteligente
 
-O módulo de agendamento é o coração operacional da unidade. Ele organiza o fluxo diário, elimina conflitos de salas e registra a assiduidade dos usuários.
+### 3.1 Visões Flexíveis: Dia, Grade Semanal e Mapa Mensal
+Acesse **Agenda** no menu lateral. No topo da tela, você pode alternar facilmente entre três modos de visualização:
+1. **Modo Dia:** Lista sequencial cronológica dos atendimentos do dia selecionado, organizada por horários e salas, com status de presença e ações rápidas.
+2. **Modo Grade Semanal:** Visualização matricial de Segunda a Sexta-feira, com slots de 30 minutos (08h às 12h e 13h às 17h) distribuídos por salas e profissionais.
+3. **Modo Mapa Mensal:** Calendário completo do mês com percentuais de ocupação diária, volume de sessões agendadas e taxa de absenteísmo global.
 
-### 3.1 A Grade Semanal por Salas e Terapeutas
-- **Como acessar:** Clique em **Grade Semanal** no menu lateral.
-- **Estrutura:**
-  - A tela divide a semana de **Segunda a Sexta-feira**.
-  - O horário é organizado em **blocos de 30 minutos** (das 08:00 às 12:00 e das 13:00 às 17:00).
-  - É possível filtrar a visualização por **Sala / Consultório** ou por **Terapeuta**.
-  - Botões de navegação no topo permitem avançar ou retroceder as semanas do ano.
+### 3.2 Novo Agendamento com Alertas do Cartão SUS e Data de Nascimento
+Ao clicar em **Novo Agendamento** (ou clicar em um horário livre da grade):
+1. O formulário abre instantaneamente sem lentidão.
+2. **Buscar o Paciente:** Digite ao menos 3 letras do nome, CPF ou os 15 dígitos do Cartão SUS. O sistema localiza o paciente em tempo real.
+3. **Validação Imediata de Dados Essenciais SUS:**
+   - **Se o paciente não possui Cartão SUS cadastrado:** O sistema exibe um aviso claro em destaque:  
+     > **Atenção: paciente sem Cartão SUS**  
+     > *"Este paciente não possui o número do Cartão SUS (CNS) cadastrado. Para realizar o agendamento, atualize o cadastro do paciente."*  
+     O formulário apresenta um atalho direto para atualizar o cadastro e revalidar os dados na hora sem perder as informações já preenchidas!
+   - **Se o Cartão SUS estiver cadastrado, porém for matematicamente inválido:**  
+     > **Atenção: Cartão SUS inválido**  
+     > *"O número do Cartão SUS cadastrado para este paciente é inválido. Confira e atualize essa informação antes de continuar."*
+   - **Se faltar a Data de Nascimento:** O sistema informa com clareza o dado ausente antes da confirmação do agendamento.
+4. **Parâmetros da Sessão:** Selecione o Profissional, a Sala e o Procedimento SUS compatível com o CBO.
+5. Clique em **Confirmar Agendamento**.
 
-### 3.2 Novo Agendamento com Busca Inteligente
-> ⚡ **Abertura Imediata:**  
-> O modal de agendamento abre instantaneamente porque não carrega a lista pesada de dezenas de milhares de pacientes antecipadamente.
+### 3.3 Horários Cativos Recorrentes
+Pacientes em tratamento contínuo de reabilitação necessitam de horários fixos na semana.
+- Ao criar o agendamento, marque a opção **Horário Cativo / Recorrente** e selecione a quantidade de semanas (ex.: 4, 8 ou 12 semanas).
+- O sistema aloca o paciente no mesmo dia e horário ao longo do período selecionado, poupando o trabalho de recriar o agendamento toda semana.
 
-**Passo a passo para agendar:**
-1. Na Grade Semanal, clique no botão azul **Novo Agendamento** (ou clique diretamente em um slot livre de horário).
-2. O modal será exibido imediatamente com o campo de paciente limpo.
-3. **Buscar o Paciente:**
-   - Digite pelo menos **3 letras do nome**, ou o **CPF** (com ou sem pontos/traços), ou os **15 números do Cartão SUS (CNS)**.
-   - O sistema buscará no banco de dados e exibirá até 20 opções correspondentes com: Nome Completo, CPF, CNS e Data de Nascimento.
-   - Clique sobre o paciente desejado para selecioná-lo.
-4. **Preencher os Parâmetros da Sessão:**
-   - **Profissional Responsável:** Selecione o terapeuta que irá atender.
-   - **Sala / Espaço:** Escolha a sala onde ocorrerá o atendimento.
-   - **Procedimento SUS:** Selecione o procedimento que será realizado (o sistema lista os procedimentos compatíveis com o CBO do profissional).
-   - **Data e Horário:** Defina o dia e o horário de início (slots de 30 min).
-5. **Prevenção de Choques de Horário:**
-   - O sistema verifica automaticamente se o paciente ou a sala já possuem outro agendamento no mesmo horário. Caso haja conflito, um aviso em vermelho impedirá a colisão, sugerindo outro horário.
-6. Clique em **Confirmar Agendamento**.
+### 3.4 Atendimento Compartilhado (Co-atendimento)
+Quando dois terapeutas de especialidades distintas atendem o mesmo usuário na mesma sala (ex.: Fisioterapeuta e Terapeuta Ocupacional na Sala de Integração Sensorial):
+- No modal de agendamento, selecione o primeiro profissional e adicione o segundo no campo **Co-atendimento / Profissionais Adicionais**.
+- O sistema registra o atendimento sem conflito de sala e desmembra automaticamente a produção de faturamento em duas linhas independentes de BPA-i.
 
-### 3.3 Atendimento Compartilhado (Co-atendimento)
-Muitas terapias em reabilitação exigem a atuação conjunta de duas ou mais especialidades (por exemplo: Fisioterapeuta e Terapeuta Ocupacional na Sala Sensorial, ou Fonoaudiólogo e Psicólogo na estimulação precoce).
+### 3.5 Anti-choque de Horários e Trabalho Interno (Evolução)
+- **Anti-choque Inteligente:** O sistema impede que o mesmo paciente ou a mesma sala física receba dois agendamentos no mesmo horário (exceto quando configurado expressamente como Co-atendimento).
+- **Horário de Trabalho Interno ("EVOLUÇÃO"):** É possível reservar horários na grade para trabalho administrativo, discussão de casos clínicos e reuniões de equipe, identificados visualmente com bloqueio de novos agendamentos de pacientes.
 
-**Como agendar um Co-atendimento:**
-1. No modal de Novo Agendamento, selecione o primeiro profissional.
-2. No campo **Profissionais Adicionais / Co-atendimento**, marque o segundo profissional participante.
-3. O sistema registrará o agendamento compartilhado.
-4. **Benefício no Faturamento SUS:** O CER Digital desmembrará essa sessão em duas linhas independentes de BPA-i (uma para cada profissional/CBO), sem duplicar o paciente nem acusar choque de agenda!
+### 3.6 Check-in Rápido, Acolhimento Diário e Horário de Chegada
+Ao acolher o paciente na recepção da unidade:
+- Localize o paciente na lista do dia e clique no status desejado:
+  - 🔵 **Agendado:** Horário marcado, paciente ainda não se apresentou.
+  - 🟡 **Presente / Chegada:** Registra o comparecimento e grava automaticamente o carimbo de data e hora de chegada (`chegada_em`), indicando que o paciente está na sala de espera aguardando chamada.
+  - 🟢 **Atendido:** Sessão clínica realizada e concluída com o terapeuta.
+  - 🟠 **Falta Justificada:** Paciente ausente com justificativa médica ou aviso prévio documentado.
+  - 🔴 **Falta Injustificada:** Paciente ausente sem comunicação prévia.
+  - ⚪ **Cancelado:** Horário desmarcado pela unidade ou pelo profissional por motivo de força maior.
 
-### 3.4 Horários Cativos / Recorrentes
-Pacientes de reabilitação geralmente realizam tratamento continuado (ex: toda terça e quinta-feira às 09:00).
-- Ao cadastrar o agendamento, marque a opção **Horário Cativo / Recorrente**.
-- O sistema reservará aquele slot semanalmente para o paciente, facilitando a previsibilidade da unidade sem a necessidade de recadastrar o agendamento toda semana.
-
-### 3.5 Check-in e Acolhimento Diário
-Quando o paciente ou seu responsável chega à recepção:
-1. No menu lateral, acesse **Recepção (Check-in)** ou visualize a grade do dia.
-2. Localize o agendamento do paciente.
-3. Alterne o status com um clique no botão correspondente:
-   - 🔵 **Agendado:** Paciente marcado, mas ainda não se apresentou.
-   - 🟡 **Presente / Na Sala de Espera:** Paciente chegou à unidade e está aguardando chamada do terapeuta.
-   - 🟢 **Atendido:** Sessão realizada com sucesso pelo terapeuta.
-   - 🟠 **Falta Justificada:** Paciente avisou com antecedência e apresentou atestado ou justificativa plausível.
-   - 🔴 **Falta Injustificada:** Paciente não compareceu e não avisou.
-   - ⚪ **Cancelado:** Atendimento desmarcado por motivo de força maior da unidade ou do profissional.
-
-### 3.6 Alerta de Faltas e Controle de Absenteísmo
-Para evitar vagas ociosas na reabilitação e garantir o cumprimento das filas de espera do SUS:
-- **Regra das 3 faltas seguidas:** Se o paciente acumular 3 faltas consecutivas sem justificativa, o sistema exibirá uma tarja de **Alerta Vermelho de Absenteísmo**.
-- **Regra das 5 faltas no mês:** Se o paciente acumular 5 faltas alternadas no mesmo mês, o alerta também é acionado.
-- **Ação da Recepção:** Ao identificar o alerta, a recepção deve acionar o serviço social ou a coordenação para avaliar se o paciente necessita de transporte sanitário, mudança de turno ou se a vaga deve ser cedida para o próximo da fila regulada.
-
-### 3.7 Mapa Mensal de Ocupação
-- Acesse **Mapa Mensal** no menu lateral.
-- Visualize o calendário completo do mês com a taxa percentual de ocupação de cada dia, volume de atendimentos concluídos e índice de absenteísmo global da unidade.
+### 3.7 Alerta de Faltas e Controle Preventivo de Absenteísmo
+O sistema monitora continuamente a assiduidade dos pacientes para evitar ociosidade na rede pública:
+- **Alerta de 3 Faltas Consecutivas:** Acionado imediatamente quando o usuário falta a 3 sessões seguidas sem justificativa.
+- **Alerta de 5 Faltas Alternadas:** Acionado quando o usuário acumula 5 faltas no mês corrente.
+- **Ação:** O agendamento recebe uma tarja vermelha de destaque preventivo, alertando a equipe para acionar o Serviço Social para contato telefônico, averiguação das causas e busca ativa antes da perda da vaga regulada.
 
 ---
 
-## 4. Módulo Prontuário Eletrônico do Paciente (PEP Multiprofissional)
+## 4. Sistema de Chamada de Pacientes por Painel / TV
 
-O PEP do CER Digital é um prontuário eletrônico unificado onde todos os terapeutas da equipe (Fisioterapia, Fonoaudiologia, Terapia Ocupacional, Psicologia, Nutrição, Enfermagem e Serviço Social) registram suas condutas de forma integrada.
+### 4.1 Como Funciona o Painel de TV
+O CER Digital disponibiliza uma tela dedicada para Smart TVs e monitores instalados na sala de espera (`/painel-chamadas`).
+- A tela exibe o logotipo oficial do estabelecimento, o relógio digital sincronizado, o histórico das últimas chamadas e o destaque principal do paciente chamado no momento.
+- Funciona em qualquer Smart TV com navegador moderno ou conectada a um mini-computador/TV Box via cabo HDMI ou rede Wi-Fi.
 
-### 4.1 Abertura e Busca Sob Demanda no PEP
+### 4.2 Chamada por Voz com Alerta Sonoro
+Ao realizar a chamada de um paciente:
+1. O painel emite uma campainha harmônica sonora de atenção para a sala de espera.
+2. A voz sintetizada em português brasileiro (Web Speech API) anuncia com clareza:  
+   *"Atenção: [Nome do Paciente], favor dirigir-se à [Sala / Consultório]."*
+3. O nome do paciente e a sala piscam em destaque na tela, ficando registrados na lateral como última chamada.
+
+### 4.3 Disparo pela Recepção e pelo Consultório
+- **Pela Recepção:** Ao marcar o paciente como **Presente** na recepção, a recepcionista pode acionar o botão de chamada de acolhimento.
+- **Pelo Consultório do Terapeuta:** Dentro da tela de atendimento ou prontuário, o terapeuta conta com o botão **Chamar Paciente na TV**. Ao clicar, o painel da sala de espera anuncia imediatamente a chamada para o consultório correspondente.
+
+### 4.4 Pareamento Seguro de Dispositivos de TV via Código
+Para evitar que telas não autorizadas acessem a chamada de pacientes:
+1. Ao abrir o endereço `/painel-chamadas` em uma nova Smart TV, a tela exibe um **Código Numérico de Pareamento de 6 Dígitos** (ex.: `849 201`).
+2. O coordenador acessa **Configurações** → **Painel de Chamadas / TVs** no computador da unidade.
+3. Informa o código exibido na TV, atribui um nome para o aparelho (ex.: *TV Sala de Espera Principal*) e clica em **Autorizar Dispositivo**.
+4. A TV é pareada instantaneamente e passa a transmitir as chamadas em tempo real.
+
+---
+
+## 5. Prontuário Eletrônico Multiprofissional (PEP Multi)
+
+### 5.1 Busca Ágil e Abertura do PEP
 - Acesse **Prontuário (PEP)** no menu lateral.
-- A tela inicial é limpa e intuitiva, convidando o profissional a pesquisar o paciente.
-- No campo de busca:
-  - Digite **ao menos 3 letras do nome**, **CPF** ou os **15 dígitos do Cartão SUS**.
-  - O sistema responde em tempo real com os pacientes encontrados.
-  - Clique sobre o paciente para abrir instantaneamente o seu histórico clínico completo.
+- No campo de pesquisa instantânea, digite 3 letras do nome do paciente, o CPF ou os 15 dígitos do Cartão SUS.
+- Clique sobre o paciente encontrado para carregar instantaneamente seu histórico clínico completo.
 
-### 4.2 Ficha Cadastral e Diagnóstico do Paciente
-No topo do prontuário, você tem acesso rápido a:
-- **Dados Pessoais:** Nome completo, Nome social, Nome da mãe, Idade e Data de nascimento, Município de residência e Telefone/WhatsApp do responsável.
-- **Documentação SUS:** CNS (Cartão Nacional de Saúde validado) e CPF.
-- **Diagnóstico Clínico Principal:** Código e descrição do CID-10 (ex: `G80.0 - Paralisia cerebral espástica quadriplégica`).
-- **Modalidades de Reabilitação:** Ícones indicando as deficiências atendidas na unidade:
-  - 🏃 **Física**
-  - 🧠 **Intelectual**
-  - 👁️ **Visual**
-  - 👂 **Auditiva**
-- **Vínculo com a Atenção Primária:** UBS de referência do município e nome do Agente Comunitário de Saúde (ACS) responsável pela microárea da família.
+### 5.2 Ficha Cadastral, Diagnóstico CID-10 e Linhas de Cuidado
+No cabeçalho do prontuário, você encontra um resumo clínico essencial:
+- **Identificação Completa:** Nome completo, Nome Social (se houver), Nome da Mãe, Idade/Data de nascimento e Município de residência.
+- **Documentos SUS:** CPF e Cartão Nacional de Saúde (CNS).
+- **Diagnóstico CID-10:** Código e descrição da patologia primária e secundária.
+- **Modalidades de Reabilitação:** Emblemas visuais indicando as linhas de cuidado vinculadas (Física, Intelectual, Auditiva e Visual).
+- **Rede Básica:** Unidade Básica de Saúde (UBS) de referência e nome do Agente Comunitário de Saúde (ACS).
 
-### 4.3 Registro de Evolução Clínica Estruturada
-Para lançar o atendimento realizado no dia:
+### 5.3 Registro de Evolução Clínica Estruturada
+Para registrar o atendimento do dia:
 1. No prontuário do paciente, clique no botão verde **Nova Evolução Clínica**.
 2. Preencha os campos estruturados da sessão:
-   - **Especialidade / CBO:** Selecione sua área de atuação (ex: `2236-05 - Fisioterapeuta geral`).
-   - **Procedimento SIGTAP Realizado:** Escolha o procedimento executado na sessão (ex: `03.01.07.011-3 - Atendimento em reabilitação física`).
-   - **Queixa / Estado Atual:** Como o paciente se apresentou na sessão (sinais vitais, queixa de dor, tônus muscular, nível de atenção/cooperação).
-   - **Conduta Terapêutica Realizada:** Descrição técnica dos exercícios, técnicas de estimulação, treino de marcha, atividades de vida diária (AVD) ou manobras aplicadas.
-   - **Intercorrências / Observações:** Reações adversas, cansaço excessivo, recusa ou orientações dadas ao acompanhante para estímulo domiciliar.
-3. Se desejar salvar um rascunho antes de finalizar, clique em **Salvar Rascunho**.
+   - **Especialidade / CBO:** Sua ocupação profissional no atendimento.
+   - **Procedimento SIGTAP Executado:** Selecione o procedimento SUS correspondente (ex.: *03.01.07.011-3 - Atendimento em reabilitação física*).
+   - **Queixa / Estado Atual:** Relato do estado funcional e queixas apresentadas pelo paciente na chegada.
+   - **Conduta Realizada:** Descrição técnica das intervenções, exercícios, treino funcional ou orientações aplicadas.
+   - **Intercorrências / Observações:** Reações adversas, cansaço, orientações à família ou encaminhamentos.
+3. Se precisar interromper momentaneamente o preenchimento, utilize **Salvar Rascunho**.
 
-### 4.4 Assinatura Eletrônica com PIN e Hash SHA-256
-Quando o relato clínico estiver completo e revisado:
-1. Clique no botão azul **Assinar Evolução Eletronicamente**.
-2. O sistema solicitará o seu **PIN Eletrônico** (4 a 6 dígitos numéricos).
-3. Digite seu PIN e confirme.
-4. **O que acontece nos bastidores:**
-   - O sistema valida seu PIN criptografado.
-   - É gerado um **Hash Criptográfico SHA-256** exclusivo com base no texto da evolução, data, hora e seu identificador profissional.
-   - O carimbo oficial é gravado com data e hora exatas do sistema.
-   - Um registro na produção BPA-i do faturamento é criado automaticamente em segundo plano.
+### 5.4 Assinatura Eletrônica com PIN e Hash SHA-256
+Após revisar as informações registradas:
+1. Clique em **Assinar Evolução Eletronicamente**.
+2. Digite seu **PIN Numérico de Assinatura** (4 a 6 dígitos) e confirme.
+3. O sistema valida seu PIN, carimba a data e hora exatas do atendimento, gera a assinatura digital com **Hash SHA-256 de 64 caracteres** e envia automaticamente os dados para a produção mensal do faturamento BPA-i.
 
-### 4.5 A Regra de 24 Horas e a Imutabilidade Clínica
-> ⏱️ **Regra de Ouro da Legislação em Saúde:**  
-> Por determinação dos Conselhos Federais de Saúde e da legislação do SUS sobre prontuários eletrônicos:
-> - **Dentro das primeiras 24 horas após a assinatura:** O próprio profissional que assinou pode editar eventuais erros de digitação na sua própria evolução.
-> - **Após 24 horas da assinatura:** A evolução torna-se **100% IMUTÁVEL**. O botão de edição é desativado permanentemente e ninguém (nem mesmo a coordenação ou a equipe de TI) pode alterar ou apagar o texto original.
+### 5.5 A Regra das 24 Horas e a Imutabilidade Clínica
+> ⏱️ **Garantia de Segurança Pericial e Legal:**  
+> - **Primeiras 24 horas:** O próprio profissional que assinou pode efetuar correções pontuais de digitação em sua própria anotação.
+> - **Após 24 horas da assinatura:** A anotação torna-se **estritamente IMUTÁVEL**. O sistema bloqueia qualquer modificação ou exclusão do texto original.
 
-### 4.6 Termos de Adendo Retificadores
-Se você precisar acrescentar uma informação clínica importante ou retificar um dado de uma evolução que já ultrapassou o prazo de 24 horas:
-1. Localize a evolução assinada na linha do tempo do paciente.
+### 5.6 Termos de Adendo Retificadores
+Caso seja necessário retificar ou complementar uma evolução clínica após o encerramento do prazo de 24 horas:
+1. Localize a evolução assinada na linha do tempo.
 2. Clique no botão **Adicionar Termo de Adendo (Observação Retificadora)**.
-3. Digite o esclarecimento ou complemento (exemplo: *"Em complemento à evolução do dia 12/10, registra-se que a mãe trouxe a receita do novo anticonvulsivante prescrito pelo neuropediatra..."*).
-4. Informe o seu **PIN Eletrônico** e confirme.
-5. O Termo de Adendo ficará anexado visualmente à evolução original, com seu próprio carimbo de data, hora e assinatura eletrônica, preservando a transparência ética e pericial do prontuário.
+3. Escreva a nota complementar técnica informando o dado a ser retificado ou acrescentado.
+4. Digite seu PIN de assinatura e confirme.
+5. O termo de adendo ficará visualmente vinculado à evolução original com carimbo próprio de data, hora e assinatura, mantendo a integridade histórica exigida por lei.
 
-### 4.7 Linha do Tempo e Leitura Interdisciplinar
-Abaixo da ficha do paciente, a **Linha do Tempo Multiprofissional** exibe em ordem cronológica reversa (da mais recente para a mais antiga) todas as evoluções realizadas por todas as especialidades.
-- Você pode ler com facilidade o que o Fonoaudiólogo relatou ontem antes de iniciar a sessão de Terapia Ocupacional hoje.
-- Utilize os filtros rápidos no topo da linha do tempo para filtrar por:
-  - Todas as especialidades;
-  - Apenas minha especialidade;
-  - Período de datas.
+### 5.7 Linha do Tempo e Interdisciplinaridade
+A linha do tempo reúne todas as anotações clínicas de todas as especialidades em ordem cronológica reversa.
+- Antes de iniciar a sessão, o terapeuta pode conferir o que os demais membros da equipe (Fisioterapeuta, Fonoaudiólogo, Psicólogo, Terapeuta Ocupacional, Assistente Social) anotaram nas sessões anteriores.
+- Filtros rápidos permitem visualizar todas as especialidades ou isolar anotações de uma área específica.
+
+### 5.8 Impressão Oficial de Prontuário em Folha A4
+Para fornecer relatórios a juntas médicas, Ministério Público ou auditorias do SUS:
+- Clique no botão **Imprimir Prontuário** no topo da tela do PEP (ou utilize `Ctrl + P`).
+- O sistema formata um relatório clínico limpo, organizado em folhas A4 com logotipo oficial da unidade, cabeçalho institucional, dados demográficos, histórico completo de evoluções assinadas, carimbos de PIN e hashes SHA-256.
 
 ---
 
-## 5. Módulo Faturamento SUS & BPA-i (SIA/SUS)
+## 6. Faturamento SUS & Lote Magnético BPA-i (SIA/SUS)
 
-O faturamento do CER é realizado através do **Boletim de Produção Ambulatorial Individualizado (BPA-i)** do Ministério da Saúde. O CER Digital automatiza todo o processo, eliminando a digitação manual de planilhas no final do mês.
+### 6.1 Fluxo Automático de Produção a partir do PEP
+No CER Digital, a equipe de faturamento não precisa redigitar fichas de produção no fim do mês:
+- Cada evolução clínica assinada com PIN no PEP alimenta diretamente a tabela de produção ambulatorial do mês.
+- Atendimentos compartilhados (Co-atendimento) são desmembrados automaticamente em registros independentes para cada terapeuta com seu respectivo CBO e procedimento SIGTAP.
 
-### 5.1 O que é o BPA-i e o Fluxo de Faturamento
-Cada vez que um terapeuta realiza um atendimento e assina sua evolução clínica com PIN no PEP, o CER Digital cria automaticamente uma linha de produção ambulatorial contendo:
-- Código do Estabelecimento de Saúde (CNES);
-- Mês/Ano de competência;
-- Cartão Nacional de Saúde (CNS) do profissional executante;
-- Código Brasileiro de Ocupações (CBO) do profissional;
-- Data do atendimento;
-- Cartão Nacional de Saúde (CNS) e dados demográficos do paciente;
-- Código do Procedimento SIGTAP (10 dígitos);
-- Código do Diagnóstico Principal (CID-10);
-- Caráter do atendimento e autorização.
+### 6.2 Validação Prévia e Regras SIGTAP
+Antes de qualquer fechamento, o motor de auditoria do sistema confere cada registro contra as regras oficiais do Ministério da Saúde:
+- **Compatibilidade `CBO x Procedimento`:** Impede que um profissional fature procedimentos não autorizados para sua categoria profissional.
+- **Faixa Etária:** Valida se a idade do paciente é compatível com os limites estabelecidos pelo Ministério da Saúde.
+- **Compatibilidade de Sexo:** Verifica restrições de sexo do procedimento.
+- **Cartão SUS (CNS):** Valida matematicamente os 15 dígitos do CNS do paciente e do profissional executante.
+- **Compatibilidade de CID-10:** Verifica se o diagnóstico informado é aceito pelo procedimento no SIGTAP.
 
-### 5.2 Regras Automáticas da Tabela SIGTAP
-O CER Digital valida preventivamente contra as regras oficiais do Ministério da Saúde:
-1. **Compatibilidade CBO x Procedimento:** O profissional só pode faturar procedimentos autorizados para o seu CBO na tabela SIGTAP.
-2. **Faixa Etária Permitida:** Verifica se a idade do paciente na data da sessão está dentro dos limites mínimo e máximo estipulados para o procedimento.
-3. **Compatibilidade de Sexo:** Procedimentos restritos a determinado sexo não podem ser aplicados indevidamente.
-4. **Validação Matemática do Cartão SUS:** O CNS do paciente deve ter 15 dígitos e respeitar o algoritmo do Ministério da Saúde (iniciados com 1 ou 2, ou provisórios iniciados com 7, 8 ou 9).
-5. **CID-10 Primário:** O CID do paciente deve constar na relação de CIDs compatíveis com o procedimento no SIGTAP.
-
-### 5.3 Painel de Auditoria Prévia de Produção
+### 6.3 Painel de Auditoria de Lote por Competência
 - Acesse **Faturamento BPA-i** no menu lateral.
-- Selecione o **Mês / Competência** que deseja auditar (ex: `11/2026`).
-- O painel exibe dois cartões principais:
-  - 🟢 **Atendimentos Validados e Prontos para Envio:** Registros que atendem a 100% das regras SIGTAP e estão aptos para exportação.
-  - 🔴 **Atendimentos com Inconsistências / Pendências:** Registros que necessitam de correção antes de exportar (exemplo: *"Paciente sem Cartão SUS cadastrado"* ou *"Idade do paciente incompatível com procedimento infantil"*).
-- Clique no registro com pendência para abrir o atalho de correção cadastral.
+- Selecione o mês/ano de competência desejado (ex.: `202611`).
+- O painel divide a produção em dois blocos claros:
+  - 🟢 **Registros Validados e Prontos:** Atendimentos consistentes e aptos para remessa ao SUS.
+  - 🔴 **Registros com Inconsistências:** Atendimentos com pendências cadastrais (ex.: paciente sem CNS ou divergência de CBO). O painel oferece atalho imediato para regularização cadastral.
 
-### 5.4 Exportação do Arquivo Magnético Datasus (.txt)
-Quando todas as pendências da competência forem sanadas:
-1. No painel de Faturamento BPA-i, confira o valor total e a quantidade de procedimentos do lote.
-2. Clique no botão azul **Exportar Arquivo Magnético BPA-i (.txt)**.
-3. O sistema gerará instantaneamente o arquivo em formato oficial exigido pelo Datasus, contendo:
-   - **Registro Tipo 01 (Header):** Cabeçalho identificador `#BPA#`, CNES da unidade, competência, quantidade de folhas e hash de controle.
-   - **Registros Tipo 02 (Linhas de Produção Individualizada):** Cada atendimento com seus respectivos campos posicionais padronizados.
-4. O download do arquivo (ex: `PA022611.TXT`) começará automaticamente em seu computador.
+### 6.4 Exportação do Arquivo Magnético Oficial (.txt Datasus)
+Após sanar todas as pendências da competência:
+1. No painel de Faturamento, revise o total de atendimentos e o valor apurado.
+2. Clique no botão **Exportar Arquivo Magnético BPA-i (.txt)**.
+3. O sistema gera em transmissão direta o arquivo posicional oficial do Datasus:
+   - **Linha Tipo 01 (Header `#BPA#`):** 130 colunas com CNES da unidade, competência e checksum de integridade.
+   - **Linhas Tipo 03 (Produção Individualizada):** 350 colunas com os campos posicionais de cada procedimento, paginados em folhas de até 20 linhas por profissional.
+4. O arquivo (exemplo: `PA022611.TXT`) é descarregado diretamente no computador.
 
-### 5.5 Importação no Software Oficial BPA Magnético
-1. Abra o software oficial do Datasus instalado no computador do Faturamento (**BPA Magnético - SIA/SUS**).
+### 6.5 Importação no Software Oficial BPA Magnético
+1. Abra o software oficial do Ministério da Saúde (**BPA Magnético - SIA/SUS**) no computador do faturamento.
 2. Acesse o menu **Movimento** → **Importar Produção**.
-3. Selecione o arquivo `.txt` que você baixou do CER Digital.
-4. Clique em **Processar Importação**.
-5. O sistema do Datasus emitirá o comprovante de consistência com 0 (zero) erros!
+3. Selecione o arquivo `.txt` descarregado do CER Digital e confirme.
+4. O software do Datasus processará a importação com 100% de consistência.
 
 ---
 
-## 6. Módulo Gestão, Cadastros e Configurações
+## 7. Módulo de Relatórios e Indicadores Gerenciais
 
-Exclusivo para coordenadores, diretores e administradores de TI.
+O novo módulo de **Relatórios** (`/relatorios`) é uma ferramenta analítica de alto nível desenvolvida especificamente para apoiar a coordenação e a direção do CER.
 
-### 6.1 Painel Inicial Operacional (Dashboard)
-Ao fazer login, a coordenação visualiza um painel gerencial de alta performance contendo:
-- Total de pacientes ativos atendidos na unidade;
-- Atendimentos agendados, realizados e faltas no mês corrente;
-- Distribuição percentual de pacientes por **Modalidade de Reabilitação** (Física, Intelectual, Visual e Auditiva);
-- Atendimentos previstos para o dia com horários e salas;
-- Gráficos de absenteísmo e taxa de ocupação dos consultórios.
+### 7.1 Apresentação e Caráter Exclusivamente Consultivo
+- **Segurança Operacional:** O módulo de Relatórios é **estritamente consultivo**. A consulta ou exportação de relatórios não altera em hipótese alguma o status de nenhum agendamento, evolução clínica ou lote de faturamento.
+- **Desempenho Otimizado:** Consultas construídas com agregações diretas no banco de dados, garantindo respostas rápidas sem onerar a memória da VPS.
 
-### 6.2 Cadastro e Manutenção de Pacientes (com Paginação)
-- Acesse **Configurações** → **Pacientes**.
-- **Visualização Rápida com Paginação:** A listagem apresenta paginação inteligente (15, 25, 50 ou 100 pacientes por página), permitindo navegar com velocidade mesmo com mais de 38 mil registros cadastrados.
-- **Filtros Dinâmicos:** Pesquise pacientes por Nome, CPF, Cartão SUS ou filtre por Modalidade de Reabilitação.
-- **Cadastrar Novo Paciente:**
-  - Clique em **Novo Paciente**.
-  - Preencha os campos obrigatórios (Nome, Data de Nascimento, Sexo, Nome da Mãe, CPF, CNS de 15 dígitos e Município IBGE).
-  - Selecione as **Modalidades de Reabilitação** vinculadas (pode marcar mais de uma: Física, Intelectual, Visual, Auditiva).
-  - Informe o CID-10 principal e secundário.
-  - Selecione a **UBS de Referência** e o **Agente Comunitário de Saúde (ACS)**.
-  - Clique em **Salvar Paciente**.
+### 7.2 Filtros Globais Dinâmicos e Atalhos de Período
+No topo do módulo de relatórios, utilize a barra de filtros compartilhada entre todas as abas:
+- **Atalhos Rápidos de Período:** Clique nos botões **Hoje**, **Últimos 7 dias**, **Mês Atual**, **Mês Anterior** ou **Ano Atual** para preenchimento imediato das datas.
+- **Seleção Manual de Datas:** Defina livremente a Data Inicial e a Data Final desejadas.
+- **Filtros por Profissional, Especialidade e Sala:** Filtre por profissional específico, por conselho/CBO ou por espaço terapêutico da unidade.
+- **Filtro por Modalidade:** Analise dados isolados de reabilitação Física, Intelectual, Auditiva ou Visual.
+- **Competência BPA-i:** Para dados de faturamento, selecione a competência no formato `AAAAMM`.
+- **Botão Limpar Filtros:** Restaura a visualização padrão com um único clique.
 
-### 6.3 Salas e Espaços Terapêuticos
-- Acesse **Configurações** → **Salas & Espaços**.
-- Permite cadastrar, ativar ou inativar salas da unidade (ex: *Consultório 01 - Fonoaudiologia*, *Ginásio de Fisioterapia Adulto*, *Sala de Estimulação Precoce e Sensorial*, *Consultório de Psicologia*).
-- Salas inativadas deixam de aparecer como opção para novos agendamentos na grade semanal, preservando o histórico dos atendimentos passados.
+### 7.3 Área 1: Visão Geral e Indicadores Executivos
+A aba **Visão Geral** consolida os números mais expressivos do período:
+- **Cartões Executivos:**
+  - Total de Agendamentos no Período;
+  - Taxa Percentual de Presença (pacientes acolhidos e atendidos);
+  - Taxa Percentual de Absenteísmo (faltas injustificadas e justificadas);
+  - Novos Pacientes Inseridos em Tratamento;
+  - Volume de Produção SUS Gerada no Período.
+- **Gráfico de Evolução Diária:** Curva diária de comparecimentos, atendimentos e faltas.
+- **Distribuição por Modalidade de Reabilitação:** Participação percentual de cada deficiência no volume assistencial.
+- **Quadro de Atenção Imediata:** Resumo de indicadores críticos para intervenção da coordenação.
 
-### 6.4 Profissionais, Conselhos e CBOs SUS
-- Acesse **Configurações** → **Equipe & Perfis**.
-- Vincule cada usuário do sistema ao seu cadastro profissional:
-  - Nome completo e CPF;
-  - Conselho de Classe e Número de Inscrição (ex: CREFITO 12345-F, CRP 06/7890);
-  - CNS do Profissional (obrigatório para o BPA-i);
-  - CBO Principal (Classificação Brasileira de Ocupações no SUS).
+### 7.4 Área 2: Análise de Atendimentos e Horários de Pico
+A aba **Atendimentos** aprofunda os registros da recepção:
+- **Distribuição Detalhada de Status:** Contagem e percentual de sessões nos estados: Atendido, Presente, Agendado, Falta Justificada, Falta Injustificada e Cancelado.
+- **Causas e Motivos de Falta / Cancelamento:** Levantamento dos motivos mais recorrentes para suporte à busca ativa.
+- **Horários de Pico:** Comparativo de fluxo de pacientes entre o turno da manhã (`08h–12h`) e o turno da tarde (`13h–17h`), permitindo balancear a ocupação das salas.
 
-### 6.5 Integração e Sincronização com o e-SUS APS PEC
-O CER Digital possui integração nativa com o banco de dados oficial do **e-SUS Atenção Primária à Saúde (PEC)** do município.
-- **Para que serve?**  
-  Permite importar a base de cidadãos já cadastrados pelas Unidades Básicas de Saúde (UBS) e equipes de Saúde da Família (eSF), vinculando automaticamente a UBS de origem e o ACS de cada paciente do CER.
-- **Como executar a sincronização:**
-  1. Acesse **Configurações** → **Integração e-SUS PEC**.
-  2. O painel informa o status da conexão com o banco PostgreSQL do PEC e a data da última importação.
-  3. Clique no botão azul **Sincronizar Pacientes e Vínculos Agora**.
-  4. O sistema executará a leitura e complementação de dados com segurança e sem duplicar cadastros.
-- **Sincronização Automatizada via Terminal (TI):**  
-  A equipe técnica pode agendar a sincronização periódica no servidor via cron:
+### 7.5 Área 3: Monitoramento de Pacientes e Busca Ativa de Casos Críticos (3+ Faltas)
+A aba **Pacientes** oferece instrumentos poderosos para o Serviço Social e para a gestão da fila de espera:
+- **Lista Prioritária de Pacientes Críticos:** Relação nominal dos usuários que atingiram **3 ou mais faltas consecutivas** ou **5 ou mais faltas no mês**, com dados de contato, telefone/WhatsApp do responsável e modalidade vinculada para realização imediata de busca ativa.
+- **Perfil Demográfico:** Análise de pacientes em acompanhamento por faixa etária (crianças, adolescentes, adultos e idosos), sexo e municípios de residência.
+
+### 7.6 Área 4: Produtividade e Ocupação dos Profissionais
+A aba **Profissionais** apresenta o desempenho de cada membro da equipe clínica:
+- **Tabela Comparativa de Produtividade:** Relação por profissional contendo Especialidade/CBO, Total de Agendamentos, Atendimentos Concluídos, Faltas Registradas e Taxa de Ocupação da Agenda.
+- **Identificação de Sobrecarga ou Ociosidade:** Permite identificar terapeutas com agendas saturadas ou vagas ociosas para remanejamento inteligente de novos pacientes.
+
+### 7.7 Área 5: Taxa de Ocupação de Salas e Otimização da Grade
+A aba **Salas e Ocupação** analisa o uso da infraestrutura física do CER:
+- **Taxa Média de Ocupação por Sala:** Percentual de horas em que cada consultório, ginásio ou sala sensorial esteve efetivamente ocupado por atendimentos.
+- **Turnos Mais Disputados:** Análise comparativa entre turnos matutino e vespertino por espaço.
+- **Gestão de Espaços:** Subsídio técnico para a coordenação remanejar atendimentos de salas sobrecarregadas para espaços disponíveis.
+
+### 7.8 Área 6: Produção SUS / BPA-i e Estimativa Financeira SIGTAP
+A aba **Produção SUS / BPA-i** conecta a prática clínica à sustentabilidade financeira da unidade:
+- **Total de Procedimentos Realizados:** Volume total de atos ambulatoriais registrados pelas evoluções clínicas assinadas.
+- **Estimativa de Faturamento Financeiro (R$):** Valor monetário estimado com base na tabela SIGTAP do Ministério da Saúde para os procedimentos executados no período.
+- **Procedimentos Mais Frequentes:** Ranking dos códigos SIGTAP mais faturados pela unidade.
+- **Consistência de Lote:** Resumo de procedimentos prontos versus inconsistências cadastrais pendentes.
+
+### 7.9 Exportação em Planilha Universal (CSV) e Impressão Limpa em PDF
+- **Exportar Planilha (CSV):** No canto superior direito do módulo, clique em **Exportar Dados (CSV)**. O sistema compila os dados da aba ativa respeitando estritamente os filtros aplicados e gera um arquivo CSV universal, compatível com **Microsoft Excel**, **Google Planilhas** e **LibreOffice Calc**.
+- **Imprimir Relatório / Salvar em PDF:** Clique no botão **Imprimir** (ou `Ctrl + P`). O sistema formata um documento limpo em folha A4 com cabeçalho institucional, dados do estabelecimento, período filtrado, data/hora de emissão e paginação adequada, pronto para reuniões de colegiado ou prestação de contas à Secretaria Municipal de Saúde.
+
+---
+
+## 8. Cadastros, Parâmetros e Integração e-SUS APS PEC
+
+### 8.1 Painel Inicial Operacional (Dashboard)
+Acessível em `/dashboard`, exibe o panorama executivo da unidade em tempo real com contagem de pacientes ativos, sessões do dia, absenteísmo e produção ambulatorial do mês.
+
+### 8.2 Dados do Estabelecimento e Logotipo Oficial
+Em **Configurações** → **Estabelecimento**:
+- Cadastre os dados oficiais da unidade: Razão Social, Nome Fantasia, Código CNES (7 dígitos), Município IBGE e dados de contato.
+- Faça o upload do **Logotipo Oficial** da unidade ou da prefeitura. O logotipo é exibido automaticamente na tela de entrada, nos cabeçalhos de impressão de prontuário, no painel de TV e nos relatórios gerenciais.
+
+### 8.3 Cadastro e Manutenção de Pacientes com Paginação Ágil
+Em **Configurações** → **Pacientes**:
+- Navegue com velocidade mesmo em bases volumosas de dezenas de milhares de pacientes graças à **paginação configurável** (15, 25, 50 ou 100 registros por página).
+- Localize cidadãos por Nome, CPF, Cartão SUS ou filtre por Modalidade de Reabilitação vinculada.
+- Ao cadastrar um novo paciente, informe Nome Completo, Data de Nascimento, Sexo, Nome da Mãe, CPF, CNS de 15 dígitos, Código IBGE da cidade, endereço e as modalidades de deficiência atendidas.
+
+### 8.4 Salas e Espaços Terapêuticos
+Em **Configurações** → **Salas & Espaços**:
+- Cadastre e gerencie as salas da unidade: Consultórios de Fonoaudiologia e Psicologia, Sala de Integração Sensorial, Sala de AVD, Ginásios de Fisioterapia Adulto e Pediátrico e Anexos.
+- Salas inativadas deixam de aparecer para novos agendamentos, preservando o histórico passado.
+
+### 8.5 Profissionais, Conselhos e CBOs SUS
+Em **Configurações** → **Equipe & Perfis**:
+- Vincule cada colaborador ao seu respectivo conselho de classe (CREFITO, CRP, CRFa, CRESS, etc.) e número de registro.
+- Informe o Cartão SUS (CNS) do profissional e selecione o CBO Principal de atuação no SUS.
+
+### 8.6 Integração e Sincronização com o e-SUS APS PEC
+O CER Digital conecta-se via rede segura ao banco de dados PostgreSQL do **e-SUS Atenção Primária (PEC)** municipal:
+- **Finalidade:** Importa os cidadãos já cadastrados pelas Unidades Básicas de Saúde (UBS) e equipes de Saúde da Família (eSF), vinculando automaticamente a UBS de origem e o Agente Comunitário de Saúde (ACS) responsável pelo território de cada família.
+- **Sincronização pela Interface:** Acesse **Configurações** → **Integração e-SUS PEC** e clique em **Sincronizar Pacientes e Vínculos Agora**.
+- **Sincronização Automatizada via Terminal:** A equipe de TI pode agendar a sincronização incremental periódica no servidor através do comando:
   ```bash
-  php artisan esus:sincronizar-pec --dry-run   # Simulação prévia
-  php artisan esus:sincronizar-pec             # Execução efetiva
+  php artisan esus:sincronizar-pec
   ```
 
-### 6.6 Trilha de Auditoria e Segurança (LGPD)
-- Acesse **Configurações** → **Auditoria LGPD**.
-- Em conformidade estrita com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018), o sistema registra de forma imutável:
-  - Todo acesso a prontuários clínicos de pacientes (quem acessou, qual paciente, data e hora);
-  - Todas as assinaturas eletrônicas e termos de adendo;
-  - Exportações de lotes de faturamento;
-  - Tentativas de login malsucedidas.
-- Garante total transparência e rastreabilidade para auditorias do Ministério Público, Conselho Tutelar, Vigilância Sanitária ou Auditoria do SUS (DENASUS).
+### 8.7 Trilha de Auditoria e Segurança (LGPD)
+Em **Configurações** → **Auditoria LGPD**:
+- O sistema registra de forma perene e imutável todas as ações sensíveis:
+  - Consulta a prontuários clínicos (`ACESSO_PEP`);
+  - Assinaturas de evolução e termos de adendo com registro de IP (`ASSINATURA_EVOLUCAO`);
+  - Exportações de lotes de faturamento magnético (`EXPORTACAO_BPA`).
+- Garante total conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018) para auditorias do Ministério Público, Conselhos Tutelares e Vigilância em Saúde.
 
 ---
 
-## 7. Checklists Diários por Perfil de Usuário
+## 9. Central de Ajuda & Linha do Tempo SemVer
 
-Utilize os roteiros práticos abaixo no dia a dia da unidade:
+### 9.1 Modal Pós-Login de Novidades da Versão
+A cada nova versão publicada no CER Digital, os usuários recebem automaticamente um modal pós-login com as novidades, melhorias e correções da versão, explicadas em **linguagem simples e acessível**.
+- O sistema grava individualmente no banco de dados quando cada usuário visualiza e fecha o modal (`ultima_versao_novidades_vista`), garantindo que a tela não reapareça repetidamente.
 
-### 7.1 Checklist da Recepção
-- [ ] **Abertura do Turno (07:45):** Acessar a **Grade Semanal** e verificar a lista de atendimentos previstos para a manhã.
-- [ ] **Acolhimento na Chegada:** Ao receber o paciente ou acompanhante, localizar o agendamento e marcar o status como **Presente**.
-- [ ] **Novos Encaminhamentos:** Cadastrar novos pacientes conferindo cuidadosamente Nome da Mãe, Data de Nascimento e os 15 números do Cartão SUS.
-- [ ] **Monitoramento de Faltas (11:30 e 16:30):** Identificar pacientes agendados que não compareceram e registrar **Falta Injustificada** ou **Falta Justificada**.
-- [ ] **Aviso de Absenteísmo:** Ao notar alerta de 3 faltas consecutivas, repassar a ficha para o Serviço Social da unidade.
-
-### 7.2 Checklist do Terapeuta / Especialista
-- [ ] **Início do Atendimento:** Acessar a **Grade Semanal** ou o **PEP** para conferir seu cronograma e o histórico do paciente.
-- [ ] **Leitura Interdisciplinar:** Verificar se outros profissionais da equipe (Fisioterapia, TO, Fono, Psicologia) registraram observações recentes.
-- [ ] **Registro da Sessão:** Logo após a sessão, abrir o prontuário do paciente e clicar em **Nova Evolução Clínica**.
-- [ ] **Preenchimento Estruturado:** Descrever o estado atual, a conduta motora/sensorial/cognitiva realizada e eventuais intercorrências.
-- [ ] **Assinatura com PIN:** Digitar seu PIN eletrônico de 4 a 6 dígitos para assinar e homologar o atendimento no SUS.
-- [ ] **Revisão:** Lembrar que correções simples de digitação podem ser feitas em até 24 horas; após esse prazo, utilizar **Termo de Adendo**.
-
-### 7.3 Checklist do Faturamento SUS
-- [ ] **Semanalmente:** Acessar o painel **Faturamento BPA-i** e filtrar a competência em andamento.
-- [ ] **Auditoria Preventiva:** Verificar a lista de "Atendimentos com Inconsistências" e solicitar à recepção ou terapeutas o ajuste de cadastros (ex: CNS incorreto, CBO divergente).
-- [ ] **Fechamento Mensal (primeiros dias úteis):** Confirmar que 100% dos atendimentos concluídos estão no grupo "Prontos para Envio".
-- [ ] **Exportação Datasus:** Clicar em **Exportar Arquivo Magnético BPA-i (.txt)**.
-- [ ] **Importação no BPA Magnético:** Importar o arquivo no sistema oficial do Datasus, emitir o relatório de consistência e arquivar o comprovante.
-
-### 7.4 Checklist da Coordenação e Gestão
-- [ ] **Painel Inicial:** Acompanhar diariamente o volume de atendimentos e a taxa de absenteísmo global.
-- [ ] **Gestão de Equipe:** Cadastrar novos colaboradores e atribuir os perfis de acesso adequados.
-- [ ] **Sincronização e-SUS:** Conferir periodicamente se a integração com o banco do e-SUS PEC está atualizada.
-- [ ] **Auditoria e LGPD:** Monitorar os logs de segurança e zelar pela confidencialidade dos dados de saúde dos usuários.
+### 9.2 Central de Ajuda Navegável e Download do Manual
+Acessível a qualquer momento em `/ajuda` no menu lateral:
+- **Aba Novidades de Cada Versão:** Linha do tempo interativa com o histórico completo de evolução do CER Digital em linguagem clara.
+- **Aba Manual do Usuário:** Capítulos didáticos organizados por área (Acesso e PIN, Recepção e Agendamento, Terapeutas e PEP, Faturamento SUS, Relatórios Gerenciais, Coordenação, Checklists, FAQ e Glossário).
+- **Botão Baixar Manual (.md):** Permite descarregar o arquivo completo do manual atualizado (`Manual-do-Usuario-CER-Digital-v1.21.0.md`).
 
 ---
 
-## 8. Perguntas Frequentes (FAQ) & Resolução de Problemas
+## 10. Checklists Diários Operacionais por Função
 
-### 1. Esqueci meu PIN de assinatura eletrônica. O que devo fazer?
-**Resposta:** Acesse o menu lateral em **Configurações** → **Minha Conta & PIN**. No bloco do PIN, digite o novo PIN de sua escolha, informe sua senha de login atual e salve. O novo PIN passará a valer imediatamente.
+### 10.1 Checklist da Recepção
+- [ ] **07:45 - Abertura:** Acessar a **Agenda** (modo Dia ou Grade Semanal) e conferir os horários marcados para o turno da manhã.
+- [ ] **Acolhimento Imediato:** Ao receber o paciente ou acompanhante, localizar o agendamento e clicar em **Presente** para registrar o horário de chegada.
+- [ ] **Chamada de Paciente:** Utilizar o botão de chamada na TV para avisar a chegada na sala de espera.
+- [ ] **Novos Encaminhamentos:** Cadastrar novos usuários conferindo Nome da Mãe, Data de Nascimento e os 15 dígitos do Cartão SUS.
+- [ ] **Verificação de Faltas (11:30 e 16:30):** Identificar quem não compareceu e registrar **Falta Justificada** ou **Falta Injustificada**.
+- [ ] **Alerta de Absenteísmo:** Ao notar alerta de 3 faltas consecutivas ou 5 no mês, repassar o caso para o Serviço Social.
 
-### 2. Errei uma informação na evolução clínica e já se passaram mais de 24 horas. Como corrigir?
-**Resposta:** Por determinação ética e legal, evoluções com mais de 24 horas não podem ser alteradas. Localize a evolução na linha do tempo do paciente, clique no botão **Adicionar Termo de Adendo (Observação Retificadora)**, descreva a correção ou acréscimo necessário e assine com seu PIN.
+### 10.2 Checklist do Terapeuta / Especialista
+- [ ] **Início do Turno:** Abrir a **Agenda** para conferir a lista de pacientes do dia.
+- [ ] **Leitura Interdisciplinar no PEP:** Consultar as anotações registradas pelos demais profissionais da equipe antes do início do atendimento.
+- [ ] **Chamada pelo Consultório:** Clicar em **Chamar Paciente na TV** para convocar o próximo atendimento na sala de espera.
+- [ ] **Registro da Sessão:** Imediatamente após o atendimento, clicar em **Nova Evolução Clínica** e descrever Queixa/Estado Atual, Conduta e Intercorrências.
+- [ ] **Assinatura com PIN:** Digitar o PIN de 4 a 6 dígitos para assinar eletronicamente e gerar o faturamento SUS.
+- [ ] **Revisão:** Lembrar que pequenas retificações de digitação são permitidas em até 24 horas; após esse prazo, utilizar **Termo de Adendo**.
 
-### 3. O paciente é recém-nascido e ainda não possui CPF ou Cartão SUS próprio. Posso agendar?
-**Resposta:** Para o atendimento inicial de acolhimento, a recepção pode cadastrar os dados provisórios informando o Cartão SUS da mãe (desde que autorizado pelo protocolo municipal) ou solicitar urgência à UBS de origem para a geração do CNS definitivo do bebê, necessário para o faturamento BPA-i.
+### 10.3 Checklist do Faturamento SUS
+- [ ] **Acompanhamento Semanal:** Acessar **Faturamento BPA-i** e filtrar a competência em andamento.
+- [ ] **Auditoria Prévia:** Identificar atendimentos na aba de inconsistências e solicitar os ajustes cadastrais necessários.
+- [ ] **Fechamento Mensal (primeiros dias do mês subsequente):** Confirmar que 100% dos atendimentos concluídos estão na condição "Prontos para Envio".
+- [ ] **Exportação do Lote:** Clicar em **Exportar Arquivo Magnético BPA-i (.txt)**.
+- [ ] **Importação no Datasus:** Importar o arquivo `.txt` no software oficial **BPA Magnético (SIA/SUS)**, emitir o relatório de consistência e arquivar o recibo da remessa.
 
-### 4. Dois terapeutas atenderam a mesma criança ao mesmo tempo. Como lançar?
-**Resposta:** Na Grade Semanal, ao criar o agendamento, selecione o primeiro profissional e adicione o segundo no campo **Co-atendimento / Profissionais Adicionais**. No PEP, cada profissional abrirá a sessão e registrará sua respectiva nota técnica assinando com seu próprio PIN. O sistema gerará duas linhas de BPA-i sem duplicar a sessão.
+### 10.4 Checklist da Coordenação e Gestão
+- [ ] **Acompanhamento no Painel Inicial:** Monitorar taxa de presença, absenteísmo e volume de atendimentos diários.
+- [ ] **Gestão com o Módulo de Relatórios:** Utilizar as 6 áreas de relatórios para avaliar produtividade da equipe, horários de pico, ocupação das salas e cumprimento de metas contratuais com o SUS.
+- [ ] **Busca Ativa de Pacientes Críticos:** Acompanhar na aba de Pacientes os usuários com 3+ faltas seguidas e coordenar ações com o Serviço Social.
+- [ ] **Parâmetros e Cadastros:** Manter equipe de profissionais, salas e especialidades devidamente atualizadas.
+- [ ] **Sincronização e-SUS:** Acompanhar a execução periódica da sincronização de cadastros com a Atenção Primária.
+- [ ] **Auditoria e LGPD:** Revisar periodicamente os logs de acesso e zelar pela privacidade e segurança dos dados.
 
-### 5. O arquivo BPA-i gerou erro no software do Datasus acusando "CBO incompatível". Como resolver?
-**Resposta:** Isso ocorre quando o procedimento realizado não é permitido para aquela categoria profissional segundo a tabela oficial SIGTAP do Ministério da Saúde. O faturamento ou a coordenação deve revisar a amarração em **Configurações** → **Tabela SIGTAP x CBO** ou corrigir o procedimento lançado na sessão.
+---
 
-### 6. Por que o sistema não carrega mais a lista inteira de pacientes ao abrir o agendamento ou prontuário?
-**Resposta:** Nas versões anteriores, carregar mais de 38 mil pacientes de uma só vez deixava o navegador lento e travava computadores mais antigos. O CER Digital agora utiliza **busca dinâmica sob demanda**: basta digitar 3 letras ou números para o sistema trazer exatamente os resultados desejados em fração de segundo.
+## 11. Perguntas Frequentes (FAQ) & Resolução de Dúvidas
 
-### 7. O que fazer quando o paciente acumula 3 faltas consecutivas?
-**Resposta:** O sistema exibe automaticamente uma etiqueta vermelha de alerta na recepção. O fluxo recomendado é encaminhar o caso para o Serviço Social da unidade para contato telefônico com a família, investigação das causas (falta de transporte, internação, mudança) e orientação antes do desligamento da vaga.
+### 1. Esqueci meu PIN de assinatura eletrônica. Como devo proceder?
+**Resposta:** Acesse **Configurações** → **Minha Conta & PIN**. No bloco do PIN, digite o novo PIN numérico desejado, informe sua senha de login atual e salve. O novo PIN passa a valer imediatamente.
 
-### 8. Posso usar o CER Digital no celular ou tablet?
-**Resposta:** Sim. O CER Digital é totalmente responsivo e adapta sua interface automaticamente para tablets e smartphones, com menu retrátil (drawer) facilitando anotações clínicas à beira do leito ou nos ginásios de reabilitação.
+### 2. Posso alterar uma evolução clínica após 24 horas da assinatura?
+**Resposta:** Não. Por exigência ética dos Conselhos Federais de Saúde e legislação de prontuário eletrônico do SUS, anotações clínicas com mais de 24 horas tornam-se estritamente imutáveis. Para acrescentar informações ou corrigir dados passados, clique em **Adicionar Termo de Adendo (Observação Retificadora)** na evolução original e assine com seu PIN.
 
-### 9. Como imprimir a ficha e as evoluções de um paciente para uma solicitação judicial ou junta médica?
-**Resposta:** No Prontuário do Paciente (PEP), clique no botão **Imprimir Prontuário Completo** (ou utilize o atalho de impressão do navegador `Ctrl + P`). O sistema formata um documento limpo, com cabeçalho oficial do estabelecimento, dados cadastrais, histórico cronológico de todas as evoluções assinadas, carimbos de data/hora e identificação dos profissionais executantes.
+### 3. O que fazer quando o paciente não tem Cartão SUS no momento do agendamento?
+**Resposta:** O sistema exibe um alerta claro explicando a pendência. Caso o paciente seja recém-nascido ou acolhimento inicial, o cadastro pode ser aberto pelo atalho fornecido para inserção do CNS provisório ou do responsável, ou solicitada a emissão com prioridade junto à UBS de origem, já que o CNS é mandatório para o faturamento BPA-i.
 
-### 10. O que significa o código de município IBGE no cadastro do paciente?
-**Resposta:** É o código oficial de 6 dígitos do Instituto Brasileiro de Geografia e Estatística que identifica a cidade onde o paciente reside (ex: `270430` para Maceió). Esse campo é obrigatório para que o Ministério da Saúde valide o faturamento da produção ambulatorial.
+### 4. Dois terapeutas atenderam a mesma criança juntos. Como registrar?
+**Resposta:** No agendamento, selecione o primeiro profissional e inclua o segundo no campo **Co-atendimento**. Cada profissional abrirá o prontuário e registrará sua respectiva evolução assinando com seu próprio PIN. O sistema gerará duas linhas independentes de BPA-i sem duplicar a sessão.
+
+### 5. O módulo de Relatórios pode alterar o status de algum agendamento ou produção?
+**Resposta:** Não. O módulo de Relatórios e Indicadores é **estritamente consultivo**. Ele apenas realiza leituras agregadas no banco de dados para visualização, análise gráfica, impressão e exportação em planilha CSV, sem modificar registros.
+
+### 6. Como funciona a chamada de pacientes na Smart TV da sala de espera?
+**Resposta:** A Smart TV é aberta no endereço `/painel-chamadas` e conectada mediante pareamento seguro por código de 6 dígitos autorizado no menu de configurações. As chamadas podem ser disparadas pela recepção ou pelos terapeutas dentro dos consultórios, emitindo campainha e voz sintetizada em português.
+
+### 7. Por que a busca de pacientes é instantânea mesmo com dezenas de milhares de cadastros?
+**Resposta:** O CER Digital utiliza consultas dinâmicas sob demanda com índices otimizados no banco de dados. Basta digitar ao menos 3 caracteres (Nome, CPF ou Cartão SUS) para o sistema consultar diretamente o servidor e retornar os resultados em milissegundos.
+
+### 8. Posso utilizar o CER Digital em celulares e tablets?
+**Resposta:** Sim. O sistema foi desenvolvido com arquitetura responsiva Mobile-First. Em telas de smartphones e tablets, a navegação conta com menu inferior adaptado ao toque, cartões verticais fáceis de ler e formulários confortáveis.
+
+### 9. Como exportar os dados dos relatórios para o Excel?
+**Resposta:** No módulo de Relatórios (`/relatorios`), aplique os filtros desejados e clique no botão **Exportar Dados (CSV)**. O arquivo descarregado pode ser aberto diretamente no Microsoft Excel, Google Planilhas ou qualquer software compatível.
+
+### 10. Como imprimir um prontuário para uma junta médica ou determinação judicial?
+**Resposta:** Abra o prontuário do paciente no PEP e clique no botão de impressão (ou use `Ctrl + P`). O sistema aplica formatação em folha A4 limpa com cabeçalho oficial do estabelecimento, identificação do cidadão, histórico cronológico de todas as evoluções, carimbos de validação e assinaturas digitais com hash SHA-256.
 
 ---
 
-## 9. Glossário de Termos do SUS e do Sistema
+## 12. Glossário de Termos do SUS e do Sistema
 
-- **BPA-i (Boletim de Produção Ambulatorial Individualizado):** Instrumento de registro magnético do SIA/SUS onde cada atendimento ambulatorial é informado individualmente com o CNS do paciente e do profissional.
-- **CBO (Classificação Brasileira de Ocupações):** Código numérico de 6 dígitos que identifica a ocupação profissional no SUS (ex: `2236-05` para Fisioterapeuta, `2238-10` para Fonoaudiólogo, `2239-05` para Terapeuta Ocupacional, `2515-10` para Psicólogo).
-- **CER (Centro Especializado em Reabilitação):** Unidade de saúde ambulatorial especializada no diagnóstico, tratamento, concessão e adaptação de tecnologias assistivas para pessoas com deficiência.
-- **CID-10 (Classificação Internacional de Doenças):** Código alfanumérico padronizado pela OMS que identifica a patologia ou condição clínica do paciente (ex: `F84.0` - Autismo infantil, `G80.0` - Paralisia cerebral).
-- **CNES (Cadastro Nacional de Estabelecimentos de Saúde):** Código numérico de 7 dígitos que identifica a unidade de saúde perante o Ministério da Saúde.
-- **CNS (Cartão Nacional de Saúde):** Número de 15 dígitos que identifica unicamente cada usuário e profissional no Sistema Único de Saúde.
-- **e-SUS APS PEC (Prontuário Eletrônico do Cidadão):** Software oficial do Ministério da Saúde utilizado nas Unidades Básicas de Saúde da Atenção Primária.
-- **Hash SHA-256:** Algoritmo matemático criptográfico que gera uma impressão digital única e inviolável de um documento eletrônico, garantindo que o texto não foi adulterado após a assinatura.
-- **Horário Cativo:** Vaga de atendimento recorrente reservada semanalmente para um paciente que realiza terapia contínua de reabilitação.
-- **Imutabilidade Clínica:** Princípio ético e legal que impede a alteração ou destruição de anotações médicas e terapêuticas após a sua finalização e assinatura.
-- **LGPD (Lei Geral de Proteção de Dados - Lei 13.709/2018):** Legislação federal que disciplina o tratamento ético e seguro de dados pessoais e dados sensíveis de saúde.
-- **PEP (Prontuário Eletrônico do Paciente):** Repositório digital que reúne todas as informações de saúde, condutas clínicas e diagnósticos do paciente.
-- **PIN (Personal Identification Number):** Senha numérica pessoal utilizada pelo profissional de saúde para assinar digitalmente suas evoluções no sistema.
-- **SIA/SUS (Sistema de Informações Ambulatoriais do SUS):** Sistema federal onde é processada toda a produção ambulatorial da rede pública de saúde.
-- **SIGTAP (Sistema de Gerenciamento da Tabela de Procedimentos, Medicamentos e OPM do SUS):** Tabela mestre oficial do Ministério da Saúde que define regras, valores e compatibilidades de cada procedimento médico e terapêutico.
-- **Termo de Adendo:** Nota técnica complementar ou retificadora anexada formalmente a uma evolução clínica após o encerramento do prazo de 24 horas.
-- **UBS (Unidade Básica de Saúde):** Posto de saúde da Atenção Primária responsável pelo acolhimento inicial e território de residência da família.
+- **BPA-i (Boletim de Produção Ambulatorial Individualizado):** Instrumento de registro magnético oficial do SIA/SUS no qual cada procedimento assistencial é identificado individualmente com o CNS do paciente e do profissional executante.
+- **CBO (Classificação Brasileira de Ocupações):** Código numérico oficial de 6 dígitos que identifica a ocupação profissional no SUS (ex.: `2236-05` - Fisioterapeuta, `2238-10` - Fonoaudiólogo, `2239-05` - Terapeuta Ocupacional, `2515-10` - Psicólogo).
+- **CER (Centro Especializado em Reabilitação):** Estabelecimento ambulatorial de saúde habilitado pelo Ministério da Saúde para atenção especializada a pessoas com deficiência física, intelectual, auditiva e/ou visual.
+- **CID-10 (Classificação Internacional de Doenças):** Padrão internacional da Organização Mundial da Saúde para codificação de patologias e condições de saúde.
+- **CNES (Cadastro Nacional de Estabelecimentos de Saúde):** Identificador numérico de 7 dígitos da unidade perante o Ministério da Saúde.
+- **CNS (Cartão Nacional de Saúde):** Número oficial de 15 dígitos com validação matemática do Ministério da Saúde que identifica o cidadão e o profissional de saúde.
+- **e-SUS APS PEC (Prontuário Eletrônico do Cidadão):** Sistema oficial do Ministério da Saúde para informatização das Unidades Básicas de Saúde da Atenção Primária.
+- **Hash SHA-256:** Assinatura criptográfica matemática de 64 caracteres que assegura a integridade de um registro eletrônico, comprovando que o texto não foi adulterado após a assinatura.
+- **Horário Cativo:** Vaga semanal fixa reservada na grade para pacientes que necessitam de acompanhamento contínuo em reabilitação.
+- **Imutabilidade Clínica:** Princípio ético e legal que determina que prontuários eletrônicos assinados não podem ser sobrescritos, modificados ou apagados.
+- **LGPD (Lei Geral de Proteção de Dados - Lei nº 13.709/2018):** Legislação federal brasileira que regula a privacidade e o tratamento de dados pessoais e dados sensíveis de saúde.
+- **PEP Multi (Prontuário Eletrônico Multiprofissional):** Ambiente digital que reúne o histórico de saúde, diagnósticos e condutas de todas as especialidades terapêuticas da unidade em uma única linha do tempo integrada.
+- **PIN (Personal Identification Number):** Senha numérica pessoal utilizada pelo terapeuta para assinar digitalmente suas evoluções no PEP.
+- **SIA/SUS (Sistema de Informações Ambulatoriais do SUS):** Sistema de processamento da produção ambulatorial pública federal.
+- **SIGTAP (Sistema de Gerenciamento da Tabela de Procedimentos do SUS):** Catálogo oficial do Ministério da Saúde contendo os códigos de 10 dígitos, valores, CBOs autorizados e regras de compatibilidade dos procedimentos ambulatoriais.
+- **Termo de Adendo:** Anotação técnica complementar ou retificadora anexada formalmente a uma evolução clínica cujo prazo de 24 horas já foi encerrado.
+- **UBS (Unidade Básica de Saúde):** Posto de saúde da Atenção Primária que coordena o cuidado no território de moradia da família.
 
 ---
-*Manual elaborado pela equipe de desenvolvimento e homologado para a rede de Centros Especializados em Reabilitação (CER Digital — v1.16.0).*
 
+*Manual elaborado pela equipe de desenvolvimento e homologado para a rede de Centros Especializados em Reabilitação (CER Digital — v1.21.1).*

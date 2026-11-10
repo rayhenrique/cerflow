@@ -83,3 +83,24 @@
 - [x] 7.6 Rebranding completo da identidade visual para **CER Digital** (login, cabeçalho, menus, documentação)
 - [x] 7.7 Auditoria de Internacionalização em Português Brasileiro (PT-BR), criação de `lang/pt_BR` e padronização (Painel Inicial)
 - [x] 7.8 Persistência individual do Modal de Novidades da Versão no banco (`ultima_versao_novidades_vista` na tabela `users`), independente por usuário e dispositivo
+
+## 📌 Fase 8: Integração e-SUS APS PEC & Sistema de Chamadas por TV
+- [x] 8.1 Sincronização direta com banco de dados PostgreSQL do e-SUS APS PEC (`ConfiguracoesEsusPecService` e comando `php artisan esus:sincronizar-pec`)
+- [x] 8.2 Vinculação automática de UBS de referência e Agente Comunitário de Saúde (ACS) na ficha do paciente
+- [x] 8.3 Painel de TV na Sala de Espera (`/painel-chamadas`) com emissão de áudio harmônico e síntese de voz (Web Speech API)
+- [x] 8.4 Pareamento seguro de Smart TVs via código numérico de 6 dígitos (`dispositivos_tv` e `solicitacoes_pareamento_tv`)
+- [x] 8.5 Disparo de chamadas a partir da Recepção e do consultório do Terapeuta
+
+## 📌 Fase 9: Landing Page Institucional & Experiência Mobile-First
+- [x] 9.1 Landing Page pública (`/`) autoral, moderna e acessível, apresentando as linhas de reabilitação e o fluxo de cuidado do SUS
+- [x] 9.2 Tela de Login corporativa (`/login`) redesenhada com identidade visual acolhedora, botão de visualização/ocultação de senha e tratamento de erro
+- [x] 9.3 Experiência Mobile-First em todos os módulos: barra de navegação inferior (Bottom Nav) e cartões verticais em substituição a tabelas largas
+- [x] 9.4 Aprimoramento da estabilidade no carregamento e renderização do logotipo institucional em todas as resoluções
+
+## 📌 Fase 10: Validações Cadastrais no Agendamento & Relatórios Gerenciais
+- [x] 10.1 Alerta imediato e claro no modal de Novo Agendamento ao selecionar paciente sem Cartão SUS (CNS) ou com CNS inválido
+- [x] 10.2 Atalho de atualização cadastral rápida sem perda dos campos preenchidos e sem códigos internos exibidos ao usuário
+- [x] 10.3 Módulo completo de Relatórios e Indicadores Gerenciais (`/relatorios`) com 6 áreas temáticas (Visão Geral, Atendimentos, Pacientes, Profissionais, Salas/Ocupação e Produção SUS)
+- [x] 10.4 Filtros globais compartilhados por período, atalhos dinâmicos, profissional, especialidade, sala e competência BPA-i
+- [x] 10.5 Exportação universal para planilhas em formato CSV e impressão otimizada em folha A4 limpa via CSS de impressão
+- [x] 10.6 Documentação integral e sincronizada com a versão v1.21.1 (`README.md`, `MANUAL-DO-USUARIO.md`, `DATABASE-SCHEMA.md`, `AjudaSobre`)

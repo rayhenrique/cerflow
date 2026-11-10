@@ -192,6 +192,11 @@ class ControleVersaoAjudaTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Central de Ajuda & Sobre o CER Digital', false);
+        $response->assertSee('v1.21.1');
+        $response->assertSee('v1.21.0');
+        $response->assertSee('v1.20.1');
+        $response->assertSee('v1.20.0');
+        $response->assertSee('v1.19.4');
         $response->assertSee('v1.18.1');
         $response->assertSee('v1.18.0');
         $response->assertSee('v1.17.1');
@@ -226,6 +231,7 @@ class ControleVersaoAjudaTest extends TestCase
 
     public function test_componente_ajuda_sobre_permite_navegar_no_manual_e_baixar_arquivo(): void
     {
+        $versaoAtual = app(VersionService::class)->versaoAtual();
         $user = User::factory()->create(['ativo' => true]);
         $user->assignRole('terapeuta');
 
@@ -243,7 +249,10 @@ class ControleVersaoAjudaTest extends TestCase
             ->call('selecionarSecaoManual', 'faturamento')
             ->assertSet('secaoManual', 'faturamento')
             ->assertSee('Faturamento SUS & Lote Magnético BPA-i (SIA/SUS)', false)
+            ->call('selecionarSecaoManual', 'relatorios')
+            ->assertSet('secaoManual', 'relatorios')
+            ->assertSee('Relatórios e Indicadores Gerenciais')
             ->call('baixarManual')
-            ->assertFileDownloaded('Manual-do-Usuario-CER-Digital-v1.16.0.md');
+            ->assertFileDownloaded("Manual-do-Usuario-CER-Digital-v{$versaoAtual}.md");
     }
 }

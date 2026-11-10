@@ -44,6 +44,17 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.21.1',
+                'data' => '10/11/2026',
+                'titulo' => 'Atualização Integral do Manual do Usuário e Central de Ajuda',
+                'tipo' => 'Documentação e Ajuda',
+                'destaques' => [
+                    'Melhorias: Atualizamos integralmente o Manual do Usuário para explicar em detalhes o novo painel de relatórios, o sistema de chamadas na TV e os avisos do Cartão SUS.',
+                    'Melhorias: Agora você pode navegar pelos capítulos do manual diretamente na Central de Ajuda ou baixar o arquivo atualizado com um único clique.',
+                    'Melhorias: Incluímos orientações passo a passo para recepção, terapeutas, faturamento e coordenação, com rotinas diárias e respostas para as dúvidas mais comuns.',
+                ],
+            ],
+            [
                 'versao' => '1.21.0',
                 'data' => '10/11/2026',
                 'titulo' => 'Novo Módulo de Relatórios e Indicadores Gerenciais',
