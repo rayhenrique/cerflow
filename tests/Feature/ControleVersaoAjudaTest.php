@@ -237,6 +237,7 @@ class ControleVersaoAjudaTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Central de Ajuda & Sobre o CER Digital', false);
+        $response->assertSee('v1.28.0');
         $response->assertSee('v1.27.0');
         $response->assertSee('v1.26.0');
         $response->assertSee('v1.25.0');

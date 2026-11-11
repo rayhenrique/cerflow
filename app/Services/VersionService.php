@@ -44,6 +44,20 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.28.0',
+                'data' => '11/11/2026',
+                'titulo' => 'Correção do Áudio e Síntese de Voz no Painel de Chamadas para Smart TVs',
+                'tipo' => 'Correções e Melhorias',
+                'destaques' => [
+                    'Síntese de Voz no Google TV: Correção da reprodução da voz no Painel de Chamadas em Smart TVs Philips com Google TV e Android TV, superando o bloqueio de autoplay do navegador.',
+                    'Warmup Síncrono no Gesto do Usuário: Desbloqueio conjunto do AudioContext e da Web Speech API durante o clique em "Ativar Áudio da TV" ou em qualquer ponto da tela, garantindo que as chamadas subsequentes não dependam de nova interação.',
+                    'Proteção contra Garbage Collection: Implementação de referência persistente para SpeechSynthesisUtterance em nível de janela, contornando bug crítico de cancelamento prematuro no Chromium Android.',
+                    'Anúncio Completo de Atendimento: Pronúncia enriquecida com nome do paciente, sala de destino, profissional responsável e aviso explícito em caso de chamada repetida.',
+                    'Botão Oficial Testar Voz: Botão discreto no painel para validação imediata pelo operador com frase de teste oficial ("Teste de áudio do CER Digital. A chamada por voz está funcionando.") e feedback visual temporário.',
+                    'Painel Técnico da Smart TV: Modal integrado para inspeção técnica em tempo real na TV, exibindo modelo, navegador, suporte a Web Speech/Audio API, vozes carregadas e ferramentas de destravamento manual.',
+                ],
+            ],
+            [
                 'versao' => '1.27.0',
                 'data' => '10/11/2026',
                 'titulo' => 'Unificação de UBS, Conciliação e-SUS PEC e Catálogo Oficial CLI',

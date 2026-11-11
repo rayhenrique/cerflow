@@ -244,7 +244,13 @@ class PainelChamadas extends Component
             if ($atual !== null) {
                 $chamadaAtual = $atual;
                 $pacienteNomeAtual = $configuracao->formatarNomePaciente($atual->paciente_nome);
-                $textoVoz = "Paciente {$pacienteNomeAtual}, dirigir-se à sala {$atual->sala_nome}";
+
+                $prefixoVoz = $atual->tipo === 'REPETICAO' ? 'Atenção, chamada repetida: ' : '';
+                $textoVoz = "{$prefixoVoz}Paciente {$pacienteNomeAtual}, dirigir-se à sala {$atual->sala_nome}";
+                if (! empty($atual->profissional_nome)) {
+                    $textoVoz .= ", com {$atual->profissional_nome}";
+                }
+
                 $historico = ChamadaPainel::query()
                     ->doDia()
                     ->where('id', '!=', $atual->id)
