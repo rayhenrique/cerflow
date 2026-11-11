@@ -44,6 +44,19 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.30.0',
+                'data' => '11/11/2026',
+                'titulo' => 'Correção Responsiva do Modal de Novidades e Bloqueio de Rolagem',
+                'tipo' => 'Correções e Interface',
+                'destaques' => [
+                    'Layout Responsivo em Flexbox: Estruturação com altura máxima controlada em ~85vh (max-h-[85vh] e 85dvh), impedindo o crescimento vertical indefinido em telas com alto volume de novidades.',
+                    'Cabeçalho e Rodapé Fixos: Título, badges de versão e botão "Entendi, continuar" permanecem sempre visíveis e ancorados durante toda a navegação.',
+                    'Área Central com Rolagem Independente: Rolagem vertical aplicada exclusivamente ao conteúdo interno dos destaques (overflow-y-auto e overscroll-contain), com quebra de palavras segura.',
+                    'Adaptação Completa para Dispositivos Móveis: Disposição em coluna reversa no mobile para facilitar o toque no botão Continuar com largura total, respeitando margens e safe-area.',
+                    'Bloqueio de Fundo e Acessibilidade: Travamento do scroll da página de fundo via document.body com Alpine.js e conformidade semântica com ARIA Dialog (role, aria-modal e aria-labelledby).',
+                ],
+            ],
+            [
                 'versao' => '1.29.0',
                 'data' => '11/11/2026',
                 'titulo' => 'Correção Definitiva da Síntese de Voz para Philips TitanOS e Motor de Áudio Local',
