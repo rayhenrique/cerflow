@@ -44,6 +44,21 @@ class VersionService
     {
         return [
             [
+                'versao' => '1.29.0',
+                'data' => '11/11/2026',
+                'titulo' => 'Correção Definitiva da Síntese de Voz para Philips TitanOS e Motor de Áudio Local',
+                'tipo' => 'Correções e Melhorias',
+                'destaques' => [
+                    'Detecção Precisa de Philips TitanOS / WhaleTV: Identificação fiel do navegador embarcado Chromium 112 da Smart TV Philips (modelos PUK7300/PUG7300), eliminando falsos diagnósticos como Google TV ou Android TV.',
+                    'Normalização Estrita de Idioma pt-BR: Bloqueio do fallback indevido para vozes en-US em Smart TVs que não possuem síntese em português nativa, prevenindo o erro fatal synthesis-failed.',
+                    'Fila Sequencial FIFO sem Concorrência: Gestão robusta de chamadas de voz com fila de espera síncrona, evitando sobreposição de áudios, cancelamentos intempestivos ou truncamento de nomes de pacientes.',
+                    'Motor de Áudio Local Auto-Hospedado: Endpoint offline e LGPD-compliant (/painel-chamadas/audio/fala) acionado automaticamente via áudio HTML5 quando a TV não possui voz pt-BR nativa (com drivers SAPI no Windows e espeak-ng no Linux e cache por hash).',
+                    'Sincronização por Eventos do Chime: Execução do áudio falado precisamente após o término do sinal sonoro (onended), eliminando temporizadores fixos e atrasos frágeis.',
+                    'Ativação Universal por Controle Remoto: Captura de eventos físicos (keydown, click, touchstart, pointerdown) no botão ou em qualquer tecla do controle da TV para liberar o contexto de áudio em navegadores restritivos.',
+                    'Painel de Compatibilidade TTS em Tempo Real: Modal técnico na TV com verificação dinâmica de vozes, status do motor local, tabela de parâmetros de áudio e botões de teste para diagnósticos em campo.',
+                ],
+            ],
+            [
                 'versao' => '1.28.0',
                 'data' => '11/11/2026',
                 'titulo' => 'Correção do Áudio e Síntese de Voz no Painel de Chamadas para Smart TVs',

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\AudioPainelController;
 use App\Livewire\AgendaOperacional;
 use App\Livewire\AjudaSobre;
 use App\Livewire\ConfiguracoesSistema;
@@ -19,6 +20,12 @@ Route::get('/', function () {
 
 Route::get('/painel-chamadas', PainelChamadas::class)
     ->name('painel.chamadas');
+
+Route::get('/painel-chamadas/audio/fala', [AudioPainelController::class, 'sintetizar'])
+    ->name('painel.audio.fala');
+
+Route::get('/painel-chamadas/audio/status', [AudioPainelController::class, 'status'])
+    ->name('painel.audio.status');
 
 Route::middleware(['auth'])->group(function (): void {
     Route::get('/dashboard', DashboardInicial::class)

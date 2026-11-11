@@ -1,18 +1,31 @@
 <div wire:poll.4s="atualizarPainel"
      x-data="{
-         // --- ESTADOS DE CONTROLE DE ÁUDIO ---
+         // --- ESTADOS DE CONTROLE DE ÁUDIO E FILA ---
          audioLiberado: false,
          audioCtx: null,
          chimeSuportado: false,
          sinalSonoroFuncionando: false,
+         filaChamadas: [],
+         processandoFila: false,
+         itemAtualFila: null,
+         ultimaChamadaIdProcessada: null,
+         ultimoTimestampChamada: 0,
+         watchdogTimerId: null,
 
-         // --- SÍNTESE DE VOZ ---
+         // --- SÍNTESE DE VOZ E MOTORES ---
          vozSuportada: false,
          vozesCarregadas: false,
          totalVozes: 0,
+         listaVozesDisponiveis: [],
          vozPtDisponivel: false,
+         vozPtPtDisponivel: false,
          vozSelecionadaNome: '',
          vozSelecionadaLang: '',
+         vozSelecionada: null,
+         motorVozAtivo: 'detectando', // 'web_speech' | 'audio_local' | 'indisponivel'
+         motorLocalDisponivel: false,
+         motorLocalDriver: 'none',
+         motorLocalDescricao: 'Verificando motor local...',
          estadoVoz: 'inicializando', // 'inicializando' | 'aguardando_ativacao' | 'pronto' | 'falando' | 'erro' | 'nao_suportado'
          sinteseFuncionando: false,
          ultimoErroVoz: null,
@@ -27,27 +40,38 @@
          deviceInfo: {
              fabricante: 'Detectando...',
              modelo: '',
+             sistemaOperacional: 'Detectando...',
              navegador: 'Detectando...',
              versao: '',
              userAgent: '',
              resolucao: '',
              isTv: false,
+             isTitanOs: false,
              isGoogleTv: false,
              isPhilips: false,
          },
 
-         // Referência global ativa para contornar Garbage Collection bug no Chromium/Android TV
+         // Referências ativas para evitar GC bug e gerenciar reprodução
          activeUtterance: null,
-         speechTimeoutId: null,
+         audioPlayerElement: null,
+
+         normalizarLang(lang) {
+             if (!lang || typeof lang !== 'string') return '';
+             return lang.trim().replace('_', '-').toLowerCase();
+         },
 
          detectarDispositivo() {
              const ua = navigator.userAgent || '';
              this.deviceInfo.userAgent = ua;
              this.deviceInfo.resolucao = `${window.innerWidth}x${window.innerHeight} (Tela: ${window.screen.width}x${window.screen.height})`;
 
+             // 1. Identificação do Navegador
              let nav = 'Navegador Web';
              let ver = '';
-             if (ua.includes('Edg/')) {
+             if (ua.includes('OPR/') || ua.includes('OMI/')) {
+                 nav = 'Opera TV / OMI (Chromium)';
+                 ver = (ua.match(/Chrome\/([\d.]+)/) || [])[1] || (ua.match(/OPR\/([\d.]+)/) || [])[1] || '';
+             } else if (ua.includes('Edg/')) {
                  nav = 'Microsoft Edge';
                  ver = (ua.match(/Edg\/([\d.]+)/) || [])[1] || '';
              } else if (ua.includes('Chrome/')) {
@@ -63,58 +87,143 @@
              this.deviceInfo.navegador = nav;
              this.deviceInfo.versao = ver;
 
+             // 2. Extração do Modelo da TV (ex: PUK7300, PUG7300, etc.)
+             const matchModelo = ua.match(/(?:Philips,\s*|Philips\s+)([A-Za-z0-9_-]+)/i)
+                 || ua.match(/(PU[GK]\d{4}|[0-9]{2}PU[GK]\d{4})/i)
+                 || ua.match(/(TV_[A-Za-z0-9_]+)/i);
+             this.deviceInfo.modelo = matchModelo ? matchModelo[1].replace(/[\/,]/g, '') : '';
+
+             // 3. Detecção Específica de Plataforma / SO
+             const isTitanOs = ua.includes('TitanOS') || ua.includes('WhaleTV') || (ua.includes('NETTV') && !ua.includes('Android'));
              const isAndroid = ua.includes('Android');
-             const isGoogleTv = ua.includes('GoogleTV') || ua.includes('Android TV') || (isAndroid && (ua.includes('Large Screen') || ua.includes('SmartTV') || ua.includes('TV')));
-             const isPhilips = ua.toUpperCase().includes('PHILIPS') || ua.toUpperCase().includes('TPM') || ua.toUpperCase().includes('TPV');
+             const isGoogleTv = !isTitanOs && (ua.includes('GoogleTV') || ua.includes('Android TV') || (isAndroid && (ua.includes('Large Screen') || ua.includes('SmartTV') || ua.includes('TV'))));
+             const isPhilips = ua.toUpperCase().includes('PHILIPS') || ua.toUpperCase().includes('TPM') || ua.toUpperCase().includes('TPV') || isTitanOs;
              const isWebOs = ua.includes('Web0S') || ua.includes('webOS');
              const isTizen = ua.includes('Tizen');
+             const isWindows = ua.includes('Windows') || ua.includes('Win64') || ua.includes('Win32');
+             const isMac = ua.includes('Macintosh') || ua.includes('Mac OS X');
+             const isLinuxDesktop = ua.includes('Linux') && !isAndroid && !isTitanOs && !isTizen && !isWebOs;
 
-             this.deviceInfo.isTv = isGoogleTv || isPhilips || isWebOs || isTizen || ua.includes('SmartTV') || ua.includes('TV');
+             this.deviceInfo.isTv = isTitanOs || isGoogleTv || isPhilips || isWebOs || isTizen || ua.includes('SmartTV') || ua.includes('TV');
+             this.deviceInfo.isTitanOs = isTitanOs;
              this.deviceInfo.isGoogleTv = isGoogleTv;
              this.deviceInfo.isPhilips = isPhilips;
 
-             if (isPhilips && isGoogleTv) {
+             if (isPhilips && isTitanOs) {
+                 this.deviceInfo.fabricante = 'Philips Smart TV (TitanOS / WhaleTV)';
+                 this.deviceInfo.sistemaOperacional = 'TitanOS 3.0 / WhaleTV 2.0';
+             } else if (isPhilips && isGoogleTv) {
                  this.deviceInfo.fabricante = 'Philips Smart TV (Google TV / Android TV)';
+                 this.deviceInfo.sistemaOperacional = 'Google TV / Android TV';
              } else if (isPhilips) {
                  this.deviceInfo.fabricante = 'Philips Smart TV';
+                 this.deviceInfo.sistemaOperacional = 'Philips Smart TV OS';
              } else if (isGoogleTv) {
                  this.deviceInfo.fabricante = 'Smart TV com Google TV / Android TV';
+                 this.deviceInfo.sistemaOperacional = 'Google TV / Android TV';
              } else if (isWebOs) {
                  this.deviceInfo.fabricante = 'LG Smart TV (webOS)';
+                 this.deviceInfo.sistemaOperacional = 'LG webOS';
              } else if (isTizen) {
                  this.deviceInfo.fabricante = 'Samsung Smart TV (Tizen)';
-             } else if (isAndroid) {
-                 this.deviceInfo.fabricante = 'Dispositivo Android TV';
-             } else {
+                 this.deviceInfo.sistemaOperacional = 'Samsung Tizen OS';
+             } else if (isWindows) {
                  this.deviceInfo.fabricante = 'Computador Desktop / Notebook';
+                 this.deviceInfo.sistemaOperacional = 'Microsoft Windows';
+             } else if (isMac) {
+                 this.deviceInfo.fabricante = 'Computador Apple Mac';
+                 this.deviceInfo.sistemaOperacional = 'Apple macOS';
+             } else if (isLinuxDesktop) {
+                 this.deviceInfo.fabricante = 'Computador Linux Desktop';
+                 this.deviceInfo.sistemaOperacional = 'Linux';
+             } else {
+                 this.deviceInfo.fabricante = 'Dispositivo Web';
+                 this.deviceInfo.sistemaOperacional = 'Sistema Operacional Web';
              }
+         },
+
+         consultarStatusMotorLocal() {
+             fetch('/painel-chamadas/audio/status', {
+                 headers: { 'Accept': 'application/json' }
+             })
+             .then(r => r.ok ? r.json() : null)
+             .then(dados => {
+                 if (dados) {
+                     this.motorLocalDisponivel = !!dados.disponivel;
+                     this.motorLocalDriver = dados.driver || 'none';
+                     this.motorLocalDescricao = dados.descricao || 'Motor local ativo';
+
+                     // Se o navegador não tem voz pt-BR, estabelece o motor local como primário
+                     if (!this.vozPtDisponivel) {
+                         this.motorVozAtivo = 'audio_local';
+                     }
+                 }
+             })
+             .catch(() => {
+                 this.motorLocalDisponivel = false;
+             });
          },
 
          carregarVozes() {
              if (!this.vozSuportada) {
                  this.estadoVoz = 'nao_suportado';
+                 this.motorVozAtivo = 'audio_local';
                  return [];
              }
              try {
                  const vozes = window.speechSynthesis.getVoices() || [];
                  this.totalVozes = vozes.length;
 
+                 // Cataloga cada voz com seus atributos completos
+                 this.listaVozesDisponiveis = vozes.map(v => {
+                     const lNorm = this.normalizarLang(v.lang);
+                     const isPtBr = lNorm === 'pt-br' || lNorm.startsWith('pt-br');
+                     const isPtPt = lNorm === 'pt-pt' || lNorm.startsWith('pt-pt');
+                     return {
+                         nome: v.name,
+                         lang: v.lang,
+                         langNorm: lNorm,
+                         origem: v.localService !== undefined ? (v.localService ? 'Local (Offline)' : 'Remota (Rede)') : 'N/I',
+                         isDefault: !!v.default,
+                         isPtBr: isPtBr,
+                         isPtPt: isPtPt,
+                     };
+                 });
+
                  if (vozes.length > 0) {
                      this.vozesCarregadas = true;
 
-                     // Procura prioritariamente voz pt-BR
-                     const vozPt = vozes.find(v => v.lang && (v.lang.toLowerCase() === 'pt-br' || v.lang.toLowerCase().startsWith('pt-br') || v.lang.replace('_', '-').toLowerCase() === 'pt-br'))
-                                || vozes.find(v => v.lang && (v.lang.toLowerCase() === 'pt' || v.lang.toLowerCase().startsWith('pt') || v.lang.toLowerCase().startsWith('por')));
+                     // 1. Prioriza EXCLUSIVAMENTE vozes com idioma pt-BR
+                     const vozesPtBr = vozes.filter(v => {
+                         const l = this.normalizarLang(v.lang);
+                         return l === 'pt-br' || l.startsWith('pt-br');
+                     });
 
-                     if (vozPt) {
+                     const vozesPtPt = vozes.filter(v => {
+                         const l = this.normalizarLang(v.lang);
+                         return l === 'pt-pt' || l.startsWith('pt-pt');
+                     });
+
+                     this.vozPtPtDisponivel = vozesPtPt.length > 0;
+
+                     if (vozesPtBr.length > 0) {
                          this.vozPtDisponivel = true;
-                         this.vozSelecionadaNome = vozPt.name;
-                         this.vozSelecionadaLang = vozPt.lang;
+                         // Prioriza voz com flag default ou localService
+                         const melhorVoz = vozesPtBr.find(v => v.default) || vozesPtBr.find(v => v.localService) || vozesPtBr[0];
+                         this.vozSelecionada = melhorVoz;
+                         this.vozSelecionadaNome = melhorVoz.name;
+                         this.vozSelecionadaLang = melhorVoz.lang;
+                         this.motorVozAtivo = 'web_speech';
+                         this.ultimoEventoVoz = 'Voz nativa pt-BR selecionada: ' + melhorVoz.name;
                      } else {
-                         const vozDefault = vozes.find(v => v.default) || vozes[0];
+                         // NUNCA seleciona voz americana/estrangeira para falar em português
                          this.vozPtDisponivel = false;
-                         this.vozSelecionadaNome = vozDefault ? `${vozDefault.name} (Padrão)` : 'Padrão do Sistema';
-                         this.vozSelecionadaLang = vozDefault ? vozDefault.lang : 'pt-BR';
+                         this.vozSelecionada = null;
+                         this.vozSelecionadaNome = '';
+                         this.vozSelecionadaLang = '';
+                         // Define o Motor Local do CER Digital como o responsável pela pronúncia
+                         this.motorVozAtivo = 'audio_local';
+                         this.ultimoEventoVoz = 'Navegador sem voz pt-BR. Motor de Áudio Local ativado.';
                      }
 
                      if (this.estadoVoz === 'inicializando' || this.estadoVoz === 'aguardando_ativacao') {
@@ -123,6 +232,10 @@
                  } else {
                      this.vozesCarregadas = false;
                      this.vozPtDisponivel = false;
+                     this.vozSelecionada = null;
+                     this.vozSelecionadaNome = '';
+                     this.vozSelecionadaLang = '';
+                     this.motorVozAtivo = 'audio_local';
                      if (this.estadoVoz === 'inicializando') {
                          this.estadoVoz = 'aguardando_ativacao';
                      }
@@ -149,260 +262,377 @@
          },
 
          reproduzirChime(volume = 0.8) {
-             try {
-                 const ctx = this.getAudioContext();
-                 if (!ctx) return Promise.resolve(false);
-
-                 if (ctx.state === 'suspended') {
-                     ctx.resume();
-                 }
-
-                 const agora = ctx.currentTime;
-                 const osc1 = ctx.createOscillator();
-                 const gain1 = ctx.createGain();
-                 osc1.type = 'sine';
-                 osc1.frequency.setValueAtTime(587.33, agora); // Ré 5
-                 gain1.gain.setValueAtTime(0.001, agora);
-                 gain1.gain.exponentialRampToValueAtTime(Math.max(0.01, volume * 0.7), agora + 0.05);
-                 gain1.gain.exponentialRampToValueAtTime(0.0001, agora + 0.45);
-                 osc1.connect(gain1);
-                 gain1.connect(ctx.destination);
-                 osc1.start(agora);
-                 osc1.stop(agora + 0.45);
-
-                 const osc2 = ctx.createOscillator();
-                 const gain2 = ctx.createGain();
-                 osc2.type = 'sine';
-                 osc2.frequency.setValueAtTime(880.00, agora + 0.25); // Lá 5
-                 gain2.gain.setValueAtTime(0.001, agora + 0.25);
-                 gain2.gain.exponentialRampToValueAtTime(Math.max(0.01, volume * 0.85), agora + 0.30);
-                 gain2.gain.exponentialRampToValueAtTime(0.0001, agora + 0.95);
-                 osc2.connect(gain2);
-                 gain2.connect(ctx.destination);
-                 osc2.start(agora + 0.25);
-                 osc2.stop(agora + 0.95);
-
-                 this.sinalSonoroFuncionando = true;
-                 return new Promise(resolve => setTimeout(() => resolve(true), 950));
-             } catch (e) {
-                 console.warn('[CER Digital TV Audio] Erro ao reproduzir aviso sonoro:', e);
-                 this.sinalSonoroFuncionando = false;
-                 return Promise.resolve(false);
-             }
-         },
-
-         ativarAudio() {
-             this.audioLiberado = true;
-             console.log('[CER Digital TV Audio] Gesto do usuário: destravando áudio e síntese de voz...');
-
-             // 1. Destrava AudioContext
-             const ctx = this.getAudioContext();
-             this.reproduzirChime(0.2);
-
-             // 2. Destrava SpeechSynthesis diretamente durante o gesto do usuário (fundamental no Google TV / Android)
-             if (this.vozSuportada) {
-                 try {
-                     window.speechSynthesis.cancel();
-                     if (window.speechSynthesis.paused) {
-                         window.speechSynthesis.resume();
-                     }
-
-                     this.carregarVozes();
-
-                     // Utterance de warmup para registrar ativação do usuário no Chromium
-                     const warmup = new SpeechSynthesisUtterance(' ');
-                     warmup.volume = 0.001;
-                     warmup.rate = 1.0;
-                     warmup.lang = 'pt-BR';
-                     this.activeUtterance = warmup;
-                     window._cerActiveUtterance = warmup;
-
-                     warmup.onend = () => {
-                         this.sinteseFuncionando = true;
-                         this.estadoVoz = 'pronto';
-                         this.activeUtterance = null;
-                         console.log('[CER Digital TV Audio] Síntese de voz desbloqueada com sucesso via gesto do usuário.');
-                     };
-
-                     warmup.onerror = (err) => {
-                         console.warn('[CER Digital TV Audio] Warmup de voz retornou erro:', err.error);
-                         this.ultimoErroVoz = err.error || 'Erro no warmup';
-                         this.ultimoErroCodigo = err.error || '';
-                     };
-
-                     window.speechSynthesis.speak(warmup);
-                 } catch (e) {
-                     console.warn('[CER Digital TV Audio] Falha ao inicializar síntese no gesto do usuário:', e);
-                     this.ultimoErroVoz = e.message || 'Falha ao inicializar voz';
-                     this.estadoVoz = 'erro';
-                 }
-             } else {
-                 this.estadoVoz = 'nao_suportado';
-             }
-         },
-
-         falarTexto(texto, volume = 0.8) {
-             if (!texto || typeof texto !== 'string') return Promise.resolve(false);
-
-             if (!this.vozSuportada) {
-                 console.warn('[CER Digital TV Audio] Síntese de voz não suportada pelo navegador.');
-                 this.estadoVoz = 'nao_suportado';
-                 return Promise.resolve(false);
-             }
-
              return new Promise((resolve) => {
                  try {
-                     if (this.speechTimeoutId) {
-                         clearTimeout(this.speechTimeoutId);
-                         this.speechTimeoutId = null;
+                     const ctx = this.getAudioContext();
+                     if (!ctx) {
+                         this.sinalSonoroFuncionando = false;
+                         return resolve(false);
                      }
 
-                     window.speechSynthesis.cancel();
-                     if (window.speechSynthesis.paused) {
-                         window.speechSynthesis.resume();
+                     if (ctx.state === 'suspended') {
+                         ctx.resume();
                      }
 
-                     // Delay de 60ms para evitar cancel + speak simultâneo no Chromium Android
-                     setTimeout(() => {
-                         try {
-                             const utter = new SpeechSynthesisUtterance(texto);
-                             utter.lang = 'pt-BR';
-                             utter.rate = 0.92;
-                             utter.pitch = 1.0;
-                             utter.volume = Math.max(0.1, Math.min(1.0, volume));
+                     const agora = ctx.currentTime;
+                     const osc1 = ctx.createOscillator();
+                     const gain1 = ctx.createGain();
+                     osc1.type = 'sine';
+                     osc1.frequency.setValueAtTime(587.33, agora); // Ré 5
+                     gain1.gain.setValueAtTime(0.001, agora);
+                     gain1.gain.exponentialRampToValueAtTime(Math.max(0.01, volume * 0.7), agora + 0.05);
+                     gain1.gain.exponentialRampToValueAtTime(0.0001, agora + 0.45);
+                     osc1.connect(gain1);
+                     gain1.connect(ctx.destination);
+                     osc1.start(agora);
+                     osc1.stop(agora + 0.45);
 
-                             const vozes = window.speechSynthesis.getVoices() || [];
-                             if (vozes.length > 0) {
-                                 this.totalVozes = vozes.length;
-                                 const vozPt = vozes.find(v => v.lang && (v.lang.toLowerCase() === 'pt-br' || v.lang.toLowerCase().startsWith('pt-br') || v.lang.replace('_', '-').toLowerCase() === 'pt-br'))
-                                            || vozes.find(v => v.lang && (v.lang.toLowerCase() === 'pt' || v.lang.toLowerCase().startsWith('pt') || v.lang.toLowerCase().startsWith('por')));
-                                 if (vozPt) {
-                                     utter.voice = vozPt;
-                                     this.vozPtDisponivel = true;
-                                     this.vozSelecionadaNome = vozPt.name;
-                                     this.vozSelecionadaLang = vozPt.lang;
-                                 } else {
-                                     const vozDefault = vozes.find(v => v.default) || vozes[0];
-                                     if (vozDefault) {
-                                         utter.voice = vozDefault;
-                                         this.vozSelecionadaNome = vozDefault.name;
-                                         this.vozSelecionadaLang = vozDefault.lang;
-                                     }
-                                 }
-                             }
+                     const osc2 = ctx.createOscillator();
+                     const gain2 = ctx.createGain();
+                     osc2.type = 'sine';
+                     osc2.frequency.setValueAtTime(880.00, agora + 0.25); // Lá 5
+                     gain2.gain.setValueAtTime(0.001, agora + 0.25);
+                     gain2.gain.exponentialRampToValueAtTime(Math.max(0.01, volume * 0.85), agora + 0.30);
+                     gain2.gain.exponentialRampToValueAtTime(0.0001, agora + 0.95);
+                     osc2.connect(gain2);
+                     gain2.connect(ctx.destination);
 
-                             // Salva em referência persistente para evitar GC prematuro
-                             this.activeUtterance = utter;
-                             window._cerActiveUtterance = utter;
-
-                             this.speechTimeoutId = setTimeout(() => {
-                                 if (this.estadoVoz === 'falando') {
-                                     console.warn('[CER Digital TV Audio] Timeout de segurança de síntese (12s). Destravando fila...');
-                                     window.speechSynthesis.cancel();
-                                     this.estadoVoz = 'pronto';
-                                     this.activeUtterance = null;
-                                     resolve(false);
-                                 }
-                             }, 12000);
-
-                             utter.onstart = () => {
-                                 this.estadoVoz = 'falando';
-                                 this.sinteseFuncionando = true;
-                                 this.ultimoEventoVoz = 'Iniciou fala';
-                                 console.log('[CER Digital TV Audio] Iniciou pronúncia por voz.');
-                             };
-
-                             utter.onend = () => {
-                                 if (this.speechTimeoutId) {
-                                     clearTimeout(this.speechTimeoutId);
-                                     this.speechTimeoutId = null;
-                                 }
-                                 this.estadoVoz = 'pronto';
-                                 this.sinteseFuncionando = true;
-                                 this.activeUtterance = null;
-                                 window._cerActiveUtterance = null;
-                                 this.ultimoEventoVoz = 'Concluiu fala com sucesso';
-                                 console.log('[CER Digital TV Audio] Concluiu pronúncia por voz com sucesso.');
-                                 resolve(true);
-                             };
-
-                             utter.onerror = (e) => {
-                                 if (this.speechTimeoutId) {
-                                     clearTimeout(this.speechTimeoutId);
-                                     this.speechTimeoutId = null;
-                                 }
-                                 this.estadoVoz = 'erro';
-                                 this.ultimoErroVoz = e.error || 'Erro desconhecido';
-                                 this.ultimoErroCodigo = e.error || '';
-                                 this.activeUtterance = null;
-                                 window._cerActiveUtterance = null;
-                                 this.ultimoEventoVoz = 'Erro: ' + (e.error || 'desconhecido');
-                                 console.warn('[CER Digital TV Audio] Erro na síntese de voz:', e.error);
-                                 resolve(false);
-                             };
-
-                             if (window.speechSynthesis.paused) {
-                                 window.speechSynthesis.resume();
-                             }
-
-                             window.speechSynthesis.speak(utter);
-                         } catch (errInner) {
-                             console.warn('[CER Digital TV Audio] Exceção ao executar speak():', errInner);
-                             this.estadoVoz = 'erro';
-                             this.ultimoErroVoz = errInner.message || 'Exceção ao falar';
-                             resolve(false);
+                     // Conexão do evento real de término sem temporizadores arbitrários
+                     let resolvido = false;
+                     osc2.onended = () => {
+                         if (!resolvido) {
+                             resolvido = true;
+                             this.sinalSonoroFuncionando = true;
+                             resolve(true);
                          }
-                     }, 60);
+                     };
+
+                     osc2.start(agora + 0.25);
+                     osc2.stop(agora + 0.95);
+
+                     // Salvaguarda caso onended não dispare no navegador embarcado
+                     setTimeout(() => {
+                         if (!resolvido) {
+                             resolvido = true;
+                             this.sinalSonoroFuncionando = true;
+                             resolve(true);
+                         }
+                     }, 1000);
                  } catch (e) {
-                     console.warn('[CER Digital TV Audio] Falha geral ao preparar voz:', e);
-                     this.estadoVoz = 'erro';
-                     this.ultimoErroVoz = e.message || 'Falha geral';
+                     console.warn('[CER Digital TV Audio] Erro ao reproduzir aviso sonoro:', e);
+                     this.sinalSonoroFuncionando = false;
                      resolve(false);
                  }
              });
          },
 
-         testarVoz() {
-             this.testeStatus = 'testando';
-             this.testeMensagem = 'Executando teste de voz...';
-             console.log('[CER Digital TV Audio] Iniciando teste de voz oficial...');
+         ativarAudio() {
+             this.audioLiberado = true;
+             console.log('[CER Digital TV Audio] Interação do usuário: destravando áudio e canais de síntese...');
 
-             if (this.toastTimeoutId) {
-                 clearTimeout(this.toastTimeoutId);
+             // 1. Destrava AudioContext
+             const ctx = this.getAudioContext();
+             this.reproduzirChime(0.2);
+
+             // 2. Destrava SpeechSynthesis diretamente durante o gesto do usuário
+             if (this.vozSuportada) {
+                 try {
+                     if (window.speechSynthesis.paused) {
+                         window.speechSynthesis.resume();
+                     }
+                     this.carregarVozes();
+                 } catch (e) {
+                     console.warn('[CER Digital TV Audio] Erro ao reativar síntese no gesto:', e);
+                 }
              }
+
+             // 3. Atualiza status do motor local
+             this.consultarStatusMotorLocal();
+             this.estadoVoz = 'pronto';
+         },
+
+         // --- FILA CONTROLADA DE REPRODUÇÃO FIFO ---
+         enfileirarChamada(dados) {
+             if (!dados || !dados.textoVoz) return;
+
+             // Evita duplicação se o mesmo ID foi recebido nos últimos 4 segundos
+             if (this.ultimaChamadaIdProcessada === dados.id && (Date.now() - this.ultimoTimestampChamada) < 4000) {
+                 return;
+             }
+             this.ultimaChamadaIdProcessada = dados.id;
+             this.ultimoTimestampChamada = Date.now();
+
+             this.filaChamadas.push({
+                 id: dados.id,
+                 texto: dados.textoVoz,
+                 volume: dados.volume ?? 0.8,
+                 vozAtiva: dados.vozAtiva ?? true,
+             });
+
+             if (!this.processandoFila) {
+                 this.processarFila();
+             }
+         },
+
+         processarFila() {
+             if (this.filaChamadas.length === 0) {
+                 this.processandoFila = false;
+                 this.itemAtualFila = null;
+                 this.estadoVoz = 'pronto';
+                 return;
+             }
+
+             this.processandoFila = true;
+             const item = this.filaChamadas.shift();
+             this.itemAtualFila = item;
+
+             if (this.watchdogTimerId) {
+                 clearTimeout(this.watchdogTimerId);
+             }
+             // Watchdog de 15 segundos para destravar a fila caso ocorra qualquer pane inesperada
+             this.watchdogTimerId = setTimeout(() => {
+                 console.warn('[CER Digital TV Audio] Watchdog da fila acionado (15s). Destravando fila...');
+                 this.processarFila();
+             }, 15000);
+
+             // 1. Toca o sinal sonoro e aguarda sua conclusão real
+             this.reproduzirChime(item.volume).then(() => {
+                 // 2. Se a voz estiver habilitada, executa a pronúncia
+                 if (item.vozAtiva && item.texto) {
+                     this.executarFalaItem(item.texto, item.volume).then(() => {
+                         if (this.watchdogTimerId) {
+                             clearTimeout(this.watchdogTimerId);
+                             this.watchdogTimerId = null;
+                         }
+                         this.processarFila();
+                     });
+                 } else {
+                     if (this.watchdogTimerId) {
+                         clearTimeout(this.watchdogTimerId);
+                         this.watchdogTimerId = null;
+                     }
+                     this.processarFila();
+                 }
+             });
+         },
+
+         executarFalaItem(texto, volume) {
+             // Se houver voz nativa pt-BR no navegador, tenta Web Speech API
+             if (this.vozSuportada && this.vozPtDisponivel) {
+                 return this.falarWebSpeech(texto, volume).then((sucesso) => {
+                     if (sucesso) {
+                         return true;
+                     }
+                     // Fallback imediato se a Web Speech API falhou (ex: synthesis-failed no TitanOS)
+                     console.warn('[CER Digital TV Audio] Web Speech falhou. Executando fallback para Motor de Áudio Local...');
+                     return this.reproduzirAudioLocal(texto, volume);
+                 });
+             }
+
+             // Se não houver voz pt-BR no navegador (ex: TitanOS com apenas vozes em inglês), usa o Motor Local
+             return this.reproduzirAudioLocal(texto, volume);
+         },
+
+         falarWebSpeech(texto, volume = 0.8) {
+             if (!this.vozSuportada || !this.vozPtDisponivel) {
+                 return Promise.resolve(false);
+             }
+
+             return new Promise((resolve) => {
+                 try {
+                     const utter = new SpeechSynthesisUtterance(texto);
+                     utter.lang = 'pt-BR';
+                     utter.rate = 0.95;
+                     utter.pitch = 1.0;
+                     utter.volume = Math.max(0.1, Math.min(1.0, volume));
+
+                     if (this.vozSelecionada) {
+                         utter.voice = this.vozSelecionada;
+                     }
+
+                     // Referências persistentes contra o bug de Garbage Collection no Chromium
+                     this.activeUtterance = utter;
+                     window._cerActiveUtterance = utter;
+
+                     utter.onstart = () => {
+                         this.estadoVoz = 'falando';
+                         this.motorVozAtivo = 'web_speech';
+                         this.sinteseFuncionando = true;
+                         this.ultimoEventoVoz = 'Reproduzindo voz via Web Speech API (pt-BR)';
+                     };
+
+                     utter.onend = () => {
+                         this.estadoVoz = 'pronto';
+                         this.sinteseFuncionando = true;
+                         this.activeUtterance = null;
+                         window._cerActiveUtterance = null;
+                         this.ultimoEventoVoz = 'Concluiu fala com sucesso (Web Speech)';
+                         resolve(true);
+                     };
+
+                     utter.onerror = (e) => {
+                         this.estadoVoz = 'erro';
+                         this.ultimoErroVoz = e.error || 'Erro na síntese';
+                         this.ultimoErroCodigo = e.error || 'synthesis-failed';
+                         this.activeUtterance = null;
+                         window._cerActiveUtterance = null;
+                         this.ultimoEventoVoz = 'Erro Web Speech: ' + (e.error || 'falha');
+                         console.warn('[CER Digital TV Audio] Erro na síntese nativa:', e.error);
+                         resolve(false);
+                     };
+
+                     if (window.speechSynthesis.paused) {
+                         window.speechSynthesis.resume();
+                     }
+
+                     window.speechSynthesis.speak(utter);
+                 } catch (e) {
+                     console.warn('[CER Digital TV Audio] Falha ao acionar speak():', e);
+                     this.ultimoErroVoz = e.message || 'Exceção speak()';
+                     resolve(false);
+                 }
+             });
+         },
+
+         reproduzirAudioLocal(texto, volume = 0.8) {
+             return new Promise((resolve) => {
+                 try {
+                     const url = '/painel-chamadas/audio/fala?texto=' + encodeURIComponent(texto);
+                     const audio = new Audio(url);
+                     audio.volume = Math.max(0.1, Math.min(1.0, volume));
+                     this.audioPlayerElement = audio;
+
+                     audio.onplay = () => {
+                         this.estadoVoz = 'falando';
+                         this.motorVozAtivo = 'audio_local';
+                         this.sinteseFuncionando = true;
+                         this.ultimoEventoVoz = 'Reproduzindo voz via Motor de Áudio Local CER Digital';
+                     };
+
+                     audio.onended = () => {
+                         this.estadoVoz = 'pronto';
+                         this.audioPlayerElement = null;
+                         this.sinteseFuncionando = true;
+                         this.ultimoEventoVoz = 'Concluiu fala com sucesso (Motor Local)';
+                         resolve(true);
+                     };
+
+                     audio.onerror = (err) => {
+                         console.warn('[CER Digital TV Audio] Erro no player de áudio local:', err);
+                         this.estadoVoz = 'erro';
+                         this.ultimoErroVoz = 'Falha ao carregar fluxo de áudio local';
+                         this.ultimoErroCodigo = 'audio-load-error';
+                         this.audioPlayerElement = null;
+                         resolve(false);
+                     };
+
+                     const playPromise = audio.play();
+                     if (playPromise !== undefined) {
+                         playPromise.catch((e) => {
+                             console.warn('[CER Digital TV Audio] Bloqueio ao reproduzir áudio local:', e);
+                             this.estadoVoz = 'erro';
+                             this.ultimoErroVoz = e.message || 'Bloqueio de reprodução de áudio';
+                             this.audioPlayerElement = null;
+                             resolve(false);
+                         });
+                     }
+                 } catch (e) {
+                     console.warn('[CER Digital TV Audio] Exceção em reproduzirAudioLocal:', e);
+                     this.estadoVoz = 'erro';
+                     this.ultimoErroVoz = e.message || 'Erro no player de áudio local';
+                     this.audioPlayerElement = null;
+                     resolve(false);
+                 }
+             });
+         },
+
+         // --- TESTES INDIVIDUAIS DE COMPATIBILIDADE ---
+         testarChime() {
+             this.testeStatus = 'testando';
+             this.testeMensagem = 'Testando sinal sonoro (Chime)...';
+             this.reproduzirChime(0.6).then((ok) => {
+                 this.testeStatus = ok ? 'sucesso' : 'erro';
+                 this.testeMensagem = ok ? 'Sinal sonoro reproduzido com sucesso!' : 'Falha ao reproduzir sinal sonoro';
+                 setTimeout(() => { this.testeMensagem = ''; }, 5000);
+             });
+         },
+
+         testarVozBrasileira() {
+             this.testeStatus = 'testando';
+             this.testeMensagem = 'Testando voz brasileira nativa (Web Speech API)...';
+             if (!this.vozSuportada || !this.vozPtDisponivel) {
+                 this.testeStatus = 'sem_suporte';
+                 this.testeMensagem = 'Navegador não possui voz nativa em português brasileiro (pt-BR). Utilize o Motor Local.';
+                 setTimeout(() => { this.testeMensagem = ''; }, 6000);
+                 return;
+             }
+             const frase = 'Teste de áudio do CER Digital. A chamada por voz está funcionando.';
+             this.falarWebSpeech(frase, 0.9).then((ok) => {
+                 this.testeStatus = ok ? 'sucesso' : 'erro';
+                 this.testeMensagem = ok ? 'Voz brasileira nativa reproduzida com sucesso!' : 'Falha na voz nativa (' + (this.ultimoErroCodigo || this.ultimoErroVoz || 'erro') + ')';
+                 setTimeout(() => { this.testeMensagem = ''; }, 6000);
+             });
+         },
+
+         testarVozDisponivel() {
+             this.testeStatus = 'testando';
+             this.testeMensagem = 'Testando qualquer voz disponível no navegador...';
+             if (!this.vozSuportada || this.totalVozes === 0) {
+                 this.testeStatus = 'sem_suporte';
+                 this.testeMensagem = 'Nenhuma voz carregada no navegador.';
+                 setTimeout(() => { this.testeMensagem = ''; }, 6000);
+                 return;
+             }
+             try {
+                 const vozes = window.speechSynthesis.getVoices() || [];
+                 const voz = vozes[0];
+                 const utter = new SpeechSynthesisUtterance('Test of audio output.');
+                 utter.voice = voz;
+                 utter.onend = () => {
+                     this.testeStatus = 'sucesso';
+                     this.testeMensagem = 'Voz do sistema (' + voz.name + ') reproduzida.';
+                     setTimeout(() => { this.testeMensagem = ''; }, 5000);
+                 };
+                 utter.onerror = (e) => {
+                     this.testeStatus = 'erro';
+                     this.testeMensagem = 'Falha na voz do sistema (' + (e.error || 'erro') + ')';
+                     setTimeout(() => { this.testeMensagem = ''; }, 6000);
+                 };
+                 window.speechSynthesis.speak(utter);
+             } catch (e) {
+                 this.testeStatus = 'erro';
+                 this.testeMensagem = 'Exceção ao testar voz do sistema';
+                 setTimeout(() => { this.testeMensagem = ''; }, 5000);
+             }
+         },
+
+         testarMotorLocal() {
+             this.testeStatus = 'testando';
+             this.testeMensagem = 'Testando Motor de Áudio Local CER Digital...';
+             const frase = 'Teste de áudio do CER Digital. A chamada por voz está funcionando.';
+             this.reproduzirAudioLocal(frase, 0.9).then((ok) => {
+                 this.testeStatus = ok ? 'sucesso' : 'erro';
+                 this.testeMensagem = ok ? 'Motor Local reproduziu com sucesso!' : 'Falha no Motor Local (' + (this.ultimoErroVoz || 'erro') + ')';
+                 setTimeout(() => { this.testeMensagem = ''; }, 6000);
+             });
+         },
+
+         testarVoz() {
+             // Teste oficial geral: Chime + Voz ativa (Web Speech se tiver pt-BR, senão Motor Local)
+             this.testeStatus = 'testando';
+             this.testeMensagem = 'Iniciando teste completo de áudio e voz...';
 
              if (!this.audioLiberado) {
                  this.ativarAudio();
              }
 
-             if (!this.vozSuportada) {
-                 this.testeStatus = 'sem_suporte';
-                 this.testeMensagem = 'Navegador sem suporte à síntese (Web Speech API indisponível)';
-                 this.toastTimeoutId = setTimeout(() => { this.testeMensagem = ''; }, 6000);
-                 return;
-             }
-
-             // Toca sinal sonoro e pronuncia frase padrão estipulada
-             this.reproduzirChime(0.5);
              const fraseTeste = 'Teste de áudio do CER Digital. A chamada por voz está funcionando.';
-
-             setTimeout(() => {
-                 this.falarTexto(fraseTeste, 0.9).then((sucesso) => {
-                     if (sucesso) {
-                         this.testeStatus = 'sucesso';
-                         this.testeMensagem = 'Voz funcionando perfeitamente!';
-                     } else {
-                         if (this.totalVozes === 0) {
-                             this.testeStatus = 'aguardando';
-                             this.testeMensagem = 'Nenhuma voz disponível ou aguardando carregamento do sistema.';
-                         } else {
-                             this.testeStatus = 'erro';
-                             this.testeMensagem = 'Falha na reprodução (' + (this.ultimoErroCodigo || this.ultimoErroVoz || 'erro desconhecido') + ')';
-                         }
-                     }
-                     this.toastTimeoutId = setTimeout(() => { this.testeMensagem = ''; }, 6000);
-                 });
-             }, 950);
+             this.enfileirarChamada({
+                 id: 'teste-' + Date.now(),
+                 textoVoz: fraseTeste,
+                 volume: 0.9,
+                 vozAtiva: true
+             });
          },
 
          destravarSintese() {
@@ -413,11 +643,23 @@
                          window.speechSynthesis.resume();
                      }
                  }
+                 if (this.audioPlayerElement) {
+                     this.audioPlayerElement.pause();
+                     this.audioPlayerElement = null;
+                 }
+                 if (this.watchdogTimerId) {
+                     clearTimeout(this.watchdogTimerId);
+                     this.watchdogTimerId = null;
+                 }
+                 this.filaChamadas = [];
+                 this.processandoFila = false;
+                 this.itemAtualFila = null;
                  this.activeUtterance = null;
                  this.estadoVoz = 'pronto';
-                 this.ultimoEventoVoz = 'Síntese destravada manualmente';
-                 console.log('[CER Digital TV Audio] Síntese destravada e resetada.');
+                 this.ultimoEventoVoz = 'Fila destravada e resetada manualmente';
+                 console.log('[CER Digital TV Audio] Fila e canais de áudio destravados.');
                  this.carregarVozes();
+                 this.consultarStatusMotorLocal();
              } catch (e) {
                  console.warn('[CER Digital TV Audio] Erro ao destravar:', e);
              }
@@ -446,8 +688,11 @@
          atualizarRelogio();
          setInterval(() => atualizarRelogio(), 1000);
 
-         // Detecta suporte e características do dispositivo
+         // 1. Detecta características do dispositivo e motor local
          detectarDispositivo();
+         consultarStatusMotorLocal();
+
+         // 2. Verifica suporte Web Audio e Web Speech API
          chimeSuportado = !!(window.AudioContext || window.webkitAudioContext);
          vozSuportada = ('speechSynthesis' in window) && ('SpeechSynthesisUtterance' in window);
 
@@ -458,27 +703,26 @@
                      carregarVozes();
                  };
              }
+             // Polling de segurança para navegadores embarcados com carregamento lento de vozes
+             setTimeout(() => { if (totalVozes === 0) carregarVozes(); }, 800);
+             setTimeout(() => { if (totalVozes === 0) carregarVozes(); }, 2000);
          } else {
              estadoVoz = 'nao_suportado';
+             motorVozAtivo = 'audio_local';
          }
 
-         // Tenta desbloquear áudio no primeiro clique em qualquer lugar da tela
-         document.addEventListener('click', () => { if (!audioLiberado) ativarAudio(); }, { once: true });
+         // 3. Ativação física universal (Mouse, Toque, Teclado e Controle Remoto da TV)
+         const listenerAtivacao = () => { if (!audioLiberado) ativarAudio(); };
+         ['click', 'pointerdown', 'keydown', 'touchstart'].forEach(evt => {
+             document.addEventListener(evt, listenerAtivacao, { passive: true, once: true });
+         });
 
-         // Ouve eventos de nova chamada emitidos pelo Livewire
+         // 4. Ouve eventos de nova chamada emitidos pelo Livewire e enfileira na fila controlada
          $wire.on('nova-chamada-painel', (evento) => {
              const dados = Array.isArray(evento) ? evento[0] : evento;
              if (!dados) return;
 
-             // Reproduz o chime imediatamente
-             reproduzirChime(dados.volume ?? 0.8);
-
-             // Se a voz estiver habilitada nas configurações, pronuncia após o término do som (950ms)
-             if (dados.vozAtiva && dados.textoVoz) {
-                 setTimeout(() => {
-                     falarTexto(dados.textoVoz, dados.volume ?? 0.8);
-                 }, 950);
-             }
+             enfileirarChamada(dados);
          });
      "
      class="min-h-screen flex flex-col justify-between p-4 sm:p-6 md:p-8 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100 select-none">
@@ -690,11 +934,12 @@
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold"
                       :class="{
                           'bg-amber-500/10 text-amber-300 border border-amber-500/30': !audioLiberado,
-                          'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30': audioLiberado && vozSuportada && (estadoVoz === 'pronto' || estadoVoz === 'falando'),
-                          'bg-sky-500/10 text-sky-300 border border-sky-500/30': audioLiberado && !vozSuportada,
-                          'bg-rose-500/10 text-rose-300 border border-rose-500/30': audioLiberado && estadoVoz === 'erro'
+                          'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30': audioLiberado && motorVozAtivo === 'web_speech' && (estadoVoz === 'pronto' || estadoVoz === 'falando'),
+                          'bg-teal-500/10 text-teal-300 border border-teal-500/30': audioLiberado && motorVozAtivo === 'audio_local' && (estadoVoz === 'pronto' || estadoVoz === 'falando'),
+                          'bg-rose-500/10 text-rose-300 border border-rose-500/30': audioLiberado && estadoVoz === 'erro',
+                          'bg-sky-500/10 text-sky-300 border border-sky-500/30': audioLiberado && motorVozAtivo === 'indisponivel'
                       }">
-                    <span x-text="!audioLiberado ? '🔇 Áudio Silenciado (Aguardando Ativação)' : (!vozSuportada ? '🔔 Somente Sinal Sonoro' : (estadoVoz === 'erro' ? '⚠️ Falha na Voz' : (vozPtDisponivel ? '🔊 Som e Voz Ativos (pt-BR)' : '🔊 Som e Voz Ativos')))"></span>
+                    <span x-text="!audioLiberado ? '🔇 Áudio Silenciado (Aguardando Ativação)' : (motorVozAtivo === 'web_speech' ? '🔊 Som e Voz Ativos (pt-BR)' : (motorVozAtivo === 'audio_local' ? '🔊 Som e Voz Ativos (Motor Local)' : (estadoVoz === 'erro' ? '⚠️ Falha no Áudio' : '🔔 Somente Sinal Sonoro')))"></span>
                 </span>
             </div>
 
@@ -922,50 +1167,64 @@
 
             <!-- Grid de Métricas do Dispositivo e Áudio -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-xs sm:text-sm">
-                <!-- Dispositivo / Modelo -->
+                <!-- Dispositivo / Modelo / SO -->
                 <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                    <span class="text-slate-400 block text-xs font-semibold uppercase mb-1">Dispositivo Detectado</span>
+                    <span class="text-slate-400 block text-xs font-semibold uppercase mb-1">Dispositivo &amp; Sistema Operacional</span>
                     <span class="text-white font-bold block" x-text="deviceInfo.fabricante"></span>
-                    <span class="text-slate-400 text-xs block mt-1" x-text="'Resolução: ' + deviceInfo.resolucao"></span>
+                    <div class="flex items-center gap-2 mt-1 text-slate-300">
+                        <span x-text="'Modelo: ' + (deviceInfo.modelo || 'Não identificado no UA')"></span>
+                        <span>•</span>
+                        <span x-text="'SO: ' + deviceInfo.sistemaOperacional"></span>
+                    </div>
+                    <span class="text-slate-400 text-xs block mt-1" x-text="'Resolução da Tela: ' + deviceInfo.resolucao"></span>
                 </div>
 
                 <!-- Navegador / WebView -->
                 <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                    <span class="text-slate-400 block text-xs font-semibold uppercase mb-1">Navegador / Engine</span>
+                    <span class="text-slate-400 block text-xs font-semibold uppercase mb-1">Navegador &amp; Engine</span>
                     <span class="text-white font-bold block" x-text="deviceInfo.navegador + (deviceInfo.versao ? ' (' + deviceInfo.versao + ')' : '')"></span>
-                    <span class="text-slate-400 text-xs block mt-1" x-text="deviceInfo.isTv ? 'Ambiente Smart TV / Google TV detectado' : 'Ambiente Desktop detectado'"></span>
+                    <span class="text-slate-400 text-xs block mt-1" x-text="deviceInfo.isTv ? (deviceInfo.isTitanOs ? 'Ambiente Philips TitanOS / WhaleTV identificado' : 'Ambiente Smart TV identificado') : 'Ambiente Desktop identificado'"></span>
+                    <span class="text-slate-400 text-xs block mt-0.5" x-text="'Contexto de Áudio: ' + (audioLiberado ? 'Liberado via interação' : 'Aguardando gesto inicial')"></span>
                 </div>
 
-                <!-- Suporte Web Speech API -->
+                <!-- Web Speech API & Vozes -->
                 <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                    <span class="text-slate-400 block text-xs font-semibold uppercase mb-1">Web Speech API (Síntese de Voz)</span>
+                    <span class="text-slate-400 block text-xs font-semibold uppercase mb-1">Web Speech API (Síntese Nativa)</span>
                     <div class="flex items-center gap-2 mt-1">
                         <span class="h-2.5 w-2.5 rounded-full" :class="vozSuportada ? 'bg-emerald-400' : 'bg-rose-500'"></span>
-                        <span class="font-bold" :class="vozSuportada ? 'text-emerald-300' : 'text-rose-400'" x-text="vozSuportada ? 'Suportada pelo Navegador' : 'Não Suportada'"></span>
+                        <span class="font-bold" :class="vozSuportada ? 'text-emerald-300' : 'text-rose-400'" x-text="vozSuportada ? 'Disponível no Navegador' : 'Não Suportada'"></span>
                     </div>
-                    <span class="text-slate-400 text-xs block mt-1" x-text="'Vozes Carregadas: ' + totalVozes"></span>
+                    <div class="flex items-center gap-2 mt-1 text-xs">
+                        <span class="text-slate-300" x-text="'Total de Vozes: ' + totalVozes"></span>
+                        <span>•</span>
+                        <span :class="vozPtDisponivel ? 'text-emerald-400' : 'text-amber-400'" x-text="vozPtDisponivel ? 'Voz pt-BR: Sim' : 'Voz pt-BR: Não'"></span>
+                    </div>
                 </div>
 
-                <!-- Suporte Web Audio API (Sinal Sonoro) -->
+                <!-- Motor Local CER Digital (Servidor) -->
                 <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                    <span class="text-slate-400 block text-xs font-semibold uppercase mb-1">Web Audio API (Chime Sonoro)</span>
+                    <span class="text-slate-400 block text-xs font-semibold uppercase mb-1">Motor Local CER Digital (Servidor)</span>
                     <div class="flex items-center gap-2 mt-1">
-                        <span class="h-2.5 w-2.5 rounded-full" :class="chimeSuportado ? 'bg-emerald-400' : 'bg-rose-500'"></span>
-                        <span class="font-bold" :class="chimeSuportado ? 'text-emerald-300' : 'text-rose-400'" x-text="chimeSuportado ? 'Suportada pelo Navegador' : 'Não Suportada'"></span>
+                        <span class="h-2.5 w-2.5 rounded-full" :class="motorLocalDisponivel ? 'bg-emerald-400' : 'bg-sky-400'"></span>
+                        <span class="font-bold text-slate-100" x-text="motorLocalDisponivel ? 'Operacional (' + motorLocalDriver.toUpperCase() + ')' : 'Fluxo Direto via Servidor'"></span>
                     </div>
-                    <span class="text-slate-400 text-xs block mt-1" x-text="audioLiberado ? 'Contexto de Áudio Liberado' : 'Aguardando Desbloqueio (Clique)'"></span>
+                    <span class="text-slate-400 text-xs block mt-1" x-text="motorLocalDescricao"></span>
                 </div>
 
-                <!-- Voz Selecionada -->
+                <!-- Motor Ativo em Uso -->
                 <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                    <span class="text-slate-400 block text-xs font-semibold uppercase mb-1">Voz Ativa Selecionada</span>
-                    <span class="text-white font-bold block truncate" x-text="vozSelecionadaNome || 'Nenhuma voz selecionada'"></span>
-                    <span class="text-slate-400 text-xs block mt-1" x-text="'Idioma: ' + (vozSelecionadaLang || 'N/A') + (vozPtDisponivel ? ' (pt-BR nativo)' : '')"></span>
+                    <span class="text-slate-400 block text-xs font-semibold uppercase mb-1">Mecanismo Ativo para Anúncios</span>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="h-2.5 w-2.5 rounded-full" :class="motorVozAtivo === 'web_speech' ? 'bg-emerald-400' : (motorVozAtivo === 'audio_local' ? 'bg-teal-400' : 'bg-rose-500')"></span>
+                        <span class="font-bold" :class="motorVozAtivo === 'web_speech' ? 'text-emerald-300' : (motorVozAtivo === 'audio_local' ? 'text-teal-300' : 'text-rose-400')"
+                              x-text="motorVozAtivo === 'web_speech' ? 'Web Speech API (Voz Nativa pt-BR)' : (motorVozAtivo === 'audio_local' ? 'CER Digital Local Audio Engine' : 'Indisponível')"></span>
+                    </div>
+                    <span class="text-slate-400 text-xs block mt-1 truncate" x-text="vozPtDisponivel ? ('Voz: ' + vozSelecionadaNome) : 'Voz gerada localmente pelo servidor CER Digital'"></span>
                 </div>
 
-                <!-- Estado da Síntese e Último Evento -->
+                <!-- Fila de Reprodução & Estado -->
                 <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                    <span class="text-slate-400 block text-xs font-semibold uppercase mb-1">Estado da Síntese / Evento</span>
+                    <span class="text-slate-400 block text-xs font-semibold uppercase mb-1">Fila de Chamadas &amp; Estado</span>
                     <div class="flex items-center gap-2 mt-1">
                         <span class="font-mono font-bold uppercase text-xs px-2 py-0.5 rounded"
                               :class="{
@@ -976,49 +1235,110 @@
                               }"
                               x-text="estadoVoz">
                         </span>
+                        <span class="text-xs text-slate-300" x-text="processandoFila ? 'Processando chamada...' : (filaChamadas.length + ' pendentes na fila')"></span>
                     </div>
                     <span class="text-slate-400 text-xs block mt-1 truncate" x-text="ultimoEventoVoz"></span>
                 </div>
             </div>
 
-            <!-- Detalhes de Erro (se houver) -->
-            <div x-show="ultimoErroVoz" class="rounded-xl border border-rose-500/40 bg-rose-950/30 p-4 mb-6 text-xs">
-                <span class="text-rose-400 font-bold block uppercase mb-1">Último Erro Registrado na Síntese:</span>
-                <span class="text-rose-200 font-mono" x-text="ultimoErroVoz"></span>
-            </div>
+            <!-- SEÇÃO DE COMPATIBILIDADE TTS (AUDITORIA) -->
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/80 p-5 mb-6 text-xs">
+                <div class="flex items-center justify-between border-b border-slate-800/80 pb-3 mb-3">
+                    <span class="font-bold text-slate-200 uppercase tracking-wider text-xs flex items-center gap-2">
+                        <span>🔊</span>
+                        <span>STATUS DE COMPATIBILIDADE TTS</span>
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold"
+                          :class="{
+                              'bg-emerald-950 text-emerald-300 border border-emerald-800': sinteseFuncionando || motorVozAtivo === 'web_speech' || motorVozAtivo === 'audio_local',
+                              'bg-amber-950 text-amber-300 border border-amber-800': estadoVoz === 'aguardando_ativacao' || estadoVoz === 'inicializando',
+                              'bg-rose-950 text-rose-300 border border-rose-800': estadoVoz === 'erro' || motorVozAtivo === 'indisponivel'
+                          }">
+                        <span class="h-2 w-2 rounded-full"
+                              :class="{
+                                  'bg-emerald-400': sinteseFuncionando || motorVozAtivo === 'web_speech' || motorVozAtivo === 'audio_local',
+                                  'bg-amber-400': estadoVoz === 'aguardando_ativacao' || estadoVoz === 'inicializando',
+                                  'bg-rose-400': estadoVoz === 'erro' || motorVozAtivo === 'indisponivel'
+                              }"></span>
+                        <span x-text="sinteseFuncionando ? 'Síntese Operacional' : (estadoVoz === 'aguardando_ativacao' ? 'Aguardando Ativação' : (estadoVoz === 'erro' ? 'Falha Registrada' : 'Pronto'))"></span>
+                    </span>
+                </div>
 
-            <!-- User Agent Detalhado -->
-            <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-4 mb-6">
-                <span class="text-slate-400 block text-xs font-semibold uppercase mb-1">User Agent da Smart TV:</span>
-                <p class="font-mono text-[11px] text-slate-300 break-all leading-relaxed" x-text="deviceInfo.userAgent"></p>
+                <!-- Detalhamento de Vozes Carregadas pelo Navegador -->
+                <div class="mb-4">
+                    <span class="text-slate-400 block text-[11px] font-semibold uppercase mb-2">Vozes Carregadas no Navegador da TV:</span>
+                    <div class="max-h-36 overflow-y-auto space-y-1.5 pr-1 font-mono text-[11px]">
+                        <template x-for="(v, idx) in listaVozesDisponiveis" :key="idx">
+                            <div class="flex items-center justify-between p-2 rounded-lg border border-slate-800 bg-slate-900/60">
+                                <div class="flex items-center gap-2 truncate">
+                                    <span class="text-slate-400" x-text="(idx + 1) + '.'"></span>
+                                    <span class="text-white font-semibold truncate" x-text="v.nome"></span>
+                                    <span class="text-slate-400 text-[10px]" x-text="'(' + v.lang + ')'"></span>
+                                </div>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold"
+                                          :class="v.isPtBr ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : (v.isPtPt ? 'bg-sky-950 text-sky-300 border border-sky-800' : 'bg-slate-800 text-slate-400')"
+                                          x-text="v.isPtBr ? 'pt-BR' : (v.isPtPt ? 'pt-PT' : 'Outro')"></span>
+                                    <span class="text-slate-500 text-[10px]" x-text="v.origem"></span>
+                                </div>
+                            </div>
+                        </template>
+                        <div x-show="listaVozesDisponiveis.length === 0" class="text-slate-500 text-center py-3">
+                            Nenhuma voz carregada ou aguardando inicialização do motor de síntese.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detalhes de Erro (se houver) -->
+                <div x-show="ultimoErroVoz" class="rounded-xl border border-rose-500/40 bg-rose-950/30 p-3 mb-3 text-xs">
+                    <span class="text-rose-400 font-bold block uppercase mb-1">Último Erro Registrado na Síntese:</span>
+                    <span class="text-rose-200 font-mono" x-text="(ultimoErroCodigo ? '[' + ultimoErroCodigo + '] ' : '') + ultimoErroVoz"></span>
+                </div>
+
+                <!-- User Agent Detalhado -->
+                <div class="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+                    <span class="text-slate-400 block text-[11px] font-semibold uppercase mb-1">User Agent da TV:</span>
+                    <p class="font-mono text-[10px] text-slate-300 break-all leading-relaxed" x-text="deviceInfo.userAgent"></p>
+                </div>
             </div>
 
             <!-- Barra de Ações de Teste e Recuperação -->
             <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-800">
                 <div class="flex flex-wrap items-center gap-2">
                     <button type="button"
-                            @click="testarVoz()"
-                            :disabled="testeStatus === 'testando'"
-                            class="rounded-xl bg-teal-600 px-4 py-2 font-bold text-white hover:bg-teal-500 transition cursor-pointer text-xs sm:text-sm disabled:opacity-50">
-                        Testar Voz Completa
+                            @click="testarChime()"
+                            class="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 font-bold text-slate-200 hover:bg-slate-700 transition cursor-pointer text-xs">
+                        1. Testar Chime
                     </button>
 
                     <button type="button"
-                            @click="reproduzirChime(0.5)"
-                            class="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 font-bold text-slate-200 hover:bg-slate-700 transition cursor-pointer text-xs sm:text-sm">
-                        Testar Chime
+                            @click="testarVozBrasileira()"
+                            class="rounded-xl border border-teal-700 bg-teal-950/50 px-3 py-2 font-bold text-teal-300 hover:bg-teal-900 transition cursor-pointer text-xs">
+                        2. Testar Voz pt-BR (Nativa)
+                    </button>
+
+                    <button type="button"
+                            @click="testarVozDisponivel()"
+                            class="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 font-bold text-slate-300 hover:bg-slate-700 transition cursor-pointer text-xs">
+                        3. Testar Voz do Sistema
+                    </button>
+
+                    <button type="button"
+                            @click="testarMotorLocal()"
+                            class="rounded-xl bg-teal-600 px-3.5 py-2 font-bold text-white hover:bg-teal-500 transition cursor-pointer text-xs shadow-md">
+                        4. Testar Áudio Local (Servidor)
                     </button>
 
                     <button type="button"
                             @click="carregarVozes()"
                             class="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 font-medium text-slate-300 hover:bg-slate-700 transition cursor-pointer text-xs">
-                        Recarregar Vozes
+                        5. Recarregar Vozes
                     </button>
 
                     <button type="button"
                             @click="destravarSintese()"
                             class="rounded-xl border border-amber-700/60 bg-amber-950/40 px-3 py-2 font-medium text-amber-300 hover:bg-amber-900/40 transition cursor-pointer text-xs">
-                        Destravar Síntese
+                        6. Destravar Fila
                     </button>
                 </div>
 

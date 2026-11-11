@@ -228,7 +228,7 @@ class SinteseVozPainelChamadasTest extends TestCase
         });
     }
 
-    public function test_view_renderiza_frase_oficial_de_teste_e_controles_de_diagnostico_tv(): void
+    public function test_view_renderiza_frase_oficial_de_teste_e_controles_tecnicos(): void
     {
         $this->actingAs($this->coordenador);
 
@@ -237,32 +237,50 @@ class SinteseVozPainelChamadasTest extends TestCase
         $component->assertSee('Testar Voz');
         $component->assertSee('Painel Técnico TV');
         $component->assertSee('Teste de áudio do CER Digital. A chamada por voz está funcionando.');
-        $component->assertSee('Web Speech API (Síntese de Voz)');
-        $component->assertSee('Web Audio API (Chime Sonoro)');
-        $component->assertSee('Destravar Síntese');
+        $component->assertSee('STATUS DE COMPATIBILIDADE TTS');
+        $component->assertSee('Web Speech API (Síntese Nativa)');
+        $component->assertSee('Motor Local CER Digital (Servidor)');
+        $component->assertSee('Destravar Fila');
         $component->assertSee('Recarregar Vozes');
+        $component->assertSee('1. Testar Chime');
+        $component->assertSee('2. Testar Voz pt-BR (Nativa)');
+        $component->assertSee('3. Testar Voz do Sistema');
+        $component->assertSee('4. Testar Áudio Local (Servidor)');
     }
 
-    public function test_view_possui_mitigacoes_para_chromium_google_tv(): void
+    public function test_view_possui_identificacao_de_titanos_fila_fifo_e_motor_local(): void
     {
         $bladePath = resource_path('views/livewire/painel-chamadas.blade.php');
         $conteudo = file_get_contents($bladePath);
 
         $this->assertNotFalse($conteudo);
 
-        // Prevenção do bug de Garbage Collection no Chromium / Android TV
+        // Identificação específica do ambiente Philips TitanOS / WhaleTV
+        $this->assertStringContainsString('TitanOS', $conteudo);
+        $this->assertStringContainsString('WhaleTV', $conteudo);
+        $this->assertStringContainsString('PU[GK]\d{4}', $conteudo);
+
+        // Fila controlada de reprodução FIFO (evita sobreposição e cancelamentos excessivos)
+        $this->assertStringContainsString('filaChamadas', $conteudo);
+        $this->assertStringContainsString('enfileirarChamada', $conteudo);
+        $this->assertStringContainsString('processarFila', $conteudo);
+
+        // Sincronização por evento real de término do Chime (elimina delay arbitrário)
+        $this->assertStringContainsString('osc2.onended', $conteudo);
+
+        // Motor alternativo local do CER Digital (autohospedado e compatível com LGPD)
+        $this->assertStringContainsString('reproduzirAudioLocal', $conteudo);
+        $this->assertStringContainsString('/painel-chamadas/audio/fala', $conteudo);
+
+        // Normalização e seleção exclusiva de pt-BR (não seleciona en-US)
+        $this->assertStringContainsString('normalizarLang', $conteudo);
+        $this->assertStringContainsString('pt-br', $conteudo);
+
+        // Ativação universal por controle remoto da TV e teclado
+        $this->assertStringContainsString('keydown', $conteudo);
+
+        // Proteção contra Garbage Collection prematuro
         $this->assertStringContainsString('window._cerActiveUtterance', $conteudo);
         $this->assertStringContainsString('this.activeUtterance', $conteudo);
-
-        // Warmup e destravamento de voz durante gesto do usuário
-        $this->assertStringContainsString('warmup = new SpeechSynthesisUtterance', $conteudo);
-
-        // Delay anti-concorrência para cancel() e speak()
-        $this->assertStringContainsString('setTimeout(() => {', $conteudo);
-        $this->assertStringContainsString('60);', $conteudo);
-
-        // Detecção de Smart TV / Google TV / Philips
-        $this->assertStringContainsString('GoogleTV', $conteudo);
-        $this->assertStringContainsString('PHILIPS', $conteudo);
     }
 }
